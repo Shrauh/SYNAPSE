@@ -21,3 +21,8 @@ const incidents = [
     timestamp: "11:00 AM"
   }
 ];
+function IncidentList() {
+  return <h1>Incident List Page</h1>;
+}
+
+export default IncidentList;
