@@ -1,0 +1,340 @@
+# SYNAPSE Backend + AI Module — Implementation Plan
+
+## Branch: `shravani` | Scope: Backend + AI Integration
+
+---
+
+## Context
+
+The repo is freshly initialized on the `shravani` branch — `backend/`, `docs/`, `frontend/` are empty placeholder files. The frontend team has defined an [API contract](file:///d:/Codes/SYNAPSE/docs/api-contract.md) on the `shrushti/api-contract` branch. We need to build the entire backend from scratch.
+
+> [!IMPORTANT]
+> This is a **large, multi-phase build**. The plan is structured so each phase produces a runnable, testable increment. I recommend we tackle it phase-by-phase with commits between phases.
+
+---
+
+## Proposed Architecture
+
+```mermaid
+graph TB
+    subgraph "Data Layer"
+        A[Simulated Microservice Data Generator] --> B[Ingestion Service]
+        B --> C[TimescaleDB / SQLite for dev]
+    end
+
+    subgraph "Graph Layer"
+        C --> D[Service Dependency Graph Builder]
+        D --> E[NetworkX Graph + PyG Conversion]
+    end
+
+    subgraph "AI Module"
+        E --> F[GAT Anomaly Detector]
+        F --> G[Causal Inference Engine - PC Algorithm]
+        G --> H[LLM Reasoner]
+    end
+
+    subgraph "API Layer"
+        H --> I[FastAPI Endpoints]
+        I --> J[WebSocket Live Stream]
+    end
+
+    I --> K[Frontend Dashboard]
+```
+
+---
+
+## Phase 1: Project Scaffolding & Core API
+
+Set up the Python project structure, dependencies, configuration, and skeleton FastAPI app.
+
+### [NEW] `backend/` directory structure
+
+```
+backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                 # FastAPI app entry point
+│   ├── config.py               # Settings via pydantic-settings
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py          # Pydantic request/response models
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── router.py           # Main API router aggregation
+│   │   ├── health.py           # GET /health
+│   │   ├── incidents.py        # Incident CRUD endpoints
+│   │   ├── rca.py              # POST /rca/trigger, GET /rca/{id}
+│   │   ├── graph.py            # GET /graph/current
+│   │   ├── metrics.py          # GET /metrics
+│   │   └── ws.py               # WebSocket /live
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── database.py         # SQLAlchemy async engine + session
+│   │   └── models.py           # ORM models (Incident, RCAResult, etc.)
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── ingestion.py        # Data ingestion + feature extraction
+│   │   └── graph_builder.py    # Dependency graph construction
+│   └── ai_module/
+│       ├── __init__.py
+│       ├── orchestrator.py     # RCA pipeline fusion
+│       ├── gnn/
+│       │   ├── __init__.py
+│       │   ├── model.py        # GATAnomalyDetector(nn.Module)
+│       │   ├── graph_builder.py # NetworkX → PyG Data conversion
+│       │   ├── train.py        # Training loop
+│       │   ├── infer.py        # Inference: returns {service: score}
+│       │   └── utils.py
+│       ├── causal/
+│       │   ├── __init__.py
+│       │   ├── discovery.py    # PC algorithm wrapper
+│       │   ├── dag_utils.py    # Root node extraction, cycle checks
+│       │   └── validate.py     # Cross-check vs dependency graph
+│       └── llm/
+│           ├── __init__.py
+│           ├── prompt_templates.py
+│           ├── reasoner.py     # LLM API call + JSON parsing
+│           └── cache.py        # Incident-signature caching
+├── data/
+│   └── simulator.py            # Synthetic microservice data generator
+├── tests/
+│   ├── __init__.py
+│   ├── test_api.py
+│   ├── test_gnn.py
+│   ├── test_causal.py
+│   └── test_pipeline.py
+├── requirements.txt
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
+
+### [NEW] `backend/requirements.txt`
+
+```
+# Core
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0
+pydantic-settings>=2.0
+
+# Database
+sqlalchemy[asyncio]>=2.0
+aiosqlite>=0.20.0          # SQLite for dev; swap to asyncpg for Postgres
+
+# AI - GNN
+torch>=2.0
+torch-geometric>=2.5
+
+# AI - Causal
+causal-learn>=0.1.3
+
+# AI - LLM
+openai>=1.30.0             # Or httpx for generic API calls
+python-dotenv>=1.0
+
+# Data/Utils
+networkx>=3.0
+numpy>=1.26
+pandas>=2.0
+scikit-learn>=1.4
+
+# Testing
+pytest>=8.0
+pytest-asyncio>=0.23
+httpx>=0.27                # For async test client
+```
+
+### Key decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| DB for dev | SQLite (aiosqlite) | Zero setup, swap to Postgres later |
+| No Kafka for Phase 1 | Direct function calls | Get AI pipeline working first, add Kafka later |
+| LLM provider | OpenAI API (configurable) | Cheapest to prototype; abstracted behind interface |
+
+---
+
+## Phase 2: Data Simulation & Ingestion
+
+Since we don't have a live microservice cluster yet, we need a **synthetic data generator** that mimics Prometheus-style metrics + Jaeger-style traces with injectable faults.
+
+### [NEW] `backend/data/simulator.py`
+
+- Generates metrics for ~10 services: `api-gateway`, `auth-service`, `payment-service`, `order-service`, `inventory-service`, `notification-service`, `database`, `cache-service`, `user-service`, `search-service`
+- Normal behavior: Gaussian noise around baselines for latency, error_rate, cpu, memory, request_rate
+- Fault injection: Spike a chosen "root cause" service, then propagate degradation to downstream services with delay + attenuation (simulates real cascading failures)
+- Outputs time-series DataFrame + service call graph (adjacency list)
+
+### [NEW] `backend/app/services/ingestion.py`
+
+- Reads simulator output (or could read from Kafka in production)
+- Normalizes features into sliding-window aggregates
+- Stores to DB
+
+### [NEW] `backend/app/services/graph_builder.py`
+
+- Builds NetworkX DiGraph from trace/call data
+- Computes edge weights (call frequency, avg latency)
+- Caches graph in memory for fast GNN input construction
+
+---
+
+## Phase 3: GNN Anomaly Detection
+
+### [NEW] `backend/app/ai_module/gnn/model.py`
+
+- **GATAutoencoder**: Uses 2-layer GAT encoder → latent space → MLP decoder that reconstructs input features
+- Training: On "normal" windows — learns to reconstruct healthy behavior
+- Inference: Reconstruction error per node = anomaly score
+- Attention weights provide interpretability (which neighbor influenced the score)
+
+### [NEW] `backend/app/ai_module/gnn/graph_builder.py`
+
+- Converts NetworkX graph + feature DataFrame → PyTorch Geometric `Data` object
+- Node features: `[latency, error_rate, cpu, memory, request_rate]` (z-score normalized)
+- Edge index from adjacency
+
+### [NEW] `backend/app/ai_module/gnn/train.py` & `infer.py`
+
+- Training loop with reconstruction loss (MSE)
+- Inference returns `{service_name: anomaly_score}` dict
+
+---
+
+## Phase 4: Causal Inference Engine
+
+### [NEW] `backend/app/ai_module/causal/discovery.py`
+
+- Wraps `causal-learn`'s PC algorithm
+- Input: Time-series matrix of metrics for **anomalous services only** (pre-filtered by GNN scores > threshold)
+- Output: Causal DAG over the anomalous subset
+
+### [NEW] `backend/app/ai_module/causal/validate.py`
+
+- Cross-validates causal edges against the actual dependency graph
+- Removes spurious causal edges that contradict known service topology
+- Extracts root cause candidates (nodes with no incoming causal edges from other anomalous nodes)
+
+---
+
+## Phase 5: LLM Reasoning Layer
+
+### [NEW] `backend/app/ai_module/llm/reasoner.py`
+
+- Constructs structured prompt with: root candidates, anomaly scores, causal DAG, metric deltas
+- Calls OpenAI/compatible API with JSON mode
+- Returns structured `RCAExplanation` with root_cause, confidence, explanation, affected_services, recommended_actions
+
+### [NEW] `backend/app/ai_module/llm/prompt_templates.py`
+
+- System prompt defining the SRE assistant persona
+- User prompt template with JSON input structure
+- Few-shot examples for consistent output quality
+
+### [NEW] `backend/app/ai_module/llm/cache.py`
+
+- Hashes incident signatures (set of anomalous services + causal structure)
+- Returns cached LLM response for duplicate patterns
+
+---
+
+## Phase 6: Orchestration Pipeline + Full API
+
+### [NEW] `backend/app/ai_module/orchestrator.py`
+
+```python
+async def run_rca_pipeline(window_start, window_end):
+    graph = graph_builder.get_current_graph()
+    features = feature_store.get_features(window_start, window_end)
+    anomaly_scores = gnn.infer(graph, features)
+    anomalous_subset = filter_by_threshold(anomaly_scores, threshold=0.6)
+    causal_dag = causal_engine.discover(anomalous_subset, graph)
+    root_candidates = causal_dag.get_root_nodes()
+    explanation = await llm_reasoner.explain(root_candidates, anomaly_scores, causal_dag)
+    return RCAResult(...)
+```
+
+### API Endpoints (aligned with frontend API contract)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/metrics` | GET | System metrics summary |
+| `/incidents` | GET | List all incidents |
+| `/incidents` | POST | Create/trigger incident analysis |
+| `/incidents/{id}` | GET | Get incident details |
+| `/incidents/{id}/report` | GET | AI-generated RCA report |
+| `/incidents/{id}/causal-graph` | GET | Causal graph for incident |
+| `/graph/current` | GET | Current dependency graph |
+| `/rca/trigger` | POST | Manually trigger RCA pipeline |
+| `/live` | WS | Live anomaly score streaming |
+
+---
+
+## Phase 7: Containerization & Docker Compose
+
+### [NEW] `backend/Dockerfile`
+
+- Python 3.11-slim base
+- Install PyTorch CPU-only (keeps image small)
+- Copy requirements + app code
+- Expose port 8000
+
+### [NEW] `backend/docker-compose.yml`
+
+- `api` service: FastAPI app
+- `postgres` service: PostgreSQL (for production-like setup)
+- Shared network + volume mounts
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **LLM Provider**: Which LLM API should we use? Options:
+> - **OpenAI** (GPT-4o-mini — cheapest, ~$0.15/1M tokens) — needs API key
+> - **Google Gemini** — free tier available
+> - **Local via Ollama** — free but needs GPU/RAM
+> - **Mock/template-based** — no cost, deterministic, good for demo
+>
+> I recommend starting with a **mock/template-based reasoner** for development, then swapping to a real LLM for demo.
+
+> [!IMPORTANT]
+> **Database**: Using **SQLite** for development (zero setup). Should we set up PostgreSQL + TimescaleDB from the start, or defer to later?
+
+> [!WARNING]
+> **PyTorch + PyG installation**: These packages are large (~2GB). On Windows, `torch-geometric` requires specific install commands. I'll handle this during setup, but be aware the initial `pip install` will take time.
+
+---
+
+## Open Questions
+
+1. **Do you have an OpenAI/Gemini API key** ready, or should we use a mock LLM for now?
+2. **RCAEval dataset** — do you have it downloaded, or should I plan to generate synthetic data only for now?
+3. **Should I also set up the Kafka infrastructure** in this phase, or defer it?
+4. The frontend's API contract defines endpoints like `/incidents/{id}/causal-graph` — should I match those **exactly**, or are we free to adjust the contract?
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- `pytest` test suite covering:
+  - API endpoint responses (status codes, schema validation)
+  - GNN model forward pass + anomaly scoring
+  - Causal discovery on known synthetic DAGs
+  - Full pipeline end-to-end with simulated fault data
+- Command: `cd backend && python -m pytest tests/ -v`
+
+### Manual Verification
+- Run `uvicorn app.main:app --reload` and test endpoints via browser/curl
+- Trigger an RCA analysis with simulated fault data
+- Verify the response includes correct root cause, causal graph, and LLM explanation
+- WebSocket live stream test via browser console
+
+### Demo Scenario
+- Simulate a `database` service failure cascading to `payment-service` → `order-service`
+- Run RCA pipeline → verify it identifies `database` as root cause
+- Show the causal DAG and LLM explanation
