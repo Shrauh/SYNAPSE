@@ -1,140 +1,76 @@
 # SYNAPSE API Contract
 
-This document defines the API endpoints for the SYNAPSE AIOps platform.
+## GET /incidents
 
----
+Response 200
 
-## 1. GET /incidents
-
-Returns a list of all incidents.
-
-### Response (200)
-
-```json
 [
-  {
-    "id": "inc_001",
-    "service": "payment-service",
-    "severity": "high",
-    "status": "open",
-    "timestamp": "2026-07-11T10:00:00Z"
-  }
+ {
+   "id":"inc_001",
+   "service":"payment-service",
+   "severity":"high",
+   "status":"open",
+   "timestamp":"2026-07-11T10:00:00Z"
+ }
 ]
-```
 
 ---
 
-## 2. GET /incidents/{id}
+## GET /incidents/{id}
 
-Returns details of a specific incident.
+Response 200
 
-### Response (200)
-
-```json
 {
-  "id": "inc_001",
-  "service": "payment-service",
-  "severity": "high",
-  "status": "open",
-  "description": "Payment requests are failing.",
-  "timestamp": "2026-07-11T10:00:00Z"
+ "id":"inc_001",
+ "service":"payment-service",
+ "severity":"high",
+ "status":"open"
 }
-```
 
 ---
 
-## 3. GET /incidents/{id}/causal-graph
+## GET /incidents/{id}/causal-graph
 
-Returns the causal graph for an incident.
+Response 200
 
-### Response (200)
-
-```json
 {
-  "nodes": [
-    {
-      "id": "payment-service",
-      "label": "Payment Service"
-    },
-    {
-      "id": "database",
-      "label": "Database"
-    }
-  ],
-  "edges": [
-    {
-      "source": "database",
-      "target": "payment-service"
-    }
-  ]
+ "nodes":[],
+ "edges":[]
 }
-```
 
 ---
 
-## 4. GET /incidents/{id}/report
+## GET /incidents/{id}/report
 
-Returns an AI-generated incident report.
+Response 200
 
-### Response (200)
-
-```json
 {
-  "incident_id": "inc_001",
-  "summary": "Database latency caused payment failures.",
-  "root_cause": "High database response time.",
-  "recommendation": "Restart database service and monitor latency."
+ "summary":"Incident Report"
 }
-```
 
 ---
 
-## 5. POST /runbooks
+## POST /runbooks
 
-Uploads a runbook.
+Request
 
-### Request
-
-```json
 {
-  "title": "Restart Database",
-  "content": "Step 1: Stop database. Step 2: Restart database."
+ "title":"Restart Service"
 }
-```
 
-### Response (201)
+Response
 
-```json
 {
-  "message": "Runbook uploaded successfully."
+ "message":"Uploaded Successfully"
 }
-```
 
 ---
 
-## 6. GET /metrics
+## GET /metrics
 
-Returns system metrics.
+Response
 
-### Response (200)
-
-```json
 {
-  "cpu_usage": 45,
-  "memory_usage": 68,
-  "active_incidents": 2
+ "cpu":50,
+ "memory":70
 }
-```
-
----
-
-# Status Codes
-
-| Code | Meaning |
-|------|---------|
-|200|Success|
-|201|Created|
-|400|Bad Request|
-|404|Not Found|
-|500|Internal Server Error|
-
