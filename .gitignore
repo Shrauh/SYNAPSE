@@ -18,6 +18,7 @@ backend/.pytest_cache/
 # --- ChromaDB local data (Shweta's vector store, don't commit the DB itself) ---
 backend/chroma_db/
 backend/*.sqlite3
+backend/data/chromadb_test/
 
 # --- General / OS / Editor ---
 .DS_Store
