@@ -23,7 +23,14 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
+
+try:
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    HAS_TORCH = False
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai_module.causal.dag_utils import (
