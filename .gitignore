@@ -9,11 +9,15 @@ frontend/.env.local
 # --- Backend (Python/FastAPI) ---
 backend/venv/
 backend/__pycache__/
+backend/**/__pycache__/
 backend/*.pyc
 backend/*.pyo
 backend/.env
 backend/*.egg-info/
 backend/.pytest_cache/
+backend/synapse.db
+backend/models/
+backend/data/__pycache__/
 
 # --- ChromaDB local data (Shweta's vector store, don't commit the DB itself) ---
 backend/chroma_db/
