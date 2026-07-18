@@ -83,4 +83,18 @@ async def root():
         "description": "Microservice RCA using GNN + Causal Inference + LLM",
         "docs": "/docs",
         "api_prefix": "/api/v1",
+        "health": "/api/v1/health",
     }
+
+
+@app.get("/health", tags=["Root"], include_in_schema=False)
+async def health_shortcut():
+    """Convenience shortcut — redirects to /api/v1/health."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/v1/health")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)
