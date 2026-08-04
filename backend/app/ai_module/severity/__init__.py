@@ -1,0 +1,1 @@
+"""Severity classification module."""

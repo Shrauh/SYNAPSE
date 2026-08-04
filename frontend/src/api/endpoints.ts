@@ -22,3 +22,6 @@ export const fetchModelStatus = () =>
   api.get<ModelStatus>("/model/status").then(r => r.data);
 export const simulateFault = (req: SimulateRequest) =>
   api.post<SimulateResponse>("/rca/simulate", req).then(r => r.data);
+export const getSeverityStatus = () => api.get('/severity/status');
+export const getRecoveryHistory = () => api.get('/severity/recovery/history');
+export const getPatterns = () => api.get('/severity/patterns');
