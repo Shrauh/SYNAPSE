@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import ReactFlow, {
-  Background, Controls, MiniMap,
+  Background, Controls, MiniMap, Handle, Position,
   useNodesState, useEdgesState,
   type Node, type Edge,
 } from "reactflow";
@@ -31,8 +31,10 @@ function ServiceNode({ data }: { data: { label: string; score: number; type: str
         minWidth: 130,
         cursor: "pointer",
         boxShadow: `0 0 ${isCritical ? 18 : 8}px ${c}40`,
+        position: "relative",
       }}
     >
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
         <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" }}>{data.label}</span>
@@ -44,6 +46,7 @@ function ServiceNode({ data }: { data: { label: string; score: number; type: str
       }}>
         {(data.score * 100).toFixed(0)}% anomaly
       </div>
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
   );
 }

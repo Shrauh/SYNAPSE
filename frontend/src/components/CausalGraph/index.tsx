@@ -1,23 +1,29 @@
-import ReactFlow, { Background, type Node, type Edge } from "reactflow";
+import { useMemo } from "react";
+import ReactFlow, { Background, Handle, Position, MarkerType, type Node, type Edge } from "reactflow";
 import "reactflow/dist/style.css";
 import type { CausalGraph } from "../../types/api";
 
-function CausalNode({ data }: { data: { id: string; score: number; is_root: boolean } }) {
-  const c = data.is_root ? "#ef4444" : data.score > 0.6 ? "#f97316" : "#f59e0b";
+function CausalNode({ data }: { data: { id: string; score?: number; is_root?: boolean } }) {
+  const score = data.score ?? 0;
+  const isRoot = data.is_root ?? false;
+  const c = isRoot ? "#ef4444" : score > 0.6 ? "#f97316" : "#f59e0b";
   return (
     <div style={{
       background: "var(--bg-elevated)",
       border: `2px solid ${c}`,
       borderRadius: 10, padding: "8px 14px",
-      boxShadow: data.is_root ? `0 0 16px ${c}60` : "none",
+      boxShadow: isRoot ? `0 0 16px ${c}60` : "none",
+      position: "relative",
     }}>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "var(--text-primary)" }}>{data.id}</div>
-      {data.is_root && (
+      {isRoot && (
         <div style={{ fontSize: "0.65rem", color: c, marginTop: 2, fontWeight: 600 }}>ROOT CAUSE</div>
       )}
       <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>
-        Score: {data.score.toFixed(2)}
+        Score: {score.toFixed(2)}
       </div>
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
   );
 }
@@ -25,23 +31,27 @@ function CausalNode({ data }: { data: { id: string; score: number; is_root: bool
 const nodeTypes = { causal: CausalNode };
 
 export function CausalGraphViz({ graph }: { graph: CausalGraph }) {
-  const nodes: Node[] = graph.causal_nodes.map((n, i) => ({
-    id: n.id,
-    type: "causal",
-    position: { x: (i % 3) * 200 + 40, y: Math.floor(i / 3) * 140 + 40 },
-    data: n,
-  }));
+  const nodes: Node[] = useMemo(() =>
+    graph.causal_nodes.map((n, i) => ({
+      id: n.id,
+      type: "causal",
+      position: { x: (i % 3) * 200 + 40, y: Math.floor(i / 3) * 140 + 40 },
+      data: n,
+    }))
+  , [graph]);
 
-  const edges: Edge[] = graph.causal_edges.map((e, i) => ({
-    id: `ce${i}`,
-    source: e.source,
-    target: e.target,
-    animated: true,
-    label: `${(e.strength * 100).toFixed(0)}%`,
-    labelStyle: { fill: "#8b5cf6", fontSize: 9 },
-    style: { stroke: "#8b5cf6", strokeWidth: 2 },
-    markerEnd: "url(#arrow)",
-  }));
+  const edges: Edge[] = useMemo(() =>
+    graph.causal_edges.map((e, i) => ({
+      id: `ce${i}`,
+      source: e.source,
+      target: e.target,
+      animated: true,
+      label: `${((e.strength ?? 0) * 100).toFixed(0)}%`,
+      labelStyle: { fill: "#8b5cf6", fontSize: 9 },
+      style: { stroke: "#8b5cf6", strokeWidth: 2 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: "#8b5cf6" },
+    }))
+  , [graph]);
 
   return (
     <div style={{ height: 280, borderRadius: "var(--radius-md)", overflow: "hidden", background: "var(--bg-primary)" }}>
