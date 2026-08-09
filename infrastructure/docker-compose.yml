@@ -1,0 +1,84 @@
+
+services:
+  # ── Demo Microservices ──
+  api-gateway:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVICE_NAME=api-gateway
+      - SERVICE_PORT=8080
+      - DOWNSTREAM_SERVICES=auth-service:8081,user-service:8082,order-service:8083
+    depends_on:
+      - auth-service
+      - user-service
+      - order-service
+    networks:
+      - synapse-net
+
+  auth-service:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVICE_NAME=auth-service
+      - SERVICE_PORT=8081
+    networks:
+      - synapse-net
+
+  user-service:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVICE_NAME=user-service
+      - SERVICE_PORT=8082
+    networks:
+      - synapse-net
+
+  order-service:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVICE_NAME=order-service
+      - SERVICE_PORT=8083
+      - DOWNSTREAM_SERVICES=payment-service:8085
+    depends_on:
+      - payment-service
+    networks:
+      - synapse-net
+
+  payment-service:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - SERVICE_NAME=payment-service
+      - SERVICE_PORT=8085
+    networks:
+      - synapse-net
+
+  # ── Observability ──
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - synapse-net
+
+networks:
+  synapse-net:
+    driver: bridge
