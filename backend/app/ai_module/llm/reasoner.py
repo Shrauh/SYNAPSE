@@ -97,6 +97,13 @@ class LLMReasoner:
                 metric_deltas=metric_deltas,
                 dependency_edges=dependency_edges,
             )
+        elif self.provider == "ollama":
+            result = await self._call_ollama(
+                root_candidates=root_candidates,
+                anomaly_scores=anomaly_scores,
+                causal_edges=causal_edges,
+                metric_deltas=metric_deltas,
+            )
         else:
             # Unknown provider — use mock
             result = build_mock_response(
@@ -165,6 +172,53 @@ class LLMReasoner:
         except Exception as e:
             # Fallback to mock on any error
             print(f"[LLM] OpenAI call failed: {e}. Falling back to mock.")
+            return build_mock_response(
+                root_candidates=root_candidates,
+                anomaly_scores=anomaly_scores,
+                causal_edges=causal_edges,
+                metric_deltas=metric_deltas,
+            )
+
+    async def _call_ollama(
+        self,
+        root_candidates: List[Tuple[str, float]],
+        anomaly_scores: Dict[str, float],
+        causal_edges: List[Tuple[str, str, float]],
+        metric_deltas: Dict[str, Dict[str, str]],
+    ) -> Dict[str, Any]:
+        """Call local Ollama LLM for free RCA explanation."""
+        from app.ai_module.llm.ollama_client import generate_rca_explanation
+
+        root_service = root_candidates[0][0] if root_candidates else "unknown"
+        confidence = root_candidates[0][1] if root_candidates else 0.0
+
+        # Build propagation chain from causal edges
+        chain_parts = [root_service]
+        for src, tgt, _ in causal_edges:
+            if src == root_service and tgt not in chain_parts:
+                chain_parts.append(tgt)
+        chain = " → ".join(chain_parts)
+
+        try:
+            ollama_result = await generate_rca_explanation(
+                root_cause_service=root_service,
+                fault_type="anomaly",
+                metric_deltas=metric_deltas,
+                propagation_chain=chain,
+                confidence=confidence,
+            )
+
+            return {
+                "root_cause": root_service,
+                "confidence": confidence,
+                "fault_type": "anomaly",
+                "explanation": ollama_result["explanation"],
+                "propagation_chain": chain,
+                "recommended_actions": ollama_result["recommended_actions"],
+                "metric_deltas": metric_deltas,
+            }
+        except Exception as e:
+            print(f"[LLM] Ollama call failed: {e}. Falling back to mock.")
             return build_mock_response(
                 root_candidates=root_candidates,
                 anomaly_scores=anomaly_scores,
