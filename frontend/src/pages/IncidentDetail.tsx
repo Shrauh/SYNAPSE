@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Target, GitBranch, Wrench, BarChart2, Loader } from "lucide-react";
+import { ArrowLeft, Target, GitBranch, Wrench, BarChart2, Loader, AlertTriangle, Terminal } from "lucide-react";
 import { fetchIncident, fetchCausalGraph } from "../api/endpoints";
 import type { IncidentDetail, CausalGraph } from "../types/api";
 import { StatusBadge, ScoreBar, Spinner } from "../components/UI";
@@ -195,6 +195,62 @@ export default function IncidentDetailPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Severity Classification */}
+        {report?.severity && (
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <AlertTriangle size={15} color="var(--status-warning)" />
+              <span className="section-title" style={{ marginBottom: 0 }}>Severity Classification</span>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+              <span className={`badge badge-${report.severity.level === 'L4' || report.severity.level === 'L3' ? 'critical' : report.severity.level === 'L2' ? 'warning' : 'healthy'}`}>
+                {report.severity.level}
+              </span>
+              {report.severity.is_recurring && (
+                <span className="badge badge-warning">Recurring ({report.severity.recurring_count}x)</span>
+              )}
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: 8 }}>
+              <strong>Reason:</strong> {report.severity.reason}
+            </p>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+              <strong>Response:</strong> {report.severity.response_strategy}
+            </p>
+          </div>
+        )}
+
+        {/* Recovery Action */}
+        {report?.recovery && (
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <Terminal size={15} color="var(--accent-cyan)" />
+              <span className="section-title" style={{ marginBottom: 0 }}>Recovery Action</span>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+              <span className={`badge badge-${report.recovery.success ? 'healthy' : 'critical'}`}>
+                {report.recovery.success ? 'Success' : 'Failed'}
+              </span>
+              {report.recovery.simulated && (
+                <span className="badge badge-degraded">Simulated</span>
+              )}
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: 8 }}>
+              <strong>Action:</strong> {report.recovery.action} on {report.recovery.target}
+            </p>
+            <div style={{ 
+              background: "var(--bg-elevated)", 
+              padding: "10px", 
+              borderRadius: "6px",
+              fontFamily: "JetBrains Mono",
+              fontSize: "0.75rem",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border)"
+            }}>
+              <code>{report.recovery.kubectl_command}</code>
+            </div>
           </div>
         )}
       </div>

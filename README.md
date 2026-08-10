@@ -1,5 +1,10 @@
 # SYNAPSE
 
+![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg?logo=fastapi)
+![React](https://img.shields.io/badge/React-18.x-61DAFB.svg?logo=react)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 AIOps platform for automated Root Cause Analysis of microservice failures using **Graph Neural Networks**, **Causal Inference**, and **LLM-powered reasoning** with **Continual Learning**.
 
 ---
@@ -7,10 +12,11 @@ AIOps platform for automated Root Cause Analysis of microservice failures using 
 ## Architecture
 
 ```
-Microservice Metrics → Ingestion → GNN Anomaly Detection → Causal Inference → LLM Reasoning → RCA Report
-                                         ↓                       ↓
-                                   Continual Learning       Topology Validation
-                                   (EWC + Replay)          (Dependency Graph)
+Metrics → Ingestion → VAE-GNN → Filter → Causal → LLM → Severity(L1-L4) → Recovery → Store
+               ↓          ↓                  ↓                   ↓              ↓
+          Features    Uncertainty      Propagation         Classification   kubectl
+          (z-score)   (KL div)        Chain (DAG)         & Recurring      Actions
+                                                          Pattern Check    (Simulated)
 ```
 
 ## Tech Stack

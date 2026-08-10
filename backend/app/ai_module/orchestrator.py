@@ -7,13 +7,15 @@ This is the core integration layer that connects:
 Pipeline:
     1. Get/build dependency graph
     2. Extract features from metrics window
-    3. GNN anomaly detection → per-node scores
+    3. VAE-GNN anomaly detection → per-node scores + uncertainty
     4. Filter anomalous nodes (threshold)
-    5. Causal discovery on anomalous subset
-    6. Validate causal edges against topology
-    7. Extract root cause candidates
-    8. LLM generates human-readable explanation
-    9. Store results to DB
+    5. Severity classification (L1-L4)
+    6. Causal discovery on anomalous subset
+    7. Validate causal edges against topology
+    8. Extract root cause candidates
+    9. LLM generates human-readable explanation
+    10. Recovery action selection + execution (simulated)
+    11. Store results to DB
 """
 
 from __future__ import annotations
@@ -48,6 +50,8 @@ from app.ai_module.gnn.train import GNNTrainer
 from app.ai_module.gnn.utils import compute_topk_accuracy
 from app.ai_module.llm.reasoner import llm_reasoner
 from app.ai_module.meta.maml import maml_adapter
+from app.ai_module.rl.recovery_engine import recovery_engine
+from app.ai_module.severity.classifier import severity_classifier, SeverityLevel
 from app.config import settings
 from app.db.models import Incident, RCAResult
 from app.services.graph_builder import graph_builder
@@ -222,10 +226,10 @@ class RCAPipeline:
             "score": round(time.time() - t0, 3),
         })
 
-        # ── Stage 3: GNN Anomaly Detection ──
+        # ── Stage 3: VAE-GNN Anomaly Detection ──
         t0 = time.time()
         edge_index, _ = graph_builder.get_edge_index_tensor()
-        anomaly_scores = self._gnn_inference.compute_scores(
+        anomaly_scores, uncertainty_scores = self._gnn_inference.compute_scores(
             feature_matrix=feature_matrix,
             edge_index=edge_index,
             service_names=service_order,
@@ -234,9 +238,10 @@ class RCAPipeline:
         # Update graph with anomaly scores
         graph_builder.update_anomaly_scores(anomaly_scores)
 
+        num_anomalous = sum(1 for s in anomaly_scores.values() if s > settings.anomaly_threshold)
         timeline.append({
             "time": datetime.now(timezone.utc).isoformat(),
-            "event": f"GNN anomaly detection — {sum(1 for s in anomaly_scores.values() if s > settings.anomaly_threshold)} anomalous services",
+            "event": f"VAE-GNN anomaly detection — {num_anomalous} anomalous services",
             "score": round(time.time() - t0, 3),
         })
 
@@ -300,11 +305,51 @@ class RCAPipeline:
             "score": round(time.time() - t0, 3),
         })
 
-        # ── Stage 7: Store Results ──
-        total_time_ms = (time.time() - start_time) * 1000
-
+        # ── Stage 7: Severity Classification ──
+        t0 = time.time()
         root_cause_svc = explanation_result.get("root_cause", root_candidates[0][0] if root_candidates else "unknown")
         confidence = float(explanation_result.get("confidence", root_candidates[0][1] if root_candidates else 0.0))
+
+        severity_result = severity_classifier.classify(
+            anomaly_scores=anomaly_scores,
+            causal_confidence=confidence,
+            root_cause_service=root_cause_svc,
+            threshold=settings.anomaly_threshold,
+        )
+
+        timeline.append({
+            "time": datetime.now(timezone.utc).isoformat(),
+            "event": f"Severity classified: {severity_result.level.name} — {severity_result.response_strategy}",
+            "score": round(time.time() - t0, 3),
+        })
+
+        # ── Stage 8: Recovery Action ──
+        t0 = time.time()
+        recovery_action = recovery_engine.select_action(
+            severity_level=severity_result.level.value,
+            root_cause_service=root_cause_svc,
+            fault_type=explanation_result.get("fault_type"),
+            causal_confidence=confidence,
+            propagation_chain=chain if 'chain' in dir() else None,
+        )
+
+        action_result = recovery_engine.execute_action(recovery_action)
+
+        timeline.append({
+            "time": datetime.now(timezone.utc).isoformat(),
+            "event": f"Recovery: {recovery_action.action_type.value} on {root_cause_svc} — {'executed' if action_result.success else 'skipped'}",
+            "score": round(time.time() - t0, 3),
+        })
+
+        # Record incident in severity history for L4 pattern detection
+        severity_classifier.record_incident(
+            root_cause_service=root_cause_svc,
+            severity=severity_result.level,
+            resolved=action_result.success,
+        )
+
+        # ── Stage 9: Store Results ──
+        total_time_ms = (time.time() - start_time) * 1000
 
         # Build causal graph JSON for storage
         causal_graph_json = to_causal_graph_json(
@@ -330,11 +375,14 @@ class RCAPipeline:
             recommended_actions=explanation_result.get("recommended_actions", []),
             causal_graph=causal_graph_json,
             model_info={
-                "gnn_type": "GAT Autoencoder" if HAS_PYG else "Statistical Fallback",
+                "gnn_type": "VAE-GNN" if HAS_PYG else "Statistical Fallback",
                 "maml_adapted": False,
                 "adaptation_steps": 0,
                 "causal_method": "PC Algorithm" if causal_result.get("adjacency") else "Temporal Correlation",
                 "execution_time_ms": round(total_time_ms, 1),
+                "severity_level": severity_result.level.name,
+                "recovery_action": recovery_action.action_type.value,
+                "recovery_success": action_result.success,
             },
         )
 
@@ -360,9 +408,24 @@ class RCAPipeline:
             "propagation_chain": propagation_str,
             "affected_services": explanation_result.get("affected_services", []),
             "anomaly_scores": anomaly_scores,
+            "uncertainty_scores": uncertainty_scores,
             "causal_graph": causal_graph_json,
             "metric_deltas": metric_deltas,
             "recommended_actions": explanation_result.get("recommended_actions", []),
+            "severity": {
+                "level": severity_result.level.name,
+                "reason": severity_result.reason,
+                "response_strategy": severity_result.response_strategy,
+                "is_recurring": severity_result.is_recurring,
+                "recurring_count": severity_result.recurring_count,
+            },
+            "recovery": {
+                "action": recovery_action.action_type.value,
+                "target": recovery_action.target_service,
+                "kubectl_command": action_result.kubectl_command,
+                "success": action_result.success,
+                "simulated": action_result.simulated,
+            },
             "execution_time_ms": round(total_time_ms, 1),
             "timeline": timeline,
         }
@@ -400,10 +463,12 @@ class RCAPipeline:
         return {
             "initialized": self._initialized,
             "model_trained": self._model_trained,
-            "gnn_type": "GAT Autoencoder" if HAS_PYG else "Statistical Fallback",
+            "gnn_type": "VAE-GNN" if HAS_PYG else "Statistical Fallback",
             "training_losses": self._gnn_trainer.training_losses[-10:] if self._gnn_trainer else [],
             "continual_learning": continual_manager.get_status(),
             "maml": maml_adapter.get_status(),
+            "severity_history": severity_classifier.get_recurring_patterns(),
+            "recovery": recovery_engine.get_status(),
         }
 
 

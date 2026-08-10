@@ -63,13 +63,16 @@ class GATEncoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.norm1 = nn.LayerNorm(hidden_dim * heads)
         self.norm2 = nn.LayerNorm(latent_dim)
+        
+        self.mu_layer = nn.Linear(latent_dim, latent_dim)
+        self.logvar_layer = nn.Linear(latent_dim, latent_dim)
 
     def forward(
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
         return_attention: bool = False,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], torch.Tensor, torch.Tensor]:
         """Forward pass through GAT encoder.
 
         Args:
@@ -78,7 +81,7 @@ class GATEncoder(nn.Module):
             return_attention: Whether to return attention weights
 
         Returns:
-            Tuple of (embeddings [num_nodes, latent_dim], attention_weights or None)
+            Tuple of (embeddings [num_nodes, latent_dim], attention_weights or None, mu, logvar)
         """
         # Layer 1
         if return_attention:
@@ -103,9 +106,12 @@ class GATEncoder(nn.Module):
             attn_2 = None
 
         z = self.norm2(z)
+        
+        mu = self.mu_layer(z)
+        logvar = self.logvar_layer(z)
 
         # Return final layer attention
-        return z, attn_2
+        return z, attn_2, mu, logvar
 
 
 class FeatureDecoder(nn.Module):
@@ -171,12 +177,18 @@ class GATAnomalyDetector(nn.Module):
         self.in_features = in_features
         self.latent_dim = latent_dim
 
+    def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+        """Reparameterize latent embeddings."""
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
     def forward(
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
         return_attention: bool = False,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor], torch.Tensor, torch.Tensor]:
         """Full forward pass: encode → decode.
 
         Args:
@@ -185,34 +197,47 @@ class GATAnomalyDetector(nn.Module):
             return_attention: Whether to return GAT attention weights
 
         Returns:
-            Tuple of (reconstructed_x, embeddings, attention_weights)
+            Tuple of (reconstructed_x, embeddings, attention_weights, mu, logvar)
         """
-        z, attn = self.encoder(x, edge_index, return_attention=return_attention)
+        z_raw, attn, mu, logvar = self.encoder(x, edge_index, return_attention=return_attention)
+        if self.training:
+            z = self.reparameterize(mu, logvar)
+        else:
+            z = mu
         x_hat = self.decoder(z)
-        return x_hat, z, attn
+        return x_hat, z, attn, mu, logvar
+
+    def compute_loss(self, x: torch.Tensor, edge_index: torch.Tensor, beta: float = 0.5) -> torch.Tensor:
+        """Compute VAE loss combining reconstruction and KL divergence."""
+        x_hat, _, _, mu, logvar = self.forward(x, edge_index)
+        recon_loss = F.mse_loss(x_hat, x)
+        kl_loss = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+        return recon_loss + beta * kl_loss
 
     def compute_anomaly_scores(
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
-    ) -> torch.Tensor:
-        """Compute per-node anomaly scores as reconstruction error.
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Compute per-node anomaly scores as reconstruction error and uncertainty.
 
         Args:
             x: Node features [num_nodes, in_features]
             edge_index: Graph connectivity [2, num_edges]
 
         Returns:
-            Anomaly scores [num_nodes] — values in [0, 1] (sigmoid-scaled)
+            Tuple of (Anomaly scores [num_nodes], uncertainty [num_nodes])
         """
         self.eval()
         with torch.no_grad():
-            x_hat, _, _ = self.forward(x, edge_index)
+            x_hat, _, _, mu, logvar = self.forward(x, edge_index)
             # Per-node MSE
             mse_per_node = torch.mean((x - x_hat) ** 2, dim=1)
             # Scale to [0, 1] using sigmoid with temperature
             scores = torch.sigmoid(mse_per_node * 3.0 - 1.5)
-        return scores
+            # Uncertainty
+            uncertainty = logvar.exp().mean(dim=1)
+        return scores, uncertainty
 
     def get_attention_weights(
         self,
@@ -222,7 +247,7 @@ class GATAnomalyDetector(nn.Module):
         """Extract attention weights for interpretability."""
         self.eval()
         with torch.no_grad():
-            _, _, attn = self.forward(x, edge_index, return_attention=True)
+            _, _, attn, _, _ = self.forward(x, edge_index, return_attention=True)
         return attn
 
 

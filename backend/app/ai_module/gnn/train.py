@@ -91,8 +91,7 @@ class GNNTrainer:
             data = data.to(self.device)
             self.optimizer.zero_grad()
 
-            x_hat, z, _ = self.model(data.x, data.edge_index)
-            loss = self.criterion(x_hat, data.x)
+            loss = self.model.compute_loss(data.x, data.edge_index, beta=0.5)
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)

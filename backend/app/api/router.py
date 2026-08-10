@@ -4,7 +4,7 @@ API Router — aggregates all sub-routers into a single v1 router.
 
 from fastapi import APIRouter
 
-from app.api import graph, health, incidents, metrics, model, rca, ws
+from app.api import graph, health, incidents, metrics, model, rca, severity, ws
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -21,6 +21,9 @@ api_router.include_router(rca.router)
 
 # Model introspection
 api_router.include_router(model.router)
+
+# Severity & Recovery
+api_router.include_router(severity.router)
 
 # WebSocket (no prefix — mounted at /api/v1/live)
 api_router.include_router(ws.router)

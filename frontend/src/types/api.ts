@@ -61,6 +61,21 @@ export interface RCAReport {
   metric_deltas: Record<string, Record<string, string>>;
   recommended_actions: string[];
   model_info: Record<string, unknown>;
+  uncertainty_scores?: Record<string, number>;
+  severity?: {
+    level: string;
+    reason: string;
+    response_strategy: string;
+    is_recurring: boolean;
+    recurring_count: number;
+  };
+  recovery?: {
+    action: string;
+    target: string;
+    kubectl_command: string;
+    success: boolean;
+    simulated: boolean;
+  };
 }
 
 export interface CausalNode {

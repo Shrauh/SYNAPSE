@@ -33,7 +33,7 @@ class GNNInference:
         feature_matrix: np.ndarray,
         edge_index: Optional[List[List[int]]] = None,
         service_names: Optional[List[str]] = None,
-    ) -> Dict[str, float]:
+    ) -> Tuple[Dict[str, float], Dict[str, float]]:
         """Compute anomaly scores for all services.
 
         Args:
@@ -42,14 +42,15 @@ class GNNInference:
             service_names: Ordered list of service names for the output dict
 
         Returns:
-            Dict mapping service_name → anomaly_score (0.0 to 1.0)
+            Tuple of (scores_dict, uncertainty_dict) mapping service_name → value
         """
         x = torch.tensor(feature_matrix, dtype=torch.float32)
+        uncertainty = None
 
         if self._use_pyg and edge_index is not None:
             x = x.to(self.device)
             ei = torch.tensor(edge_index, dtype=torch.long).to(self.device)
-            scores = self.model.compute_anomaly_scores(x, ei)
+            scores, uncertainty = self.model.compute_anomaly_scores(x, ei)
         elif isinstance(self.model, FallbackAnomalyDetector):
             scores = self.model.compute_anomaly_scores(x)
         else:
@@ -59,27 +60,34 @@ class GNNInference:
             scores = torch.sigmoid(std / mean - 1.0)
 
         scores_np = scores.cpu().numpy()
+        uncertainty_np = uncertainty.cpu().numpy() if uncertainty is not None else np.zeros_like(scores_np)
 
         if service_names is None:
             service_names = [f"service_{i}" for i in range(len(scores_np))]
 
-        return {
+        scores_dict = {
             name: float(round(score, 4))
             for name, score in zip(service_names, scores_np)
         }
+        uncertainty_dict = {
+            name: float(round(unc, 4))
+            for name, unc in zip(service_names, uncertainty_np)
+        }
+        
+        return scores_dict, uncertainty_dict
 
     def compute_scores_with_attention(
         self,
         feature_matrix: np.ndarray,
         edge_index: List[List[int]],
         service_names: List[str],
-    ) -> Tuple[Dict[str, float], Optional[Dict]]:
+    ) -> Tuple[Dict[str, float], Dict[str, float], Optional[Dict]]:
         """Compute scores + attention weights for interpretability.
 
         Returns:
-            Tuple of (anomaly_scores dict, attention_info dict or None)
+            Tuple of (anomaly_scores dict, uncertainty dict, attention_info dict or None)
         """
-        scores = self.compute_scores(feature_matrix, edge_index, service_names)
+        scores, uncertainty = self.compute_scores(feature_matrix, edge_index, service_names)
 
         attention_info = None
         if self._use_pyg:
@@ -92,7 +100,7 @@ class GNNInference:
                     "edge_index": edge_index,
                 }
 
-        return scores, attention_info
+        return scores, uncertainty, attention_info
 
     def get_top_anomalous(
         self,
