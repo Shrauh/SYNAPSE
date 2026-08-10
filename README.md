@@ -12,10 +12,11 @@ AIOps platform for automated Root Cause Analysis of microservice failures using 
 ## Architecture
 
 ```
-Microservice Metrics → Ingestion → GNN Anomaly Detection → Causal Inference → LLM Reasoning → RCA Report
-                                         ↓                       ↓
-                                   Continual Learning       Topology Validation
-                                   (EWC + Replay)          (Dependency Graph)
+Metrics → Ingestion → VAE-GNN → Filter → Causal → LLM → Severity(L1-L4) → Recovery → Store
+               ↓          ↓                  ↓                   ↓              ↓
+          Features    Uncertainty      Propagation         Classification   kubectl
+          (z-score)   (KL div)        Chain (DAG)         & Recurring      Actions
+                                                          Pattern Check    (Simulated)
 ```
 
 ## Tech Stack
