@@ -160,10 +160,18 @@ class IncidentDetailResponse(BaseModel):
 # ──────────────────────────────────────────────
 
 class ModelInfo(BaseModel):
-    gnn_type: str = "DEIC-GAT Autoencoder"
+    model_config = {"extra": "allow"}
+
+    gnn_type: str = "VAE-GNN Autoencoder"
     maml_adapted: bool = False
     adaptation_steps: int = 0
-    causal_method: str = "PC Algorithm"
+    causal_method: str = "DECI (Differentiable Causal Discovery)"
+    h_score: Optional[float] = None
+    drift_score: Optional[float] = None
+    execution_time_ms: Optional[float] = None
+    severity_level: Optional[str] = None
+    recovery_action: Optional[str] = None
+    recovery_success: Optional[bool] = None
 
 
 class RCAReportResponse(BaseModel):

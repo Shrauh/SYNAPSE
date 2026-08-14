@@ -11,17 +11,19 @@ import ModelStatusPage from "./pages/ModelStatus";
 function AppInner() {
   useLiveAnomalies(); // Start WebSocket globally
   return (
-    <>
+    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
       <Navbar />
-      <Routes>
-        <Route path="/"            element={<Dashboard />} />
-        <Route path="/graph"       element={<GraphPage />} />
-        <Route path="/incidents"   element={<IncidentList />} />
-        <Route path="/incidents/:id" element={<IncidentDetail />} />
-        <Route path="/simulate"    element={<SimulatePage />} />
-        <Route path="/model"       element={<ModelStatusPage />} />
-      </Routes>
-    </>
+      <main>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/graph" element={<GraphPage />} />
+          <Route path="/incidents" element={<IncidentList />} />
+          <Route path="/incidents/:id" element={<IncidentDetail />} />
+          <Route path="/simulate" element={<SimulatePage />} />
+          <Route path="/model" element={<ModelStatusPage />} />
+        </Routes>
+      </main>
+    </div>
   );
 }
 

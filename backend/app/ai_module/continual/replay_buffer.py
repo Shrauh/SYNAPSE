@@ -48,8 +48,8 @@ class ReplayBuffer:
             metadata: Optional metadata (task_id, timestamp, etc.)
         """
         sample = {
-            "features": features.cpu().clone(),
-            "edge_index": edge_index.cpu().clone(),
+            "features": features.cpu().clone() if hasattr(features, 'cpu') else features,
+            "edge_index": edge_index.cpu().clone() if (edge_index is not None and hasattr(edge_index, 'cpu')) else edge_index,
             "metadata": metadata or {},
         }
 

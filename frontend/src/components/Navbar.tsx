@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, GitFork, AlertTriangle, Cpu, Zap, Activity
+  LayoutDashboard, GitBranch, AlertTriangle, Cpu, Zap, Activity
 } from "lucide-react";
 import { useStore } from "../store";
 
 const NAV = [
   { to: "/",         icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/graph",    icon: GitFork,         label: "Service Graph" },
+  { to: "/graph",    icon: GitBranch,       label: "Service Graph" },
   { to: "/incidents",icon: AlertTriangle,   label: "Incidents" },
   { to: "/simulate", icon: Zap,             label: "Simulate" },
   { to: "/model",    icon: Cpu,             label: "Model Status" },

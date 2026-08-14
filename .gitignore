@@ -23,6 +23,7 @@ backend/data/__pycache__/
 backend/chroma_db/
 backend/*.sqlite3
 backend/data/chromadb_test/
+backend/data/chromadb/
 
 # --- General / OS / Editor ---
 .DS_Store

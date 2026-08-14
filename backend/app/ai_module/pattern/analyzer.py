@@ -213,6 +213,36 @@ class PatternAnalyzer:
         
         return recommendations
     
+    def get_recurring_patterns(self, window_days: int = 30) -> List[Dict[str, Any]]:
+        """Return recurring patterns formatted as dicts."""
+        patterns = self.detect_recurring(window_days=window_days)
+        return [
+            {
+                "service": p.root_cause_service,
+                "root_cause": p.root_cause_service,
+                "count": p.occurrence_count,
+                "occurrences": p.occurrence_count,
+                "fault_types": p.common_fault_types,
+                "severity_trend": p.severity_trend,
+            }
+            for p in patterns
+        ]
+
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        """Return architectural recommendations as dicts."""
+        recs = self.generate_recommendations()
+        return [
+            {
+                "service": r.service,
+                "problem": r.problem,
+                "recommendation": r.recommendation,
+                "priority": r.priority,
+                "effort": r.estimated_effort,
+                "evidence": r.evidence,
+            }
+            for r in recs
+        ]
+
     def get_summary(self) -> Dict[str, Any]:
         """Get a summary of all patterns and recommendations.
         

@@ -54,7 +54,47 @@ class MultiRootCauseDetector:
     def __init__(self):
         """Initialize the multi-root cause detector."""
         self._causal_engine = CausalDiscoveryEngine(alpha=0.05)
-    
+
+    def detect(self, anomalous: Dict[str, float], topology: Any) -> Dict[str, Any]:
+        """Convenience method for multi-root cluster detection."""
+        if not anomalous:
+            return {"clusters": [], "root_causes": []}
+
+        if isinstance(topology, dict):
+            G = nx.DiGraph()
+            for src, tgts in topology.items():
+                for tgt in tgts:
+                    G.add_edge(src, tgt)
+        else:
+            G = topology
+
+        clusters = self.decompose_into_clusters(
+            list(anomalous.keys()),
+            anomalous,
+            G,
+        )
+
+        cluster_results = []
+        for cid, svcs in enumerate(clusters):
+            sub_g = G.subgraph(svcs)
+            in_degrees = dict(sub_g.in_degree())
+            zero_in = [n for n, deg in in_degrees.items() if deg == 0]
+            if zero_in:
+                root = max(zero_in, key=lambda n: anomalous.get(n, 0))
+            else:
+                root = max(svcs, key=lambda n: anomalous.get(n, 0))
+            cluster_results.append({
+                "cluster_id": cid,
+                "services": svcs,
+                "root": root,
+                "confidence": anomalous.get(root, 0.0),
+            })
+
+        return {
+            "clusters": cluster_results,
+            "root_causes": [c["root"] for c in cluster_results],
+        }
+
     def decompose_into_clusters(
         self, 
         anomalous_services: List[str], 
