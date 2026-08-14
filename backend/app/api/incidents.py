@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,7 +67,9 @@ async def list_incidents(
 
 @router.post("", response_model=CreateIncidentResponse, status_code=201)
 async def create_incident(
-    req: CreateIncidentRequest, db: AsyncSession = Depends(get_db)
+    req: CreateIncidentRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
 ):
     """Create an incident and trigger RCA analysis."""
     incident = Incident(
@@ -83,7 +85,9 @@ async def create_incident(
     await db.commit()
     await db.refresh(incident)
 
-    # TODO: Phase 6 — trigger orchestrator.run_rca_pipeline() here
+    # Trigger the RCA pipeline in the background
+    from app.api.rca import _run_pipeline_background
+    background_tasks.add_task(_run_pipeline_background, incident.id)
 
     return CreateIncidentResponse(
         id=incident.id,

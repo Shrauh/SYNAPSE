@@ -87,3 +87,43 @@ class ServiceMetric(Base):
     cpu: Mapped[float] = mapped_column(Float, default=0.0)
     memory: Mapped[float] = mapped_column(Float, default=0.0)
     request_rate: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class RecoveryActionLog(Base):
+    """Log of recovery actions taken by the system."""
+
+    __tablename__ = "recovery_actions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    incident_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_service: Mapped[str] = mapped_column(String(128), nullable=False)
+    kubectl_command: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    success: Mapped[bool] = mapped_column(Integer, default=0)  # SQLite has no bool
+    simulated: Mapped[bool] = mapped_column(Integer, default=1)
+    severity_level: Mapped[str] = mapped_column(String(32), default="L1_SIMPLE")
+    execution_time_ms: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class PatternHistory(Base):
+    """Historical record of detected recurring patterns."""
+
+    __tablename__ = "pattern_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    root_cause_service: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    occurrence_count: Mapped[int] = mapped_column(Integer, default=1)
+    common_fault_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    severity_trend: Mapped[str] = mapped_column(String(32), default="stable")
+    recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    priority: Mapped[str] = mapped_column(String(32), default="medium")
+    first_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+    last_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )

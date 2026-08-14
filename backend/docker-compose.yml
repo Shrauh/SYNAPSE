@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    container_name: synapse-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=SYNAPSE
+      - APP_VERSION=1.0.0
+      - DEBUG=true
+      - DATABASE_URL=sqlite+aiosqlite:///./synapse.db
+      - LLM_PROVIDER=mock
+      - ANOMALY_THRESHOLD=0.6
+    volumes:
+      - ./models:/app/models
+      - synapse-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/api/v1/health'); assert r.status_code == 200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  synapse-data:
