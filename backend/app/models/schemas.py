@@ -277,3 +277,76 @@ class ModelStatusResponse(BaseModel):
 class WSMessage(BaseModel):
     type: str  # anomaly_update | incident_detected | rca_complete
     data: Dict[str, Any] = {}
+
+
+# ──────────────────────────────────────────────
+# Continual Learning — Dedicated API Schemas
+# ──────────────────────────────────────────────
+
+class CLTaskRecord(BaseModel):
+    """A single task registered with the continual learning system."""
+    task_id: str
+    task_type: str = "fault_pattern"            # normal_baseline | fault_pattern | custom
+    samples_in_buffer: int = 0
+    ewc_registered: bool = False
+    performance_metric: float = 0.0             # e.g. final training loss
+    registered_at: Optional[datetime] = None
+
+
+class CLDetailedStatus(BaseModel):
+    """Extended status for the /continual-learning/status endpoint."""
+    initialized: bool = False
+    ewc_lambda: float = 5000.0
+    tasks_learned: int = 0
+    task_ids: List[str] = []
+    replay_buffer_size: int = 0
+    replay_buffer_max: int = 500
+    replay_buffer_fill_pct: float = 0.0
+    forgetting_rate: float = 0.0
+    ewc_tasks_seen: int = 0
+    total_samples_seen: int = 0
+    tasks: List[CLTaskRecord] = []
+
+
+class CLForgettingEntry(BaseModel):
+    """One point in the forgetting-rate history."""
+    episode: int
+    task_id: str
+    forgetting_rate: float
+    ewc_penalty: float
+
+
+class CLForgettingHistory(BaseModel):
+    """Time-series forgetting rate for the chart."""
+    history: List[CLForgettingEntry] = []
+    current_forgetting_rate: float = 0.0
+
+
+class CLReplayStats(BaseModel):
+    """Replay buffer breakdown by task."""
+    buffer_size: int = 0
+    max_size: int = 500
+    total_seen: int = 0
+    fill_percentage: float = 0.0
+    task_distribution: Dict[str, int] = {}
+
+
+class CLTriggerRequest(BaseModel):
+    """Request body to trigger an incremental CL update."""
+    task_id: str = "new_fault_pattern"
+    fault_type: str = "latency_spike"           # latency_spike | crash | cpu_hog | memory_leak
+    root_cause_service: str = "database"
+    num_scenarios: int = Field(default=5, ge=1, le=20)
+    ewc_lambda_override: Optional[float] = None
+
+
+class CLTriggerResponse(BaseModel):
+    """Result of triggering an incremental CL update."""
+    success: bool
+    task_id: str
+    message: str
+    samples_added: int = 0
+    ewc_registered: bool = False
+    new_forgetting_rate: float = 0.0
+    execution_time_ms: float = 0.0
+

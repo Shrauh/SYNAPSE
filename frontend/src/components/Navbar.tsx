@@ -1,16 +1,18 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, GitFork, AlertTriangle, Cpu, Zap, Activity
+  LayoutDashboard, GitFork, AlertTriangle, Cpu, Zap, Activity, Brain
 } from "lucide-react";
 import { useStore } from "../store";
 
 const NAV = [
-  { to: "/",         icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/graph",    icon: GitFork,         label: "Service Graph" },
-  { to: "/incidents",icon: AlertTriangle,   label: "Incidents" },
-  { to: "/simulate", icon: Zap,             label: "Simulate" },
-  { to: "/model",    icon: Cpu,             label: "Model Status" },
+  { to: "/",                   icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/graph",              icon: GitFork,         label: "Service Graph" },
+  { to: "/incidents",          icon: AlertTriangle,   label: "Incidents" },
+  { to: "/simulate",           icon: Zap,             label: "Simulate" },
+  { to: "/model",              icon: Cpu,             label: "Model Status" },
+  { to: "/continual-learning", icon: Brain,           label: "Continual Learning" },
 ];
+
 
 export function Navbar() {
   const loc = useLocation();

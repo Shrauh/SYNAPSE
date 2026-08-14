@@ -3,6 +3,8 @@ import type {
   GraphResponse, IncidentSummary, IncidentDetail,
   RCAReport, CausalGraph, HealthResponse, MetricsResponse,
   ModelStatus, SimulateRequest, SimulateResponse,
+  CLDetailedStatus, CLForgettingHistory, CLReplayStats,
+  CLEWCStats, CLTriggerRequest, CLTriggerResponse, CLTaskRecord,
 } from "../types/api";
 
 export const fetchHealth = () => api.get<HealthResponse>("/health").then(r => r.data);
@@ -25,3 +27,18 @@ export const simulateFault = (req: SimulateRequest) =>
 export const getSeverityStatus = () => api.get('/severity/status');
 export const getRecoveryHistory = () => api.get('/severity/recovery/history');
 export const getPatterns = () => api.get('/severity/patterns');
+
+// ─── Continual Learning ───────────────────────────────────────────
+export const fetchCLStatus = () =>
+  api.get<CLDetailedStatus>("/continual-learning/status").then(r => r.data);
+export const fetchCLTasks = () =>
+  api.get<CLTaskRecord[]>("/continual-learning/tasks").then(r => r.data);
+export const fetchCLForgettingHistory = () =>
+  api.get<CLForgettingHistory>("/continual-learning/forgetting-rate").then(r => r.data);
+export const fetchCLReplayStats = () =>
+  api.get<CLReplayStats>("/continual-learning/replay-buffer").then(r => r.data);
+export const fetchCLEWCStats = () =>
+  api.get<CLEWCStats>("/continual-learning/ewc-stats").then(r => r.data);
+export const triggerCLUpdate = (req: CLTriggerRequest) =>
+  api.post<CLTriggerResponse>("/continual-learning/trigger-update", req).then(r => r.data);
+
