@@ -13,9 +13,18 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    F = None      # type: ignore
+    optim = None  # type: ignore
+    HAS_TORCH = False
 
 try:
     from torch_geometric.nn import GATConv
@@ -23,8 +32,13 @@ try:
 except ImportError:
     HAS_PYG = False
 
+# When torch is not installed, use plain `object` as base class
+# so that class GATEncoder(nn.Module) still parses without crashing.
+# Instances will fail at __init__ (which checks HAS_TORCH) — never at definition.
+_ModuleBase = nn.Module if HAS_TORCH else object  # type: ignore
 
-class GATEncoder(nn.Module):
+
+class GATEncoder(_ModuleBase):
     """2-layer Graph Attention Network encoder.
 
     Produces per-node latent embeddings from input features using
@@ -108,7 +122,7 @@ class GATEncoder(nn.Module):
         return z, attn_2
 
 
-class FeatureDecoder(nn.Module):
+class FeatureDecoder(_ModuleBase):
     """MLP decoder that reconstructs input features from latent embeddings."""
 
     def __init__(
@@ -139,7 +153,7 @@ class FeatureDecoder(nn.Module):
         return self.decoder(z)
 
 
-class GATAnomalyDetector(nn.Module):
+class GATAnomalyDetector(_ModuleBase):
     """Complete GAT Autoencoder for anomaly detection.
 
     Encoder: GAT layers learn topology-aware embeddings
@@ -271,7 +285,7 @@ class FallbackAnomalyDetector:
         return torch.sigmoid(avg_z - 2.0)
 
 
-def create_detector(use_gnn: bool = True, **kwargs) -> nn.Module:
+def create_detector(use_gnn: bool = True, **kwargs):
     """Factory function to create the appropriate anomaly detector.
 
     Falls back to statistical detector if PyG is unavailable.

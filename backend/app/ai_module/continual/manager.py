@@ -10,8 +10,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    HAS_TORCH = False
 
 from app.ai_module.continual.ewc import EWC
 from app.ai_module.continual.replay_buffer import ReplayBuffer

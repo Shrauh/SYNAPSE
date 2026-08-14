@@ -42,13 +42,35 @@ class Settings(BaseSettings):
     maml_inner_steps: int = 3
     ewc_lambda: float = 5000.0
 
-    # --- LLM ---
-    llm_provider: str = "mock"  # "mock" | "openai"
+    # --- LLM (Groq primary, OpenAI fallback, mock last resort) ---
+    llm_provider: str = "groq"          # "groq" | "openai" | "mock"
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.1-70b-versatile"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
 
+    # --- Remediation ---
+    remediation_confidence_threshold: float = 0.85
+    rollback_confidence_threshold: float = 0.90   # Higher bar for rollback
+    k8s_namespace: str = "default"
+    k8s_enabled: bool = False          # False = simulation mode
+    remediation_auto_execute: bool = True
+
+    # --- Kafka ---
+    kafka_enabled: bool = False         # False = no Kafka needed in local dev
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_metrics_topic: str = "metrics-topic"
+    kafka_logs_topic: str = "logs-topic"
+    kafka_traces_topic: str = "traces-topic"
+    kafka_alerts_topic: str = "alerts-topic"
+    kafka_remediation_topic: str = "remediation-topic"
+
+    # --- RAG / ChromaDB ---
+    chroma_persist_directory: str = "./chroma_db"
+    embedding_model: str = "all-MiniLM-L6-v2"
+
     # --- CORS ---
-    cors_origins: str = '["http://localhost:3000","http://localhost:5173"]'
+    cors_origins: str = '["http://localhost:3000","http://localhost:5173","http://127.0.0.1:5173"]'
 
     @property
     def cors_origin_list(self) -> List[str]:

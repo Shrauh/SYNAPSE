@@ -69,7 +69,7 @@ async def test_graph_current(client):
     assert response.status_code == 200
     data = response.json()
     assert len(data["nodes"]) == 10
-    assert len(data["edges"]) == 15
+    assert len(data["edges"]) == 11
     assert data["metadata"]["total_services"] == 10
 
 
@@ -135,3 +135,41 @@ async def test_model_status(client):
     assert "deic_gnn" in data
     assert "maml" in data
     assert "continual_learning" in data
+
+
+# ──────────────────────────────────────────────
+# Remediation & Learning (new endpoints)
+# ──────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_remediation_actions_list(client):
+    response = await client.get("/api/v1/remediation/actions")
+    assert response.status_code == 200
+    actions = response.json()
+    assert isinstance(actions, list)
+    assert len(actions) >= 6
+    action_ids = [a["action_id"] for a in actions]
+    assert "SCALE_UP" in action_ids
+    assert "RESTART_POD" in action_ids
+
+
+@pytest.mark.asyncio
+async def test_remediation_history(client):
+    response = await client.get("/api/v1/remediation/history")
+    assert response.status_code == 200
+    data = response.json()
+    assert "executions" in data
+    assert "total" in data
+    assert "executor_status" in data
+
+
+@pytest.mark.asyncio
+async def test_learning_stats(client):
+    response = await client.get("/api/v1/learning/stats")
+    assert response.status_code == 200
+    data = response.json()
+    assert "ewc_tasks_learned" in data
+    assert "ac_at_1" in data
+    assert "ac_at_3" in data
+    assert "cql_states" in data
+    assert "replay_buffer_size" in data

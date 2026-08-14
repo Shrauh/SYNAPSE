@@ -24,33 +24,33 @@ def test_simulator_fault_injection():
     """Test fault-injected simulation."""
     sim = MicroserviceSimulator(seed=42)
     result = sim.simulate_incident(
-        root_cause="database",
+        root_cause="orderdb",
         fault_type="latency_spike",
         severity=5.0,
         num_steps=60,
     )
 
-    assert result.ground_truth_root == "database"
+    assert result.ground_truth_root == "orderdb"
     assert len(result.affected_services) > 0
-    assert "auth-service" in result.affected_services  # auth calls database
+    assert "payment" in result.affected_services  # payment calls orderdb
 
-    # Database should have higher latency during fault window
-    db_data = result.metrics_df[result.metrics_df["service"] == "database"]
-    assert db_data["latency"].max() > 20  # Baseline is 5ms, spike should be >20ms
+    # orderdb should have higher latency during fault window
+    db_data = result.metrics_df[result.metrics_df["service"] == "orderdb"]
+    assert db_data["latency"].max() > 20  # Baseline latency, spike should be >20ms
 
 
 def test_simulator_different_fault_types():
     """Test different fault types produce different patterns."""
     sim = MicroserviceSimulator(seed=42)
 
-    latency = sim.simulate_incident(root_cause="database", fault_type="latency_spike")
-    error = sim.simulate_incident(root_cause="database", fault_type="error_burst")
-    resource = sim.simulate_incident(root_cause="database", fault_type="resource_exhaustion")
+    latency = sim.simulate_incident(root_cause="orderdb", fault_type="latency_spike")
+    error = sim.simulate_incident(root_cause="orderdb", fault_type="error_burst")
+    resource = sim.simulate_incident(root_cause="orderdb", fault_type="resource_exhaustion")
 
     # Each should have different dominant metric spikes
-    db_lat = latency.metrics_df[latency.metrics_df["service"] == "database"]
-    db_err = error.metrics_df[error.metrics_df["service"] == "database"]
-    db_res = resource.metrics_df[resource.metrics_df["service"] == "database"]
+    db_lat = latency.metrics_df[latency.metrics_df["service"] == "orderdb"]
+    db_err = error.metrics_df[error.metrics_df["service"] == "orderdb"]
+    db_res = resource.metrics_df[resource.metrics_df["service"] == "orderdb"]
 
     assert db_lat["latency"].max() > db_lat["error_rate"].max()
     assert db_err["error_rate"].max() > 1.0  # Error burst should spike error rate
@@ -97,18 +97,18 @@ def test_graph_builder():
     gb.initialize_default()
 
     assert len(gb.service_names) == 10
-    assert len(gb.get_adjacency_list()) == 15
+    assert len(gb.get_adjacency_list()) == 11
 
     # Test API response conversion
     response = gb.to_api_response()
     assert len(response.nodes) == 10
-    assert len(response.edges) == 15
+    assert len(response.edges) == 11
     assert response.metadata.total_services == 10
 
     # Test edge index for PyG
     edge_index, node_map = gb.get_edge_index_tensor()
     assert len(edge_index) == 2
-    assert len(edge_index[0]) == 30  # 15 edges × 2 (bidirectional)
+    assert len(edge_index[0]) == 22  # 11 edges × 2 (bidirectional)
     assert len(node_map) == 10
 
 
@@ -117,15 +117,15 @@ def test_mock_llm_reasoner():
     from app.ai_module.llm.prompt_templates import build_mock_response
 
     result = build_mock_response(
-        root_candidates=[("database", 0.95)],
-        anomaly_scores={"database": 0.95, "auth-service": 0.78},
-        causal_edges=[("database", "auth-service", 0.85)],
-        metric_deltas={"database": {"latency": "+340%"}},
+        root_candidates=[("orderdb", 0.95)],
+        anomaly_scores={"orderdb": 0.95, "payment": 0.78},
+        causal_edges=[("orderdb", "payment", 0.85)],
+        metric_deltas={"orderdb": {"latency": "+340%"}},
     )
 
-    assert result["root_cause"] == "database"
+    assert result["root_cause"] == "orderdb"
     assert result["confidence"] > 0.8
-    assert "database" in result["explanation"]
+    assert "orderdb" in result["explanation"]
     assert len(result["recommended_actions"]) > 0
 
 
@@ -135,9 +135,9 @@ def test_llm_cache():
 
     cache = RCACache(max_size=10)
 
-    scores = {"database": 0.95, "auth-service": 0.78}
-    edges = [("database", "auth-service", 0.85)]
-    response = {"root_cause": "database", "confidence": 0.92}
+    scores = {"orderdb": 0.95, "payment": 0.78}
+    edges = [("orderdb", "payment", 0.85)]
+    response = {"root_cause": "orderdb", "confidence": 0.92}
 
     # Miss
     assert cache.get(scores, edges) is None
@@ -149,7 +149,7 @@ def test_llm_cache():
     # Hit
     cached = cache.get(scores, edges)
     assert cached is not None
-    assert cached["root_cause"] == "database"
+    assert cached["root_cause"] == "orderdb"
     assert cache.stats["hits"] == 1
 
 

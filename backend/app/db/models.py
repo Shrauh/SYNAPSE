@@ -1,7 +1,8 @@
 """
 SYNAPSE ORM Models — SQLAlchemy table definitions.
 
-Stores incidents, RCA results, service metrics, and model metadata.
+Stores incidents, RCA results, service metrics, remediation actions,
+and engineer feedback records.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -23,6 +24,10 @@ def _gen_id() -> str:
     return f"inc_{uuid.uuid4().hex[:8]}"
 
 
+def _gen_rem_id() -> str:
+    return f"rem_{uuid.uuid4().hex[:8]}"
+
+
 class Incident(Base):
     """A detected or manually created incident."""
 
@@ -33,7 +38,7 @@ class Incident(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32), default="analyzing"
-    )  # analyzing | detected | resolved
+    )  # analyzing | detected | resolved | error
     severity: Mapped[str] = mapped_column(
         String(16), default="medium"
     )  # critical | high | medium | low
@@ -87,3 +92,39 @@ class ServiceMetric(Base):
     cpu: Mapped[float] = mapped_column(Float, default=0.0)
     memory: Mapped[float] = mapped_column(Float, default=0.0)
     request_rate: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class RemediationRecord(Base):
+    """Records each remediation action taken."""
+
+    __tablename__ = "remediation_records"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_gen_rem_id)
+    incident_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    action_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    service: Mapped[str] = mapped_column(String(128), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    # executing | success | error | simulated | requires_approval | dry_run
+    auto_executed: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved_by_human: Mapped[bool] = mapped_column(Boolean, default=False)
+    command: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    executed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class FeedbackRecord(Base):
+    """Engineer feedback on RCA accuracy and remediation success."""
+
+    __tablename__ = "feedback_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    incident_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    rca_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    correct_root_cause: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    action_taken: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    remediation_successful: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    engineer_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

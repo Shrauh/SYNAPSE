@@ -14,9 +14,21 @@ from __future__ import annotations
 import copy
 from typing import Any, Dict, List, Optional, Tuple
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    F = None      # type: ignore
+    optim = None  # type: ignore
+    HAS_TORCH = False
+
+# Sentinel base class for when torch is unavailable
+_ModuleBase = nn.Module if HAS_TORCH else object  # type: ignore
 
 from app.config import settings
 
@@ -63,7 +75,7 @@ class MAMLAdapter:
         self,
         support_data: list,
         criterion: nn.Module = None,
-    ) -> nn.Module:
+    ) -> object:
         """Few-shot adapt the model to a new task.
 
         Takes support data (few examples of the new pattern) and

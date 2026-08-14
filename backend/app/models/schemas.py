@@ -23,6 +23,7 @@ class ComponentStatus(BaseModel):
     ai_module: str = "up"
     gnn_model_loaded: bool = False
     maml_ready: bool = False
+    groq_available: bool = False
 
 
 class HealthResponse(BaseModel):
@@ -164,6 +165,7 @@ class ModelInfo(BaseModel):
     maml_adapted: bool = False
     adaptation_steps: int = 0
     causal_method: str = "PC Algorithm"
+    execution_time_ms: Optional[float] = None
 
 
 class RCAReportResponse(BaseModel):
@@ -219,8 +221,8 @@ class TriggerRCAResponse(BaseModel):
 
 
 class SimulateRequest(BaseModel):
-    fault_type: str = "db_latency_spike"
-    root_cause_service: str = "database"
+    fault_type: str = "db_exhaustion"
+    root_cause_service: str = "orderdb"
     severity: str = "critical"
     duration_minutes: int = 5
 
@@ -271,9 +273,96 @@ class ModelStatusResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────
+# Remediation
+# ──────────────────────────────────────────────
+
+class RemediationExecuteRequest(BaseModel):
+    incident_id: str
+    fault_type: Optional[str] = None
+    root_cause_service: Optional[str] = None
+    anomaly_scores: Optional[Dict[str, float]] = None
+    metric_deltas: Optional[Dict[str, Dict[str, str]]] = None
+    dry_run: bool = False
+
+
+class RemediationExecuteResponse(BaseModel):
+    record_id: str
+    incident_id: str
+    action_id: str
+    action_name: str
+    service: str
+    confidence: float
+    status: str  # executing | recommended | pending_approval | below_threshold
+    message: str
+    auto_executed: bool = False
+    requires_approval: bool = False
+    all_action_scores: List[Dict[str, Any]] = []
+    command: str = ""
+
+
+class RemediationHistoryResponse(BaseModel):
+    executions: List[Dict[str, Any]] = []
+    total: int = 0
+    executor_status: Dict[str, Any] = {}
+
+
+class RemediationActionInfo(BaseModel):
+    action_id: str
+    name: str
+    description: str
+    applicable_faults: List[str]
+    auto_execute_threshold: float
+    always_require_approval: bool
+    risk_level: str
+
+
+# ──────────────────────────────────────────────
+# Feedback Loop
+# ──────────────────────────────────────────────
+
+class FeedbackRequest(BaseModel):
+    incident_id: str
+    rca_correct: Optional[bool] = None
+    correct_root_cause: Optional[str] = None
+    action_taken: Optional[str] = None
+    remediation_successful: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class FeedbackResponse(BaseModel):
+    incident_id: str
+    accepted: bool = True
+    updates_triggered: List[str] = []
+    message: str = ""
+
+
+# ──────────────────────────────────────────────
+# Learning Stats
+# ──────────────────────────────────────────────
+
+class LearningStatsResponse(BaseModel):
+    ewc_tasks_learned: int = 0
+    ewc_lambda: float = 5000.0
+    ewc_fisher_computed: bool = False
+    maml_initialized: bool = False
+    maml_tasks_trained: int = 0
+    maml_inner_lr: float = 0.01
+    maml_adaptation_history: List[Dict[str, Any]] = []
+    cql_states: int = 0
+    cql_replay_size: int = 0
+    replay_buffer_size: int = 0
+    replay_buffer_capacity: int = 500
+    ac_at_1: float = 0.0
+    ac_at_3: float = 0.0
+    forgetting_rate: float = 0.0
+    total_incidents_learned: int = 0
+
+
+# ──────────────────────────────────────────────
 # WebSocket Messages
 # ──────────────────────────────────────────────
 
 class WSMessage(BaseModel):
-    type: str  # anomaly_update | incident_detected | rca_complete
+    type: str  # anomaly_update | incident_detected | rca_complete | remediation_executed
     data: Dict[str, Any] = {}
+    timestamp: Optional[str] = None

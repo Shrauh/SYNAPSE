@@ -10,7 +10,18 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    F = None      # type: ignore
+    optim = None  # type: ignore
+    HAS_TORCH = False
 
 try:
     from torch_geometric.data import Data

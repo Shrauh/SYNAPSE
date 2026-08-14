@@ -27,34 +27,31 @@ from app.models.schemas import (
 # ──────────────────────────────────────────────
 
 DEFAULT_SERVICES = [
-    ("api-gateway", "API Gateway", "gateway"),
-    ("auth-service", "Auth Service", "service"),
-    ("user-service", "User Service", "service"),
-    ("payment-service", "Payment Service", "service"),
-    ("order-service", "Order Service", "service"),
-    ("inventory-service", "Inventory Service", "service"),
-    ("notification-service", "Notification Service", "service"),
-    ("search-service", "Search Service", "service"),
-    ("cache-service", "Cache Service", "infrastructure"),
-    ("database", "Database", "infrastructure"),
+    ("frontend",  "Frontend",  "gateway"),
+    ("checkout",  "Checkout",  "service"),
+    ("cart",      "Cart",      "service"),
+    ("payment",   "Payment",   "service"),
+    ("order",     "Order",     "service"),
+    ("catalog",   "Catalog",   "service"),
+    ("ad",        "Ad Service","service"),
+    ("redis",     "Redis",     "infrastructure"),
+    ("email",     "Email",     "service"),
+    ("orderdb",   "OrderDB",   "infrastructure"),
 ]
 
 DEFAULT_EDGES: List[Tuple[str, str, str, float, float]] = [
-    ("api-gateway", "auth-service", "http", 8.5, 450),
-    ("api-gateway", "user-service", "http", 12.0, 300),
-    ("api-gateway", "order-service", "http", 15.0, 200),
-    ("api-gateway", "search-service", "http", 10.0, 150),
-    ("auth-service", "database", "tcp", 5.0, 400),
-    ("auth-service", "cache-service", "tcp", 2.0, 380),
-    ("user-service", "database", "tcp", 6.0, 280),
-    ("order-service", "payment-service", "http", 20.0, 190),
-    ("order-service", "inventory-service", "http", 10.0, 185),
-    ("order-service", "database", "tcp", 7.0, 195),
-    ("payment-service", "database", "tcp", 8.0, 180),
-    ("payment-service", "notification-service", "async", 3.0, 170),
-    ("inventory-service", "database", "tcp", 5.0, 160),
-    ("inventory-service", "cache-service", "tcp", 2.5, 140),
-    ("notification-service", "cache-service", "tcp", 1.5, 100),
+    # source, target, protocol, avg_latency_ms, avg_rps
+    ("frontend",  "checkout", "http",  15.0, 300),
+    ("frontend",  "cart",     "http",   5.0, 250),
+    ("frontend",  "catalog",  "http",   8.0, 400),
+    ("frontend",  "ad",       "http",   4.0, 350),
+    ("checkout",  "payment",  "grpc",  40.0, 200),
+    ("checkout",  "order",    "grpc",  25.0, 180),
+    ("checkout",  "cart",     "grpc",   5.0, 190),
+    ("cart",      "redis",    "tcp",    2.0, 800),
+    ("payment",   "orderdb",  "tcp",   10.0, 600),
+    ("order",     "orderdb",  "tcp",    8.0, 500),
+    ("order",     "email",    "async",  5.0, 120),
 ]
 
 

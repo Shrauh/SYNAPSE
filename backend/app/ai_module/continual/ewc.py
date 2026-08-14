@@ -14,8 +14,21 @@ from __future__ import annotations
 import copy
 from typing import Dict, List, Optional
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    F = None      # type: ignore
+    optim = None  # type: ignore
+    HAS_TORCH = False
+
+# Sentinel base class for when torch is unavailable
+_ModuleBase = nn.Module if HAS_TORCH else object  # type: ignore
 
 
 class EWC:

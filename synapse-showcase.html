@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SYNAPSE — AI Root Cause Analysis for Distributed Systems</title>
+  <meta name="description" content="SYNAPSE: Self-Evolving Neuro-Symbolic Causal Architecture that finds WHY your cloud system broke — in under 60 seconds — automatically and explainably." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── DESIGN TOKENS ─── */
+    :root {
+      --bg-primary:    #05050f;
+      --bg-secondary:  #0b0b1e;
+      --bg-card:       rgba(255,255,255,0.04);
+      --bg-card-hover: rgba(255,255,255,0.07);
+      --border:        rgba(255,255,255,0.08);
+      --border-glow:   rgba(99,102,241,0.4);
+
+      --accent-1: #6366f1;   /* indigo */
+      --accent-2: #8b5cf6;   /* violet */
+      --accent-3: #06b6d4;   /* cyan */
+      --accent-4: #10b981;   /* emerald */
+      --accent-warn: #f59e0b;
+      --accent-red:  #ef4444;
+
+      --text-primary:   #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted:     #475569;
+
+      --grad-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+      --grad-card: linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.06) 100%);
+      --grad-green: linear-gradient(135deg, #059669, #10b981);
+      --grad-cyan:  linear-gradient(135deg, #0891b2, #06b6d4);
+      --grad-violet:linear-gradient(135deg, #7c3aed, #8b5cf6);
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+
+      --shadow-glow: 0 0 40px rgba(99,102,241,0.15);
+      --shadow-card: 0 8px 32px rgba(0,0,0,0.4);
+      --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ─── RESET ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { text-decoration: none; color: inherit; }
+    img { display: block; max-width: 100%; }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--accent-1); border-radius: 4px; }
+
+    /* ─── CANVAS / BACKGROUND ─── */
+    #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: 0.5; }
+
+    /* ─── LAYOUT ─── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    section { padding: 100px 0; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      padding: 0 24px;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    nav.scrolled {
+      background: rgba(5,5,15,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 68px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 20px; font-weight: 800; letter-spacing: -0.5px;
+    }
+    .nav-logo .logo-dot {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--grad-hero);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 900; color: #fff;
+    }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a {
+      font-size: 14px; font-weight: 500; color: var(--text-secondary);
+      transition: color var(--transition);
+    }
+    .nav-links a:hover { color: var(--text-primary); }
+    .nav-cta {
+      padding: 8px 20px; border-radius: var(--radius-sm);
+      background: var(--grad-hero); font-size: 14px; font-weight: 600;
+      color: #fff; cursor: pointer; border: none;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+    .nav-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    /* ─── HERO ─── */
+    #hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center;
+      padding: 120px 24px 80px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 100px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3);
+      font-size: 13px; font-weight: 500; color: #a5b4fc;
+      margin-bottom: 28px; animation: fadeUp 0.6s ease both;
+    }
+    .hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-3); animation: pulse 2s infinite; }
+    .hero-h1 {
+      font-size: clamp(52px, 8vw, 96px); font-weight: 900;
+      line-height: 1.0; letter-spacing: -3px;
+      background: var(--grad-hero);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+    .hero-subtitle {
+      font-size: clamp(16px, 2vw, 20px); color: var(--text-secondary);
+      max-width: 680px; margin: 20px auto 0;
+      font-weight: 400; line-height: 1.65;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+    .hero-sub-title {
+      font-size: 13px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+      margin-top: 10px; letter-spacing: 0.5px;
+      animation: fadeUp 0.6s 0.25s ease both;
+    }
+    .hero-actions {
+      display: flex; gap: 14px; margin-top: 40px; flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.6s 0.35s ease both;
+    }
+    .btn-primary {
+      padding: 14px 32px; border-radius: var(--radius-md);
+      background: var(--grad-hero); color: #fff;
+      font-size: 15px; font-weight: 600; border: none; cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition);
+      box-shadow: 0 0 30px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(99,102,241,0.5); }
+    .btn-secondary {
+      padding: 14px 32px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-primary); font-size: 15px; font-weight: 500; cursor: pointer;
+      transition: background var(--transition), border-color var(--transition);
+      backdrop-filter: blur(8px);
+    }
+    .btn-secondary:hover { background: var(--bg-card-hover); border-color: rgba(99,102,241,0.35); }
+
+    /* ─── STATS ROW ─── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1px; margin-top: 80px;
+      background: var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; border: 1px solid var(--border);
+      animation: fadeUp 0.6s 0.45s ease both;
+    }
+    .stat-item {
+      background: var(--bg-secondary); padding: 32px 24px; text-align: center;
+      transition: background var(--transition);
+    }
+    .stat-item:hover { background: var(--bg-card-hover); }
+    .stat-number {
+      font-size: 42px; font-weight: 900; letter-spacing: -2px;
+      background: var(--grad-hero); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 6px; font-weight: 500; }
+    .stat-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ─── SECTION HEADERS ─── */
+    .section-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--accent-1);
+      margin-bottom: 16px;
+    }
+    .section-eyebrow::before {
+      content: ''; display: block; width: 20px; height: 2px;
+      background: var(--accent-1); border-radius: 1px;
+    }
+    .section-title {
+      font-size: clamp(32px, 4vw, 52px); font-weight: 800;
+      letter-spacing: -1.5px; line-height: 1.1;
+    }
+    .section-desc {
+      font-size: 17px; color: var(--text-secondary);
+      max-width: 600px; margin-top: 14px; line-height: 1.7;
+    }
+    .section-header { margin-bottom: 64px; }
+
+    /* ─── PROBLEM SECTION ─── */
+    .problem-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .problem-card {
+      padding: 32px; border-radius: var(--radius-lg);
+      background: var(--bg-card); border: 1px solid var(--border);
+      position: relative; overflow: hidden;
+      transition: border-color var(--transition), transform var(--transition);
+    }
+    .problem-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--grad-hero); transform: scaleX(0); transform-origin: left;
+      transition: transform 0.5s ease;
+    }
+    .problem-card:hover::before { transform: scaleX(1); }
+    .problem-card:hover { border-color: rgba(99,102,241,0.3); transform: translateY(-2px); }
+    .problem-icon { font-size: 32px; margin-bottom: 16px; }
+    .problem-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .problem-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.65; }
+    .problem-full {
+      grid-column: 1 / -1; padding: 36px;
+      background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(245,158,11,0.05));
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    .problem-full h3 { color: #fca5a5; }
+    .cost-badge {
+      display: inline-block; padding: 4px 14px; border-radius: 100px;
+      background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5; font-size: 13px; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace; margin-top: 12px;
+    }
+
+    /* ─── PIPELINE ─── */
+    .pipeline-wrapper {
+      position: relative;
+    }
+    .pipeline-steps {
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .pipeline-step {
+      display: grid; grid-template-columns: 80px 1fr;
+      gap: 0; align-items: stretch;
+      opacity: 0; transform: translateX(-20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .pipeline-step.visible { opacity: 1; transform: translateX(0); }
+    .step-spine {
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .step-circle {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--grad-hero); display: grid; place-items: center;
+      font-size: 18px; font-weight: 800; color: #fff;
+      position: relative; z-index: 1; flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(99,102,241,0.4);
+    }
+    .step-line {
+      width: 2px; flex: 1; min-height: 40px;
+      background: linear-gradient(to bottom, rgba(99,102,241,0.5), rgba(99,102,241,0.1));
+      margin: 4px 0;
+    }
+    .pipeline-step:last-child .step-line { display: none; }
+    .step-content {
+      padding: 0 0 48px 28px;
+    }
+    .step-tag {
+      font-size: 11px; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--accent-3);
+      margin-bottom: 8px; font-family: 'JetBrains Mono', monospace;
+    }
+    .step-content h3 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+    .step-content p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; }
+    .step-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .pill {
+      padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+      color: #a5b4fc;
+    }
+    .pill.green { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.25); color: #6ee7b7; }
+    .pill.cyan  { background: rgba(6,182,212,0.12);  border-color: rgba(6,182,212,0.25);  color: #67e8f9; }
+    .pill.amber { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.25); color: #fcd34d; }
+    .pill.violet{ background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.25); color: #c4b5fd; }
+
+    /* ─── ARCH FLOW ─── */
+    .arch-flow {
+      display: flex; flex-direction: column; gap: 0;
+      position: relative;
+      padding: 40px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+    }
+    .arch-row {
+      display: flex; gap: 0; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .arch-node {
+      padding: 18px 24px; border-radius: var(--radius-md);
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      text-align: center; min-width: 160px;
+      transition: border-color var(--transition), transform var(--transition);
+      cursor: default; margin: 6px;
+    }
+    .arch-node:hover { border-color: rgba(99,102,241,0.5); transform: translateY(-2px); }
+    .arch-node .node-icon { font-size: 22px; margin-bottom: 6px; }
+    .arch-node .node-name { font-size: 13px; font-weight: 600; }
+    .arch-node .node-tech { font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+    .arch-node.highlight { border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.08); }
+    .arch-arrow {
+      text-align: center; color: var(--text-muted); font-size: 20px;
+      margin: 4px 0; display: flex; align-items: center; justify-content: center;
+    }
+    .arch-layer-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--text-muted);
+      text-align: center; margin: 12px 0 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── AI MODULES GRID ─── */
+    .modules-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .module-card {
+      padding: 32px; border-radius: var(--radius-lg);
+      background: var(--bg-card); border: 1px solid var(--border);
+      position: relative; overflow: hidden;
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+    .module-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-glow);
+    }
+    .module-card .corner-glow {
+      position: absolute; width: 120px; height: 120px;
+      border-radius: 50%; top: -40px; right: -40px;
+      opacity: 0.15; pointer-events: none;
+    }
+    .module-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+    .module-icon-wrap {
+      width: 48px; height: 48px; border-radius: var(--radius-sm);
+      display: grid; place-items: center; font-size: 22px; flex-shrink: 0;
+    }
+    .module-owner { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-style: italic; }
+    .module-title { font-size: 18px; font-weight: 700; }
+    .module-algo {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+      font-family: 'JetBrains Mono', monospace; color: var(--accent-3);
+      margin-bottom: 12px;
+    }
+    .module-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.65; margin-bottom: 16px; }
+    .module-formula {
+      padding: 12px 16px; border-radius: var(--radius-sm);
+      background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.06);
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: #a5b4fc; line-height: 1.6; overflow-x: auto;
+    }
+
+    /* ─── FAILURE CATALOG ─── */
+    .failures-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .failure-card {
+      padding: 24px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .failure-card:hover { background: var(--bg-card-hover); border-color: rgba(99,102,241,0.3); }
+    .failure-category {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; margin-bottom: 8px;
+    }
+    .failure-card h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .failure-card p { font-size: 13px; color: var(--text-secondary); }
+    .failure-indicators { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+    .indicator-tag {
+      font-size: 10px; padding: 2px 8px; border-radius: 100px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── TEAM ─── */
+    .team-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    .team-card {
+      padding: 32px; border-radius: var(--radius-lg);
+      background: var(--bg-card); border: 1px solid var(--border);
+      text-align: center; transition: all var(--transition);
+      position: relative; overflow: hidden;
+    }
+    .team-card:hover { transform: translateY(-4px); border-color: rgba(99,102,241,0.35); box-shadow: var(--shadow-glow); }
+    .team-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      margin: 0 auto 16px; display: grid; place-items: center;
+      font-size: 26px; font-weight: 900; color: #fff;
+    }
+    .team-name { font-size: 18px; font-weight: 700; }
+    .team-role { font-size: 13px; color: var(--accent-3); font-weight: 500; margin-top: 2px; }
+    .team-tag { font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 4px; }
+    .team-modules { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+    /* ─── TECH STACK ─── */
+    .tech-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .tech-item {
+      padding: 18px 16px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border);
+      text-align: center; transition: all var(--transition);
+    }
+    .tech-item:hover { background: var(--bg-card-hover); border-color: rgba(99,102,241,0.3); transform: translateY(-2px); }
+    .tech-item .tech-icon { font-size: 26px; margin-bottom: 8px; }
+    .tech-item .tech-name { font-size: 13px; font-weight: 600; }
+    .tech-item .tech-layer { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ─── METRICS ─── */
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .metric-card {
+      padding: 32px 24px; border-radius: var(--radius-lg);
+      text-align: center; position: relative; overflow: hidden;
+      border: 1px solid var(--border);
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); }
+    .metric-value {
+      font-size: 48px; font-weight: 900; letter-spacing: -2px;
+      line-height: 1; margin-bottom: 8px;
+    }
+    .metric-name { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .metric-desc { font-size: 12px; color: var(--text-secondary); }
+    .metric-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 100px;
+      font-size: 11px; font-weight: 600; margin-top: 10px;
+    }
+
+    /* ─── GLOSSARY ─── */
+    .glossary-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+    }
+    .gloss-item {
+      display: flex; gap: 14px; padding: 16px 20px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border);
+      align-items: flex-start; transition: border-color var(--transition);
+    }
+    .gloss-item:hover { border-color: rgba(99,102,241,0.3); }
+    .gloss-term { font-size: 13px; font-weight: 700; color: var(--accent-1); min-width: 90px; font-family: 'JetBrains Mono', monospace; }
+    .gloss-def { font-size: 13px; color: var(--text-secondary); }
+
+    /* ─── DEMO SECTION ─── */
+    .demo-timeline {
+      display: flex; flex-direction: column; gap: 0;
+      position: relative;
+    }
+    .demo-step {
+      display: grid; grid-template-columns: 120px 1fr;
+      gap: 24px; align-items: center; padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .demo-step:last-child { border-bottom: none; }
+    .demo-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; font-weight: 600; color: var(--accent-3);
+      text-align: right;
+    }
+    .demo-action { font-size: 14px; color: var(--text-secondary); }
+    .demo-action strong { color: var(--text-primary); font-weight: 600; }
+    .demo-result-box {
+      margin-top: 32px; padding: 28px 32px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.05));
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+    .demo-result-box h3 { font-size: 20px; font-weight: 700; color: #6ee7b7; margin-bottom: 12px; }
+    .result-panel {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.8; color: #a7f3d0;
+      background: rgba(0,0,0,0.35); padding: 16px 20px;
+      border-radius: var(--radius-sm); margin-top: 12px;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 48px 0; text-align: center;
+    }
+    .footer-logo { font-size: 28px; font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+    .footer-logo span { background: var(--grad-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .footer-sub { font-size: 13px; color: var(--text-muted); max-width: 500px; margin: 0 auto; }
+    .footer-tags { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+    .footer-tag {
+      padding: 4px 14px; border-radius: 100px; font-size: 12px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .footer-bottom { margin-top: 40px; font-size: 12px; color: var(--text-muted); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+    @keyframes shimmer {
+      0% { background-position: -1000px 0; }
+      100% { background-position: 1000px 0; }
+    }
+
+    /* ─── SCROLL REVEAL ─── */
+    .reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 0 auto;
+    }
+
+    /* ─── HIGHLIGHT BOX ─── */
+    .highlight-box {
+      padding: 32px 40px; border-radius: var(--radius-xl);
+      background: var(--grad-card); border: 1px solid rgba(99,102,241,0.25);
+      backdrop-filter: blur(10px);
+    }
+    .hl-quote { font-size: 20px; font-weight: 600; line-height: 1.55; }
+    .hl-quote em { color: var(--accent-3); font-style: normal; }
+
+    /* ─── MOBILE ─── */
+    @media (max-width: 768px) {
+      .problem-grid, .team-grid { grid-template-columns: 1fr; }
+      .problem-full { grid-column: 1; }
+      .nav-links { display: none; }
+      .demo-step { grid-template-columns: 80px 1fr; }
+      .pipeline-step { grid-template-columns: 60px 1fr; }
+      .step-circle { width: 42px; height: 42px; font-size: 15px; }
+    }
+
+    /* ─── INNOVATION BADGE ─── */
+    .innovation-card {
+      padding: 28px 32px; border-radius: var(--radius-lg);
+      border: 1px solid var(--border); position: relative;
+      overflow: hidden; transition: all var(--transition);
+      background: var(--bg-card);
+    }
+    .innovation-card:hover { transform: translateY(-3px); border-color: rgba(99,102,241,0.4); box-shadow: var(--shadow-glow); }
+    .innovation-num {
+      font-size: 64px; font-weight: 900; letter-spacing: -3px;
+      background: var(--grad-hero); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+      opacity: 0.15; position: absolute; top: 12px; right: 20px; line-height: 1;
+    }
+    .innovation-title { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .innovation-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 100px;
+      background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.25);
+      color: var(--accent-3); font-size: 10px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;
+    }
+    .innovation-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.65; }
+  </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- ───────────── NAV ───────────── -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <div class="logo-dot">S</div>
+      SYNAPSE
+    </div>
+    <div class="nav-links">
+      <a href="#problem">Problem</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#ai-modules">AI Modules</a>
+      <a href="#team">Team</a>
+      <a href="#metrics">Metrics</a>
+    </div>
+    <button class="nav-cta" onclick="document.getElementById('demo').scrollIntoView({behavior:'smooth'})">View Demo ↗</button>
+  </div>
+</nav>
+
+<!-- ───────────── HERO ───────────── -->
+<section id="hero">
+  <div class="hero-badge">
+    <span class="dot"></span>
+    Final Year B.E. Project — AI &amp; Machine Learning
+  </div>
+  <h1 class="hero-h1">SYNAPSE</h1>
+  <p class="hero-subtitle">
+    From correlation to causation — automatically, continuously, and explainably.<br/>
+    AI-powered root cause analysis for cloud-native distributed systems, in under 60 seconds.
+  </p>
+  <p class="hero-sub-title">Self-Evolving Neuro-Symbolic Causal Architecture for Predictive &amp; Explainable Root Cause Attribution</p>
+  <div class="hero-actions">
+    <button class="btn-primary" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">Explore the System →</button>
+    <button class="btn-secondary" onclick="document.getElementById('ai-modules').scrollIntoView({behavior:'smooth'})">AI Modules</button>
+  </div>
+  <div class="container" style="width:100%">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number" data-target="80.4" data-suffix="%">0%</div>
+        <div class="stat-label">AC@1 Accuracy</div>
+        <div class="stat-desc">Top-1 root cause correct</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-target="89.8" data-suffix="%">0%</div>
+        <div class="stat-label">AC@3 Accuracy</div>
+        <div class="stat-desc">Correct in top-3 guesses</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-target="18.7" data-suffix="s">0s</div>
+        <div class="stat-label">Detection Time</div>
+        <div class="stat-desc">Failure to root cause</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-target="70" data-suffix="min">0min</div>
+        <div class="stat-label">Time Saved</div>
+        <div class="stat-desc">Per incident vs manual</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-target="80" data-suffix="%">0%</div>
+        <div class="stat-label">Faster Causal Discovery</div>
+        <div class="stat-desc">With LLM prior injection</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── PROBLEM ───────────── -->
+<section id="problem">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">The Challenge</div>
+      <h2 class="section-title">Microservices break in<br/>chain reactions</h2>
+      <p class="section-desc">Modern cloud applications run as hundreds of interdependent services. When one fails, the cascade spreads instantly — and finding the origin is a 60–90 minute manual nightmare.</p>
+    </div>
+
+    <div class="problem-grid">
+      <div class="problem-card reveal">
+        <div class="problem-icon">🔗</div>
+        <h3>Correlation Only</h3>
+        <p>Tools like Datadog, Dynatrace, New Relic see that two services had issues at the same time. They cannot tell you which one caused the other — the actual root cause.</p>
+      </div>
+      <div class="problem-card reveal">
+        <div class="problem-icon">🧊</div>
+        <h3>Static Models</h3>
+        <p>Trained once and frozen. When new services are added or traffic patterns change, the model becomes outdated. You get wrong alerts on a changing architecture.</p>
+      </div>
+      <div class="problem-card reveal">
+        <div class="problem-icon">❄️</div>
+        <h3>Cold Start Problem</h3>
+        <p>When you deploy a new microservice, existing tools need days or weeks of baseline data before they can monitor it. New services are invisible to anomaly detection.</p>
+      </div>
+      <div class="problem-card reveal">
+        <div class="problem-icon">🔕</div>
+        <h3>No Explanation</h3>
+        <p>Just raw alerts. No "why it happened", no suggested fix, no plain-English report. Engineers still have to dig through dashboards, logs, and traces manually.</p>
+      </div>
+      <div class="problem-card problem-full reveal">
+        <div class="problem-icon">💸</div>
+        <h3>The Real Cost</h3>
+        <p>Large enterprises operating microservice architectures experience downtime that costs up to <strong style="color:#fca5a5">₹2 Crore per hour</strong>. Engineers spend 1–2 hours manually investigating dashboards to find what broke first — time that directly translates to revenue loss. The global AIOps market is heading to <strong style="color:#fca5a5">$40 Billion by 2028</strong> precisely because this problem is unsolved at scale.</p>
+        <div><span class="cost-badge">₹2 Crore / hour of downtime</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── PIPELINE ───────────── -->
+<section id="pipeline">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">How It Works</div>
+      <h2 class="section-title">8-Step AI Pipeline</h2>
+      <p class="section-desc">SYNAPSE replaces 90 minutes of manual investigation with a fully automated, mathematically rigorous causal analysis pipeline.</p>
+    </div>
+    <div class="pipeline-steps">
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">1</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">Observability</div>
+          <h3>Collect Telemetry from All Services</h3>
+          <p>Every microservice pushes metrics (CPU%, latency, error rate), logs (crash messages, warnings), and distributed traces (request paths) into Apache Kafka every few seconds. Kafka is the real-time data highway — all services write in, SYNAPSE reads downstream continuously.</p>
+          <div class="step-pills">
+            <span class="pill cyan">Apache Kafka</span>
+            <span class="pill">Prometheus</span>
+            <span class="pill">Jaeger</span>
+            <span class="pill">Fluent Bit</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">2</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">Graph Intelligence</div>
+          <h3>Build the Live Service Dependency Graph</h3>
+          <p>The Temporal Graph Network (TGN) reads millions of trace records and constructs a live dependency graph. Each microservice becomes a node; each API call between services becomes a weighted edge carrying latency and error rate data. The graph self-updates every 30 seconds automatically — capturing your architecture as it changes.</p>
+          <div class="step-pills">
+            <span class="pill violet">TGN</span>
+            <span class="pill">NetworkX</span>
+            <span class="pill cyan">PyTorch Geometric</span>
+            <span class="pill">GAT</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">3</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">Anomaly Detection</div>
+          <h3>Score Every Service for Abnormal Behaviour</h3>
+          <p>The VAE-GNN model was trained exclusively on normal system behaviour. It assigns an anomaly score between 0 and 1 to every service every 30 seconds. Score near 0 = perfectly normal. Score near 1 = critical deviation. Crucially — no labeled failure data is required during training. Only normal data needed.</p>
+          <div class="step-pills">
+            <span class="pill violet">VAE-GNN</span>
+            <span class="pill amber">Score Threshold: 0.6</span>
+            <span class="pill green">Unsupervised</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">4</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">Causal Discovery — Core Engine</div>
+          <h3>Mathematically Prove the Root Cause</h3>
+          <p>This is SYNAPSE's core innovation. Many services may have high anomaly scores — but most are victims, not causes. The DECI algorithm (from Microsoft Research) runs counterfactual reasoning over a 30-minute sliding window: <em>"If I had fixed Service X, would all downstream services have recovered?"</em> It tests every suspicious service and ranks them by causal score. Highest score = root cause.</p>
+          <div class="step-pills">
+            <span class="pill violet">DECI Algorithm</span>
+            <span class="pill">Do-Calculus</span>
+            <span class="pill cyan">SCM</span>
+            <span class="pill">NOTEARS</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">5</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">LLM Prior Injection — Novel Contribution</div>
+          <h3>GPT-4 Reads Your Runbooks to Guide DECI</h3>
+          <p>GPT-4 reads your engineering runbooks and past incident reports via a RAG pipeline (ChromaDB). It produces a probability matrix P where P[i][j] = probability that service i causally influences service j. This matrix is injected into DECI's math as a regularization term — biasing the causal graph search toward architecturally plausible structures. <strong>No existing academic paper or commercial product has done this.</strong> Result: 60–80% reduction in causal discovery time.</p>
+          <div class="step-pills">
+            <span class="pill amber">🏆 First in Literature</span>
+            <span class="pill">GPT-4</span>
+            <span class="pill cyan">RAG</span>
+            <span class="pill">ChromaDB</span>
+            <span class="pill green">60–80% faster</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">6</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">Safe Remediation</div>
+          <h3>Recommend the Safest Fix</h3>
+          <p>A Conservative Q-Learning (CQL) reinforcement learning agent, trained on historical incidents, selects the safest corrective action. Being "conservative" means it only recommends actions well-supported by the training data — it never recommends untested actions on live production systems. Actions: rollback, scale-up, circuit-break, restart pod, or modify config.</p>
+          <div class="step-pills">
+            <span class="pill violet">CQL</span>
+            <span class="pill">Offline RL</span>
+            <span class="pill green">5 Action Types</span>
+            <span class="pill amber">Safe by Design</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">7</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">Explainability</div>
+          <h3>Generate a Plain-English Incident Report</h3>
+          <p>GPT-4 synthesizes all findings into a complete, human-readable incident report. What happened, why it happened, which services were affected and in what order, what the recommended fix is — readable by engineers, managers, and non-technical stakeholders alike. No dashboard digging required.</p>
+          <div class="step-pills">
+            <span class="pill">GPT-4</span>
+            <span class="pill cyan">LangChain</span>
+            <span class="pill green">BERTScore &gt; 0.80</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-spine">
+          <div class="step-circle">8</div>
+        </div>
+        <div class="step-content">
+          <div class="step-tag">Continuous Learning</div>
+          <h3>Gets Smarter After Every Incident</h3>
+          <p>After each incident, an engineer marks the result "correct" or "wrong". Elastic Weight Consolidation (EWC) updates the model from the new incident WITHOUT forgetting anything learned from past incidents — solving catastrophic forgetting. MAML simultaneously adapts to brand new service types in just 5–10 gradient steps — solving the cold-start problem.</p>
+          <div class="step-pills">
+            <span class="pill violet">EWC</span>
+            <span class="pill">MAML</span>
+            <span class="pill green">No Forgetting</span>
+            <span class="pill cyan">Zero-Shot Adapt</span>
+            <span class="pill amber">5–10 Gradient Steps</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── ARCHITECTURE ───────────── -->
+<section id="architecture">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">System Design</div>
+      <h2 class="section-title">6-Layer Architecture</h2>
+      <p class="section-desc">From raw telemetry to plain-English root cause report — every layer purpose-built for AIOps at scale.</p>
+    </div>
+    <div class="arch-flow reveal">
+      <div class="arch-layer-label">Layer 1 — Observability</div>
+      <div class="arch-row">
+        <div class="arch-node"><div class="node-icon">📊</div><div class="node-name">Prometheus</div><div class="node-tech">Metrics</div></div>
+        <div class="arch-node"><div class="node-icon">📋</div><div class="node-name">Loki / ELK</div><div class="node-tech">Logs</div></div>
+        <div class="arch-node"><div class="node-icon">🔍</div><div class="node-name">Jaeger</div><div class="node-tech">Traces</div></div>
+        <div class="arch-node"><div class="node-icon">🏪</div><div class="node-name">Online Boutique</div><div class="node-tech">10 Microservices</div></div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer-label">Layer 2 — Streaming</div>
+      <div class="arch-row">
+        <div class="arch-node highlight"><div class="node-icon">🌊</div><div class="node-name">Apache Kafka</div><div class="node-tech">Real-time highway</div></div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer-label">Layer 3 — Graph Intelligence</div>
+      <div class="arch-row">
+        <div class="arch-node highlight"><div class="node-icon">🕸️</div><div class="node-name">TGN</div><div class="node-tech">30-sec graph updates</div></div>
+        <div class="arch-node"><div class="node-icon">🔄</div><div class="node-name">Feature Fusion</div><div class="node-tech">Transformer encoder</div></div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer-label">Layer 4 — Detection</div>
+      <div class="arch-row">
+        <div class="arch-node highlight"><div class="node-icon">🚨</div><div class="node-name">VAE-GNN</div><div class="node-tech">Anomaly scoring 0–1</div></div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer-label">Layer 5 — Causal Intelligence</div>
+      <div class="arch-row">
+        <div class="arch-node highlight"><div class="node-icon">🎯</div><div class="node-name">DECI Engine</div><div class="node-tech">Counterfactual reasoning</div></div>
+        <div class="arch-node highlight"><div class="node-icon">🧠</div><div class="node-name">LLM Prior</div><div class="node-tech">GPT-4 + RAG</div></div>
+        <div class="arch-node"><div class="node-icon">📐</div><div class="node-name">SCM Builder</div><div class="node-tech">Structural Causal Model</div></div>
+        <div class="arch-node"><div class="node-icon">🔁</div><div class="node-name">EWC / MAML</div><div class="node-tech">Continual learning</div></div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer-label">Layer 6 — Action</div>
+      <div class="arch-row">
+        <div class="arch-node"><div class="node-icon">🛡️</div><div class="node-name">CQL Policy</div><div class="node-tech">Safe remediation</div></div>
+        <div class="arch-node"><div class="node-icon">📝</div><div class="node-name">GPT-4 Report</div><div class="node-tech">Plain-English output</div></div>
+        <div class="arch-node"><div class="node-icon">📺</div><div class="node-name">Dashboard</div><div class="node-tech">React + D3.js</div></div>
+      </div>
+    </div>
+
+    <!-- Timeline fingerprint -->
+    <div class="reveal" style="margin-top: 48px;">
+      <div class="highlight-box">
+        <p style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);margin-bottom:16px;letter-spacing:1px">EXAMPLE TIMELINE — HOW DECI READS CAUSALITY</p>
+        <div class="result-panel">02:04:00  — Database score: 0.04 → 0.97   ← FAILS FIRST<br/>02:04:12  — Payment Service score: 0.61   ← DB calls begin failing<br/>02:04:28  — Order Service score: 0.55     ← Payment times out<br/>02:04:45  — Checkout + Notification crash  ← cascade complete<br/><br/>DECI CONCLUSION: Database failed first. Removing it from the<br/>                equation explains ALL downstream failures.<br/>                Root Cause Confirmed — Confidence: 0.94</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── AI MODULES ───────────── -->
+<section id="ai-modules">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Technical Deep Dive</div>
+      <h2 class="section-title">Core AI Modules</h2>
+      <p class="section-desc">Five custom-built AI systems working in concert — each solving a different dimension of the AIOps problem.</p>
+    </div>
+    <div class="modules-grid">
+
+      <!-- TGN -->
+      <div class="module-card reveal">
+        <div class="corner-glow" style="background:radial-gradient(circle,#6366f1,transparent)"></div>
+        <div class="module-header">
+          <div class="module-icon-wrap" style="background:rgba(99,102,241,0.15)">🕸️</div>
+          <div>
+            <div class="module-title">Temporal Graph Network</div>
+            <div class="module-owner">Shweta Gaidhani</div>
+          </div>
+        </div>
+        <div class="module-algo">TGN | PyTorch Geometric | GAT</div>
+        <p class="module-desc">Builds and maintains a live service dependency graph from distributed traces. Captures temporal dynamics — how relationships between services change over time. Per-node memory states updated via GRU message passing, with Graph Attention layers for neighbourhood aggregation.</p>
+        <div class="module-formula">
+m_i(t) = agg(e_ij(t), s_j(t-), s_i(t-))<br/>
+s_i(t) = GRU(m_i(t), s_i(t-))<br/>
+z_i(t) = GraphAttentionLayer(s_i(t), N(i))
+        </div>
+      </div>
+
+      <!-- VAE-GNN -->
+      <div class="module-card reveal">
+        <div class="corner-glow" style="background:radial-gradient(circle,#8b5cf6,transparent)"></div>
+        <div class="module-header">
+          <div class="module-icon-wrap" style="background:rgba(139,92,246,0.15)">🚨</div>
+          <div>
+            <div class="module-title">VAE-GNN Anomaly Detector</div>
+            <div class="module-owner">Shravani Hire</div>
+          </div>
+        </div>
+        <div class="module-algo">VAE + GAT | Unsupervised | 3-Layer Encoder</div>
+        <p class="module-desc">A Variational Autoencoder fused with a Graph Attention Network. Trained exclusively on normal system behaviour — it learns what "healthy" looks like. During inference, the reconstruction error becomes the anomaly score. No labeled failure data needed. Score &gt; 0.6 triggers investigation.</p>
+        <div class="module-formula">
+Encoder: X,A  →  q(Z|X,A) = N(μ, σ²)<br/>
+Anomaly Score = ||X - X̂||² (reconstruction error)<br/>
+Threshold: score > 0.6 → alert triggered
+        </div>
+      </div>
+
+      <!-- DECI -->
+      <div class="module-card reveal">
+        <div class="corner-glow" style="background:radial-gradient(circle,#06b6d4,transparent)"></div>
+        <div class="module-header">
+          <div class="module-icon-wrap" style="background:rgba(6,182,212,0.15)">🎯</div>
+          <div>
+            <div class="module-title">DECI Causal Engine</div>
+            <div class="module-owner">Gargi Bagul</div>
+          </div>
+        </div>
+        <div class="module-algo">DECI | Do-Calculus | SCM | NOTEARS | Microsoft Research</div>
+        <p class="module-desc">Deep End-to-End Causal Inference. Jointly learns a Structural Causal Model and causal graph structure using flow-based neural networks for conditional distributions. NOTEARS objective enforces the DAG constraint continuously. Applied over a 30-minute sliding window. The LLM prior matrix is injected here as a regularization term.</p>
+        <div class="module-formula">
+P(Y | do(X=x)) ≠ P(Y | X=x)  [causal ≠ correlation]<br/>
+<br/>
+L_total = L_causal + λ × W0_prior_penalty<br/>
+W0 = LLM-generated prior causal matrix
+        </div>
+      </div>
+
+      <!-- EWC -->
+      <div class="module-card reveal">
+        <div class="corner-glow" style="background:radial-gradient(circle,#10b981,transparent)"></div>
+        <div class="module-header">
+          <div class="module-icon-wrap" style="background:rgba(16,185,129,0.15)">🧠</div>
+          <div>
+            <div class="module-title">EWC Continual Learner</div>
+            <div class="module-owner">Shrushti Handge</div>
+          </div>
+        </div>
+        <div class="module-algo">EWC | Fisher Information | Kirkpatrick et al. 2017 (DeepMind)</div>
+        <p class="module-desc">Elastic Weight Consolidation prevents catastrophic forgetting. Each model parameter gets an importance score (Fisher information). When learning a new incident, parameters that were critical for past tasks are penalized heavily for changing — the model learns new information without overwriting old knowledge.</p>
+        <div class="module-formula">
+L(θ) = L_new(θ) + (λ/2) × Σᵢ [Fᵢ × (θᵢ − θ*ᵢ)²]<br/>
+<br/>
+Fᵢ = Fisher information (importance weight)<br/>
+θ*ᵢ = optimal weights from previous tasks<br/>
+λ    = regularization strength
+        </div>
+      </div>
+
+      <!-- MAML -->
+      <div class="module-card reveal">
+        <div class="corner-glow" style="background:radial-gradient(circle,#f59e0b,transparent)"></div>
+        <div class="module-header">
+          <div class="module-icon-wrap" style="background:rgba(245,158,11,0.15)">⚡</div>
+          <div>
+            <div class="module-title">MAML Meta-Learner</div>
+            <div class="module-owner">Shrushti Handge</div>
+          </div>
+        </div>
+        <div class="module-algo">MAML | Finn et al. 2017 | Zero-Shot / Few-Shot Transfer</div>
+        <p class="module-desc">Model-Agnostic Meta-Learning learns a universal initialization from all existing service categories. When a brand new microservice is deployed, SYNAPSE adapts its monitoring from this meta-initialization in just 5–10 gradient steps. No waiting weeks for baseline data — monitoring starts immediately after deployment.</p>
+        <div class="module-formula">
+θ_meta = argmin Σ_tasks E[L_task(θ_meta)]<br/>
+<br/>
+New service → fine-tune from θ_meta<br/>
+5–10 gradient steps → fully adapted<br/>
+Zero-shot to few-shot monitoring
+        </div>
+      </div>
+
+      <!-- CQL -->
+      <div class="module-card reveal">
+        <div class="corner-glow" style="background:radial-gradient(circle,#ef4444,transparent)"></div>
+        <div class="module-header">
+          <div class="module-icon-wrap" style="background:rgba(239,68,68,0.15)">🛡️</div>
+          <div>
+            <div class="module-title">CQL Remediation Agent</div>
+            <div class="module-owner">Shravani Hire</div>
+          </div>
+        </div>
+        <div class="module-algo">Conservative Q-Learning | Offline RL | Safe by Design</div>
+        <p class="module-desc">An offline RL agent trained on historical incident databases. The conservative objective prevents overconfident out-of-distribution actions — it will never recommend an action it hasn't seen work before. Reward maximizes speed of recovery (−MTTR) while penalizing side effects on healthy services.</p>
+        <div class="module-formula">
+Actions: rollback | scale-up | circuit-break<br/>
+        restart-pod | modify-config<br/>
+<br/>
+Reward = −MTTR + α × no_side_effects<br/>
+Conservative: Q(s,a) ≤ Q_threshold (safety)
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── INNOVATIONS ───────────── -->
+<section id="innovations">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Novel Contributions</div>
+      <h2 class="section-title">5 Technical Innovations</h2>
+      <p class="section-desc">SYNAPSE isn't just engineering — it introduces ideas not yet published in academic literature.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px">
+      <div class="innovation-card reveal">
+        <div class="innovation-num">01</div>
+        <div class="innovation-badge">Causal Inference</div>
+        <div class="innovation-title">DECI + Do-Calculus for Cloud Root Cause</div>
+        <p class="innovation-desc">Applies Pearl's do-calculus and the DECI algorithm (Microsoft Research) to microservice failure analysis. Builds a Structural Causal Model (SCM) and runs counterfactual reasoning — mathematically proving cause-effect, not just correlation.</p>
+      </div>
+      <div class="innovation-card reveal">
+        <div class="innovation-num">02</div>
+        <div class="innovation-badge">🏆 First in Literature</div>
+        <div class="innovation-title">LLM as Causal Prior Injector</div>
+        <p class="innovation-desc">GPT-4 reads engineering runbooks and generates a probability matrix over causal service relationships. This matrix is injected into DECI's optimization as a regularization term — the first known use of LLMs to guide causal discovery in AIOps. Reduces search time by 60–80%.</p>
+      </div>
+      <div class="innovation-card reveal">
+        <div class="innovation-num">03</div>
+        <div class="innovation-badge">Continual Learning</div>
+        <div class="innovation-title">EWC — No Catastrophic Forgetting</div>
+        <p class="innovation-desc">Elastic Weight Consolidation (DeepMind, 2017) modified specifically for incident learning. The Fisher information matrix tracks parameter importance across incident types, preventing the model from forgetting historical failure patterns when learning new ones.</p>
+      </div>
+      <div class="innovation-card reveal">
+        <div class="innovation-num">04</div>
+        <div class="innovation-badge">Meta-Learning</div>
+        <div class="innovation-title">MAML — Zero-Shot New Service Adaptation</div>
+        <p class="innovation-desc">Model-Agnostic Meta-Learning (Finn et al. 2017) enables SYNAPSE to begin monitoring a brand new microservice after just 5–10 gradient steps — eliminating the cold-start problem that plagues all existing AIOps tools.</p>
+      </div>
+      <div class="innovation-card reveal">
+        <div class="innovation-num">05</div>
+        <div class="innovation-badge">Safe RL</div>
+        <div class="innovation-title">CQL — Safe Offline Remediation Policy</div>
+        <p class="innovation-desc">Conservative Q-Learning trained on historical incident databases prevents overconfident remediation recommendations. Unlike online RL which experiments on live systems, CQL only recommends actions well-supported by past successful recovery data.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── FAILURES ───────────── -->
+<section id="failures">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Failure Catalog</div>
+      <h2 class="section-title">15+ Failure Types Handled</h2>
+      <p class="section-desc">SYNAPSE recognizes and traces all major microservice failure patterns across 6 categories.</p>
+    </div>
+    <div class="failures-grid">
+
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#f87171">🔴 Resource Exhaustion</div>
+        <h4>CPU Overload</h4>
+        <p>Service reaches 95–100% CPU, all callers time out and cascade</p>
+        <div class="failure-indicators"><span class="indicator-tag">CPU 95%+</span><span class="indicator-tag">latency ×10</span><span class="indicator-tag">queue buildup</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#f87171">🔴 Resource Exhaustion</div>
+        <h4>Memory Pressure / OOM</h4>
+        <p>RAM grows steadily over hours, OS kills the pod (OOMKilled)</p>
+        <div class="failure-indicators"><span class="indicator-tag">RAM creep</span><span class="indicator-tag">OOMKilled</span><span class="indicator-tag">GC overhead</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#f87171">🔴 Resource Exhaustion</div>
+        <h4>Connection Pool Exhausted</h4>
+        <p>DB allows 100 connections, 500 are opened — instant 100% error rate</p>
+        <div class="failure-indicators"><span class="indicator-tag">500/500 conns</span><span class="indicator-tag">pool timeout</span><span class="indicator-tag">error 100%</span></div>
+      </div>
+
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#fb923c">🟠 Network</div>
+        <h4>Network Latency</h4>
+        <p>Packets take 2000ms+, timeouts cascade to all callers across regions</p>
+        <div class="failure-indicators"><span class="indicator-tag">2000ms+</span><span class="indicator-tag">throughput drop</span><span class="indicator-tag">retries</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#fb923c">🟠 Network</div>
+        <h4>DNS Failure</h4>
+        <p>Service cannot resolve another by name — 100% error rate instantly on deploy</p>
+        <div class="failure-indicators"><span class="indicator-tag">unknown host</span><span class="indicator-tag">edge disappears</span><span class="indicator-tag">0 calls made</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#fb923c">🟠 Network</div>
+        <h4>Packet Loss</h4>
+        <p>Data packets dropped in transit, responses incomplete or corrupted</p>
+        <div class="failure-indicators"><span class="indicator-tag">corrupted resp</span><span class="indicator-tag">retransmit</span></div>
+      </div>
+
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#facc15">🟡 Pod / Container</div>
+        <h4>Pod Crash</h4>
+        <p>Container dies unexpectedly, all in-flight requests fail immediately</p>
+        <div class="failure-indicators"><span class="indicator-tag">availability 0%</span><span class="indicator-tag">node flickers</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#facc15">🟡 Pod / Container</div>
+        <h4>CrashLoopBackOff</h4>
+        <p>Service crashes, restarts, crashes again — endlessly, never serving traffic</p>
+        <div class="failure-indicators"><span class="indicator-tag">restart 10+</span><span class="indicator-tag">exit code 1</span><span class="indicator-tag">availability 0</span></div>
+      </div>
+
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#34d399">🟢 Storage / I/O</div>
+        <h4>Disk I/O Errors</h4>
+        <p>Reads/writes fail at storage level, database queries hang or error out</p>
+        <div class="failure-indicators"><span class="indicator-tag">I/O timeout</span><span class="indicator-tag">DB hang</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#34d399">🟢 Storage / I/O</div>
+        <h4>Slow Disk</h4>
+        <p>Writes take too long, service queues fill up and overflow to callers</p>
+        <div class="failure-indicators"><span class="indicator-tag">queue overflow</span><span class="indicator-tag">write latency</span></div>
+      </div>
+
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#818cf8">🔵 Cascade</div>
+        <h4>Cascade Failure</h4>
+        <p>One service fails and breaks all downstream services sequentially</p>
+        <div class="failure-indicators"><span class="indicator-tag">upstream fail</span><span class="indicator-tag">circuit open</span><span class="indicator-tag">wave in graph</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#818cf8">🔵 Cascade</div>
+        <h4>Retry Storm</h4>
+        <p>Callers hammer a failing service with retries, making the overload far worse</p>
+        <div class="failure-indicators"><span class="indicator-tag">RPS spike</span><span class="indicator-tag">latency ×20</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#818cf8">🔵 Cascade</div>
+        <h4>Thundering Herd</h4>
+        <p>All services restart simultaneously and overwhelm shared downstream resources</p>
+        <div class="failure-indicators"><span class="indicator-tag">all restart</span><span class="indicator-tag">DB flooded</span></div>
+      </div>
+
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#c084fc">🟣 Config / Code</div>
+        <h4>Bad Config Push</h4>
+        <p>Wrong environment variable deployed — service points to wrong database endpoint</p>
+        <div class="failure-indicators"><span class="indicator-tag">wrong DB URL</span><span class="indicator-tag">instant failure</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#c084fc">🟣 Config / Code</div>
+        <h4>Memory Leak</h4>
+        <p>Service slowly consumes more memory over hours — eventually crashes</p>
+        <div class="failure-indicators"><span class="indicator-tag">RAM creep</span><span class="indicator-tag">hours-long</span></div>
+      </div>
+      <div class="failure-card reveal">
+        <div class="failure-category" style="color:#c084fc">🟣 Config / Code</div>
+        <h4>Deadlock</h4>
+        <p>Two services wait for each other to release a lock — both freeze indefinitely</p>
+        <div class="failure-indicators"><span class="indicator-tag">both freeze</span><span class="indicator-tag">lock wait ∞</span></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── METRICS ───────────── -->
+<section id="metrics">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Evaluation Results</div>
+      <h2 class="section-title">Numbers That Matter</h2>
+      <p class="section-desc">Tested on 500+ labeled synthetic incidents using Google Online Boutique with 15+ injected failure types.</p>
+    </div>
+    <div class="metrics-grid">
+
+      <div class="metric-card reveal" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(99,102,241,0.04));border-color:rgba(99,102,241,0.25)">
+        <div class="metric-value" style="background:linear-gradient(135deg,#818cf8,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">80.4%</div>
+        <div class="metric-name">AC@1 (Precision@1)</div>
+        <div class="metric-desc">Top-1 root cause guess was correct</div>
+        <div class="metric-badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc">Target: &gt; 76% ✅</div>
+      </div>
+
+      <div class="metric-card reveal" style="background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(139,92,246,0.04));border-color:rgba(139,92,246,0.25)">
+        <div class="metric-value" style="background:linear-gradient(135deg,#c4b5fd,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">89.8%</div>
+        <div class="metric-name">AC@3 (Precision@3)</div>
+        <div class="metric-desc">Correct answer in top 3 guesses</div>
+        <div class="metric-badge" style="background:rgba(139,92,246,0.15);color:#c4b5fd">Target: &gt; 85% ✅</div>
+      </div>
+
+      <div class="metric-card reveal" style="background:linear-gradient(135deg,rgba(6,182,212,0.1),rgba(6,182,212,0.04));border-color:rgba(6,182,212,0.25)">
+        <div class="metric-value" style="background:linear-gradient(135deg,#67e8f9,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">18.7s</div>
+        <div class="metric-name">Detection Latency</div>
+        <div class="metric-desc">From failure start to root cause identified</div>
+        <div class="metric-badge" style="background:rgba(6,182,212,0.15);color:#67e8f9">Target: &lt; 60s ✅</div>
+      </div>
+
+      <div class="metric-card reveal" style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(16,185,129,0.04));border-color:rgba(16,185,129,0.25)">
+        <div class="metric-value" style="background:linear-gradient(135deg,#6ee7b7,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">+22%</div>
+        <div class="metric-name">vs Baseline</div>
+        <div class="metric-desc">Over Isolation Forest baseline</div>
+        <div class="metric-badge" style="background:rgba(16,185,129,0.15);color:#6ee7b7">Precision@1 improvement ✅</div>
+      </div>
+
+      <div class="metric-card reveal" style="background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.04));border-color:rgba(245,158,11,0.25)">
+        <div class="metric-value" style="background:linear-gradient(135deg,#fcd34d,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">&lt;5%</div>
+        <div class="metric-name">Forgetting Rate</div>
+        <div class="metric-desc">Accuracy drop after EWC update</div>
+        <div class="metric-badge" style="background:rgba(245,158,11,0.15);color:#fcd34d">Target: &lt; 5% ✅</div>
+      </div>
+
+      <div class="metric-card reveal" style="background:linear-gradient(135deg,rgba(239,68,68,0.1),rgba(239,68,68,0.04));border-color:rgba(239,68,68,0.25)">
+        <div class="metric-value" style="background:linear-gradient(135deg,#fca5a5,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">70min</div>
+        <div class="metric-name">Time Saved / Incident</div>
+        <div class="metric-desc">vs 60–90 min manual MTTR</div>
+        <div class="metric-badge" style="background:rgba(239,68,68,0.15);color:#fca5a5">₹2 Crore/hr cost avoided</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── DEMO ───────────── -->
+<section id="demo">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Live Demonstration</div>
+      <h2 class="section-title">Demo Script</h2>
+      <p class="section-desc">A structured 5-step demonstration that shows SYNAPSE reasoning about real failures — not memorising patterns.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start">
+      <div class="reveal">
+        <div class="demo-timeline">
+          <div class="demo-step">
+            <div class="demo-time">Step 1</div>
+            <div class="demo-action"><strong>Show the dashboard.</strong> All 10 services running green. "This is our live test environment — Google Online Boutique with 10 microservices."</div>
+          </div>
+          <div class="demo-step">
+            <div class="demo-time">Step 2</div>
+            <div class="demo-action"><strong>Inject CPU stress</strong> on the Payment service. "I am now injecting CPU stress — simulating a resource overload."</div>
+          </div>
+          <div class="demo-step">
+            <div class="demo-time">Step 3</div>
+            <div class="demo-action"><strong>Watch the graph turn red</strong> in real time. Show the anomaly feed lighting up service-by-service — the cascade spreading visually.</div>
+          </div>
+          <div class="demo-step">
+            <div class="demo-time">Step 4</div>
+            <div class="demo-action"><strong>SYNAPSE identifies root cause in 52 seconds.</strong> Panel shows: "Root Cause — Payment Service, CPU Stress, Causal Score 0.94"</div>
+          </div>
+          <div class="demo-step">
+            <div class="demo-time">Step 5</div>
+            <div class="demo-action"><strong>Inject DNS failure.</strong> Show SYNAPSE correctly identifies a different root cause — proving it <em>reasons</em>, not memorises.</div>
+          </div>
+        </div>
+      </div>
+      <div class="reveal">
+        <div class="demo-result-box">
+          <h3>🎯 SYNAPSE Output</h3>
+          <div class="result-panel">ROOT CAUSE IDENTIFIED<br/>────────────────────────────<br/>Service    : Payment Service<br/>Failure    : CPU Overload<br/>Causal Score: 0.94 (High Confidence)<br/>Detected in: 52 seconds<br/>────────────────────────────<br/>AFFECTED CHAIN:<br/>  Payment → Order → Checkout<br/>  → Notification → Frontend<br/>────────────────────────────<br/>RECOMMENDED FIX:<br/>  → Scale payment service: 1 → 3 pods<br/>  → Set CPU limit: 2 cores → 4 cores<br/>────────────────────────────<br/>PLAIN ENGLISH REPORT:<br/>"The payment service experienced<br/>critical CPU overload at 02:04 AM.<br/>This caused the order service to<br/>fail, cascading to checkout and<br/>bringing down the entire checkout<br/>flow. Scale payment service to 3<br/>instances immediately."</div>
+        </div>
+        <div style="margin-top:20px;padding:20px 24px;border-radius:var(--radius-md);background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2)">
+          <p style="font-size:15px;font-weight:600;line-height:1.6;color:var(--text-secondary)">
+            <span style="color:var(--accent-3)">"</span>An engineer would take 1–2 hours to find this manually. SYNAPSE found it, explained it, and suggested a fix — in <strong style="color:var(--text-primary)">52 seconds</strong>, automatically, mathematically.<span style="color:var(--accent-3)">"</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── TEAM ───────────── -->
+<section id="team">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">The Team</div>
+      <h2 class="section-title">Built by Four Specialists</h2>
+      <p class="section-desc">Each team member owns a distinct pillar of the SYNAPSE architecture — from causal math to data plumbing.</p>
+    </div>
+    <div class="team-grid">
+      <div class="team-card reveal">
+        <div class="team-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">GB</div>
+        <div class="team-name">Gargi Bagul</div>
+        <div class="team-role">The Brain</div>
+        <div class="team-tag">Causal Inference</div>
+        <div class="team-modules">
+          <span class="pill violet">DECI</span><span class="pill violet">Do-Calculus</span><span class="pill">Causal Graph</span><span class="pill">Frontend</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:16px;line-height:1.6">Builds the mathematical engine that finds the root cause with formal causal proofs. Output: "Payment Service is root cause — 94% confidence."</p>
+      </div>
+      <div class="team-card reveal">
+        <div class="team-avatar" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">SG</div>
+        <div class="team-name">Shweta Gaidhani</div>
+        <div class="team-role">The Memory</div>
+        <div class="team-tag">GNN + LLM + RAG</div>
+        <div class="team-modules">
+          <span class="pill cyan">TGN</span><span class="pill cyan">VAE-GNN</span><span class="pill">ChromaDB</span><span class="pill">GPT-4</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:16px;line-height:1.6">Builds the live service graph, the anomaly detector, and the RAG memory system. Output: W0 prior matrix + plain-English incident report.</p>
+      </div>
+      <div class="team-card reveal">
+        <div class="team-avatar" style="background:linear-gradient(135deg,#10b981,#059669)">SH</div>
+        <div class="team-name">Shrushti Handge</div>
+        <div class="team-role">The Learning System</div>
+        <div class="team-tag">Continual Learning</div>
+        <div class="team-modules">
+          <span class="pill green">EWC</span><span class="pill green">MAML</span><span class="pill">Fisher Info</span><span class="pill">Replay Buffer</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:16px;line-height:1.6">Builds the system that never forgets and adapts instantly to new services. Output: AI that gets smarter after every single incident.</p>
+      </div>
+      <div class="team-card reveal">
+        <div class="team-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706)">SH</div>
+        <div class="team-name">Shravani Hire</div>
+        <div class="team-role">The Plumbing</div>
+        <div class="team-tag">AIOps + Backend</div>
+        <div class="team-modules">
+          <span class="pill amber">FastAPI</span><span class="pill amber">Kafka</span><span class="pill">CQL</span><span class="pill">Simulator</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:16px;line-height:1.6">Builds the entire data pipeline, anomaly backend, REST API, WebSocket streams, and automated fix recommender. The whole working backend.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── TECH STACK ───────────── -->
+<section id="stack">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Technology</div>
+      <h2 class="section-title">The Full Stack</h2>
+    </div>
+    <div class="tech-grid">
+      <div class="tech-item reveal"><div class="tech-icon">🌊</div><div class="tech-name">Apache Kafka</div><div class="tech-layer">Streaming</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">📊</div><div class="tech-name">Prometheus</div><div class="tech-layer">Metrics</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🔍</div><div class="tech-name">Jaeger</div><div class="tech-layer">Tracing</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🧠</div><div class="tech-name">GPT-4 API</div><div class="tech-layer">LLM Explainer</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🗄️</div><div class="tech-name">ChromaDB</div><div class="tech-layer">Vector DB / RAG</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🔥</div><div class="tech-name">PyTorch</div><div class="tech-layer">AI Framework</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">📐</div><div class="tech-name">PyG</div><div class="tech-layer">Graph ML</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🎯</div><div class="tech-name">CAUSICA/DECI</div><div class="tech-layer">Causal Engine</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">⚡</div><div class="tech-name">FastAPI</div><div class="tech-layer">Backend API</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">⚛️</div><div class="tech-name">React</div><div class="tech-layer">Dashboard UI</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">📈</div><div class="tech-name">D3.js</div><div class="tech-layer">Graph Viz</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🐳</div><div class="tech-name">Docker / K8s</div><div class="tech-layer">Container</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🌪️</div><div class="tech-name">Chaos Mesh</div><div class="tech-layer">Fault Injection</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🏪</div><div class="tech-name">Online Boutique</div><div class="tech-layer">10 Services</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🔗</div><div class="tech-name">LangChain</div><div class="tech-layer">LLM Orchestration</div></div>
+      <div class="tech-item reveal"><div class="tech-icon">🤖</div><div class="tech-name">CTGAN</div><div class="tech-layer">Synthetic Data</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="container"><div class="divider"></div></div>
+
+<!-- ───────────── GLOSSARY ───────────── -->
+<section id="glossary">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Key Terms</div>
+      <h2 class="section-title">Glossary</h2>
+      <p class="section-desc">Every technical term used in SYNAPSE — concisely defined.</p>
+    </div>
+    <div class="glossary-grid">
+      <div class="gloss-item reveal"><div class="gloss-term">RCA</div><div class="gloss-def">Root Cause Analysis — finding the one original reason why a system failed</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">DECI</div><div class="gloss-def">Deep End-to-End Causal Inference — Microsoft Research's causal discovery algorithm</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">SCM</div><div class="gloss-def">Structural Causal Model — mathematical representation of cause-effect relationships</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">TGN</div><div class="gloss-def">Temporal Graph Network — tracks how service relationships change over time</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">VAE-GNN</div><div class="gloss-def">Variational Autoencoder + Graph Neural Network — unsupervised anomaly detector</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">EWC</div><div class="gloss-def">Elastic Weight Consolidation — prevents AI from forgetting past incident knowledge</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">MAML</div><div class="gloss-def">Model-Agnostic Meta-Learning — enables zero-shot adaptation to new services</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">CQL</div><div class="gloss-def">Conservative Q-Learning — safe offline RL for remediation recommendations</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">RAG</div><div class="gloss-def">Retrieval-Augmented Generation — LLM reads your documents to answer questions</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">AIOps</div><div class="gloss-def">AI for IT Operations — using ML to automate monitoring and incident response</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">MTTR</div><div class="gloss-def">Mean Time To Repair — average time to resolve an incident</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">W0 Matrix</div><div class="gloss-def">GPT-4 generated prior probability matrix over causal service relationships</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">OOMKilled</div><div class="gloss-def">Container killed by OS for using too much memory</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">CrashLoop</div><div class="gloss-def">CrashLoopBackOff — Kubernetes state where a pod keeps crashing and restarting</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">Do-Calculus</div><div class="gloss-def">Pearl's mathematical framework for proving cause and effect (not just correlation)</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">Counterfactual</div><div class="gloss-def">"What would have happened if X were different?" — core of DECI's reasoning</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">Cascade</div><div class="gloss-def">One service failure spreading to dependent services like falling dominoes</div></div>
+      <div class="gloss-item reveal"><div class="gloss-term">Cold Start</div><div class="gloss-def">Problem where a new service has no baseline data for anomaly detection</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── FOOTER ───────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-logo"><span>SYNAPSE</span></div>
+    <p class="footer-sub">SYNAPSE is a self-evolving AI system for automated root cause analysis in cloud-native microservice architectures — combining causal inference, continual learning, and large language models to transform how engineering teams respond to system failures.</p>
+    <div class="footer-tags">
+      <span class="footer-tag">AIOps</span>
+      <span class="footer-tag">Causal Inference</span>
+      <span class="footer-tag">Graph Neural Networks</span>
+      <span class="footer-tag">Continual Learning</span>
+      <span class="footer-tag">Distributed Systems</span>
+      <span class="footer-tag">Final Year Project 2025–26</span>
+    </div>
+    <div class="footer-bottom">
+      Built by Gargi Bagul · Shweta Gaidhani · Shrushti Handge · Shravani Hire &nbsp;|&nbsp; B.E. AI &amp; ML
+    </div>
+  </div>
+</footer>
+
+<!-- ───────────── JS ───────────── -->
+<script>
+/* ── CANVAS PARTICLES ── */
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.r = Math.random() * 1.5 + 0.3;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = (Math.random() - 0.5) * 0.3;
+    this.alpha = Math.random() * 0.5 + 0.1;
+    this.color = ['#6366f1','#8b5cf6','#06b6d4'][Math.floor(Math.random()*3)];
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    if (this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.alpha;
+    ctx.fill();
+  }
+}
+
+particles = Array.from({length: 120}, () => new Particle());
+
+function drawConnections() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i+1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 100) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = '#6366f1';
+        ctx.globalAlpha = (1 - dist/100) * 0.12;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => { p.update(); p.draw(); });
+  drawConnections();
+  requestAnimationFrame(animate);
+}
+animate();
+
+/* ── NAV SCROLL ── */
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 20);
+});
+
+/* ── SCROLL REVEAL ── */
+const revealEls = document.querySelectorAll('.reveal, .pipeline-step');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => {
+        entry.target.classList.add('visible');
+      }, (entry.target.dataset.delay || 0));
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+revealEls.forEach(el => observer.observe(el));
+
+/* ── COUNTER ANIMATION ── */
+function animateCounter(el) {
+  const target = parseFloat(el.dataset.target);
+  const suffix = el.dataset.suffix || '';
+  const duration = 1800;
+  const start = performance.now();
+  function tick(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const value = target * ease;
+    el.textContent = (Number.isInteger(target) ? Math.round(value) : value.toFixed(1)) + suffix;
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+const statNumbers = document.querySelectorAll('.stat-number[data-target]');
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateCounter(entry.target);
+      statsObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.5 });
+statNumbers.forEach(el => statsObserver.observe(el));
+
+/* ── PIPELINE STEP STAGGER ── */
+const pipelineSteps = document.querySelectorAll('.pipeline-step');
+const pipeObs = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      pipeObs.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15 });
+pipelineSteps.forEach(el => pipeObs.observe(el));
+</script>
+</body>
+</html>

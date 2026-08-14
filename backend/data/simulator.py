@@ -26,49 +26,64 @@ import pandas as pd
 # ──────────────────────────────────────────────
 
 SERVICE_NAMES = [
-    "api-gateway",
-    "auth-service",
-    "user-service",
-    "payment-service",
-    "order-service",
-    "inventory-service",
-    "notification-service",
-    "search-service",
-    "cache-service",
-    "database",
+    "frontend",
+    "checkout",
+    "cart",
+    "payment",
+    "order",
+    "catalog",
+    "ad",
+    "redis",
+    "email",
+    "orderdb",
 ]
 
-# Directed edges: source → target (caller → callee)
+# Directed edges: caller → callee (Google Online Boutique topology)
 DEPENDENCY_EDGES: List[Tuple[str, str]] = [
-    ("api-gateway", "auth-service"),
-    ("api-gateway", "user-service"),
-    ("api-gateway", "order-service"),
-    ("api-gateway", "search-service"),
-    ("auth-service", "database"),
-    ("auth-service", "cache-service"),
-    ("user-service", "database"),
-    ("order-service", "payment-service"),
-    ("order-service", "inventory-service"),
-    ("order-service", "database"),
-    ("payment-service", "database"),
-    ("payment-service", "notification-service"),
-    ("inventory-service", "database"),
-    ("inventory-service", "cache-service"),
-    ("notification-service", "cache-service"),
+    ("frontend",  "checkout"),
+    ("frontend",  "cart"),
+    ("frontend",  "catalog"),
+    ("frontend",  "ad"),
+    ("checkout",  "payment"),
+    ("checkout",  "order"),
+    ("checkout",  "cart"),
+    ("cart",      "redis"),
+    ("payment",   "orderdb"),
+    ("order",     "orderdb"),
+    ("order",     "email"),
 ]
 
 # Normal-state baselines per service (latency_ms, error_rate%, cpu%, mem%, req/s)
 BASELINES: Dict[str, Dict[str, float]] = {
-    "api-gateway":          {"latency": 12.0, "error_rate": 0.5, "cpu": 35.0, "memory": 45.0, "request_rate": 500.0},
-    "auth-service":         {"latency": 8.0,  "error_rate": 0.3, "cpu": 25.0, "memory": 40.0, "request_rate": 450.0},
-    "user-service":         {"latency": 10.0, "error_rate": 0.4, "cpu": 20.0, "memory": 35.0, "request_rate": 300.0},
-    "payment-service":      {"latency": 25.0, "error_rate": 0.8, "cpu": 30.0, "memory": 50.0, "request_rate": 200.0},
-    "order-service":        {"latency": 18.0, "error_rate": 0.6, "cpu": 28.0, "memory": 42.0, "request_rate": 250.0},
-    "inventory-service":    {"latency": 15.0, "error_rate": 0.5, "cpu": 22.0, "memory": 38.0, "request_rate": 180.0},
-    "notification-service": {"latency": 5.0,  "error_rate": 0.2, "cpu": 15.0, "memory": 30.0, "request_rate": 170.0},
-    "search-service":       {"latency": 20.0, "error_rate": 0.7, "cpu": 40.0, "memory": 55.0, "request_rate": 150.0},
-    "cache-service":        {"latency": 2.0,  "error_rate": 0.1, "cpu": 18.0, "memory": 60.0, "request_rate": 400.0},
-    "database":             {"latency": 5.0,  "error_rate": 0.2, "cpu": 45.0, "memory": 65.0, "request_rate": 800.0},
+    "frontend":  {"latency": 120.0, "error_rate": 0.5, "cpu": 35.0, "memory": 45.0, "request_rate": 500.0},
+    "checkout":  {"latency":  95.0, "error_rate": 0.4, "cpu": 28.0, "memory": 38.0, "request_rate": 300.0},
+    "cart":      {"latency":  40.0, "error_rate": 0.3, "cpu": 20.0, "memory": 30.0, "request_rate": 250.0},
+    "payment":   {"latency": 200.0, "error_rate": 0.8, "cpu": 40.0, "memory": 50.0, "request_rate": 200.0},
+    "order":     {"latency": 150.0, "error_rate": 0.6, "cpu": 35.0, "memory": 42.0, "request_rate": 180.0},
+    "catalog":   {"latency":  30.0, "error_rate": 0.2, "cpu": 15.0, "memory": 25.0, "request_rate": 400.0},
+    "ad":        {"latency":  25.0, "error_rate": 0.3, "cpu": 12.0, "memory": 20.0, "request_rate": 350.0},
+    "redis":     {"latency":   2.0, "error_rate": 0.1, "cpu": 10.0, "memory": 60.0, "request_rate": 800.0},
+    "email":     {"latency":  80.0, "error_rate": 0.4, "cpu": 18.0, "memory": 28.0, "request_rate": 120.0},
+    "orderdb":   {"latency":  50.0, "error_rate": 0.2, "cpu": 30.0, "memory": 55.0, "request_rate": 600.0},
+}
+
+# ── Fault type → metric impact configuration ──────────────────────────────
+# Each fault type maps to multipliers applied to the root cause service.
+FAULT_IMPACT: Dict[str, Dict[str, float]] = {
+    "cpu_stress":       {"cpu": 9.0, "latency": 5.0, "error_rate": 2.0, "memory": 1.1},
+    "db_exhaustion":    {"error_rate": 50.0, "latency": 25.0, "cpu": 3.0, "memory": 2.0},
+    "dns_failure":      {"error_rate": 100.0, "latency": 0.1, "cpu": 1.0, "memory": 1.0},
+    "oom_kill":         {"memory": 12.0, "cpu": 4.0, "error_rate": 10.0, "latency": 6.0},
+    "network_latency":  {"latency": 20.0, "error_rate": 3.0, "cpu": 1.5, "memory": 1.0},
+    "pod_crash":        {"error_rate": 100.0, "latency": 0.0, "cpu": 0.0, "memory": 0.0},
+    "cascade_failure":  {"error_rate": 15.0, "latency": 8.0, "cpu": 3.0, "memory": 2.0},
+    "retry_storm":      {"request_rate": 10.0, "cpu": 9.5, "latency": 4.0, "error_rate": 5.0},
+    "memory_leak":      {"memory": 8.0, "latency": 3.0, "cpu": 2.0, "error_rate": 2.0},
+    "config_error":     {"error_rate": 100.0, "latency": 2.0, "cpu": 1.2, "memory": 1.0},
+    # legacy aliases
+    "latency_spike":    {"latency": 8.0, "error_rate": 2.5, "cpu": 2.0, "memory": 1.2},
+    "error_burst":      {"error_rate": 20.0, "latency": 3.0, "cpu": 2.5, "memory": 1.3},
+    "resource_exhaustion": {"cpu": 7.0, "memory": 6.0, "latency": 5.0, "error_rate": 4.0},
 }
 
 # Noise standard deviation as fraction of baseline
@@ -195,38 +210,43 @@ class MicroserviceSimulator:
         root = config.root_cause_service
         affected = []
 
+        # Get impact multipliers for this fault type
+        impact = FAULT_IMPACT.get(
+            config.fault_type,
+            FAULT_IMPACT["latency_spike"]  # default
+        )
+
         # --- Fault the root cause service ---
         root_mask = df["service"] == root
         for i in range(fault_start, fault_end):
             ts_mask = df["timestamp"] == timestamps[i]
             mask = root_mask & ts_mask
 
-            if config.fault_type == "latency_spike":
-                df.loc[mask, "latency"] *= config.severity_multiplier
-                df.loc[mask, "error_rate"] *= (1 + config.severity_multiplier * 0.3)
-                df.loc[mask, "cpu"] = np.clip(
-                    df.loc[mask, "cpu"] * (1 + config.severity_multiplier * 0.15), 0, 100
-                )
-            elif config.fault_type == "error_burst":
-                df.loc[mask, "error_rate"] = np.clip(
-                    df.loc[mask, "error_rate"] * config.severity_multiplier * 2, 0, 100
-                )
-                df.loc[mask, "latency"] *= (1 + config.severity_multiplier * 0.4)
-            elif config.fault_type == "resource_exhaustion":
-                df.loc[mask, "cpu"] = np.clip(
-                    df.loc[mask, "cpu"] * config.severity_multiplier * 0.5, 0, 100
-                )
-                df.loc[mask, "memory"] = np.clip(
-                    df.loc[mask, "memory"] * config.severity_multiplier * 0.4, 0, 100
-                )
-                df.loc[mask, "latency"] *= (1 + config.severity_multiplier * 0.6)
-                df.loc[mask, "error_rate"] *= (1 + config.severity_multiplier * 0.5)
+            for metric, mult in impact.items():
+                if metric in df.columns:
+                    if metric == "cpu":
+                        df.loc[mask, metric] = np.clip(
+                            df.loc[mask, metric] * mult, 0, 100
+                        )
+                    elif metric == "memory":
+                        df.loc[mask, metric] = np.clip(
+                            df.loc[mask, metric] * mult, 0, 100
+                        )
+                    elif metric == "error_rate":
+                        df.loc[mask, metric] = np.clip(
+                            df.loc[mask, metric] * mult, 0, 100
+                        )
+                    else:
+                        df.loc[mask, metric] *= max(0, mult)
+
+        # Apply noise scaling for severity
+        severity_scale = config.severity_multiplier / 5.0  # normalize to 1.0 at severity=5
 
         # --- Cascade to upstream callers ---
         cascade_order = self._compute_cascade_order(root)
         for svc, hop in cascade_order:
             affected.append(svc)
-            attenuation = config.cascade_attenuation ** hop
+            attenuation = (config.cascade_attenuation ** hop) * severity_scale
             delay = config.cascade_delay_steps * hop
 
             svc_mask = df["service"] == svc
@@ -236,14 +256,12 @@ class MicroserviceSimulator:
                 ts_mask = df["timestamp"] == timestamps[i]
                 mask = svc_mask & ts_mask
 
-                # Attenuated impact
-                if config.fault_type in ("latency_spike", "resource_exhaustion"):
-                    df.loc[mask, "latency"] *= (1 + (config.severity_multiplier - 1) * attenuation)
-                    df.loc[mask, "error_rate"] *= (1 + (config.severity_multiplier * 0.3 - 0.3) * attenuation)
-                elif config.fault_type == "error_burst":
-                    df.loc[mask, "error_rate"] *= (1 + (config.severity_multiplier - 1) * attenuation)
-                    df.loc[mask, "latency"] *= (1 + (config.severity_multiplier * 0.2 - 0.2) * attenuation)
-
+                # Attenuated impact on latency and error_rate
+                df.loc[mask, "latency"] *= (1 + (impact.get("latency", 1.0) - 1) * attenuation)
+                df.loc[mask, "error_rate"] = np.clip(
+                    df.loc[mask, "error_rate"] * (1 + (impact.get("error_rate", 1.0) - 1) * attenuation),
+                    0, 100
+                )
                 df.loc[mask, "cpu"] = np.clip(
                     df.loc[mask, "cpu"] * (1 + 0.3 * attenuation), 0, 100
                 )
@@ -321,20 +339,15 @@ class MicroserviceSimulator:
         num_faults: int = 30,
         num_steps: int = 60,
     ) -> List[SimulationResult]:
-        """Generate a mixed training set of normal + fault scenarios.
-
-        Useful for training the GNN autoencoder on normal data and
-        evaluating it on faulty data.
-        """
+        """Generate a mixed training set of normal + fault scenarios."""
         results = []
 
-        # Normal scenarios
         for _ in range(num_normal):
             results.append(self.simulate_normal(num_steps=num_steps))
 
-        # Fault scenarios — rotate through services and fault types
-        fault_types = ["latency_spike", "error_burst", "resource_exhaustion"]
-        faultable_services = [s for s in self.services if s != "api-gateway"]
+        # All 10 fault types from project spec
+        fault_types = list(FAULT_IMPACT.keys())[:10]
+        faultable_services = list(self.services)
 
         for i in range(num_faults):
             root = faultable_services[i % len(faultable_services)]
@@ -357,8 +370,8 @@ class MicroserviceSimulator:
 # ──────────────────────────────────────────────
 
 def quick_simulate(
-    root_cause: str = "database",
-    fault_type: str = "latency_spike",
+    root_cause: str = "orderdb",
+    fault_type: str = "db_exhaustion",
     severity: float = 5.0,
     seed: int = 42,
 ) -> SimulationResult:

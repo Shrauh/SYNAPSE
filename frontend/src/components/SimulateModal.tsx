@@ -5,11 +5,14 @@ import { simulateFault } from "../api/endpoints";
 import { useNavigate } from "react-router-dom";
 
 const SERVICES = [
-  "api-gateway","auth-service","user-service","payment-service",
-  "order-service","inventory-service","notification-service",
-  "search-service","cache-service","database",
+  "frontend","checkout","cart","payment",
+  "order","catalog","ad","redis","email","orderdb",
 ];
-const FAULT_TYPES = ["latency_spike","error_burst","resource_exhaustion"];
+const FAULT_TYPES = [
+  "cpu_stress","db_exhaustion","dns_failure","oom_kill",
+  "network_latency","pod_crash","cascade_failure",
+  "retry_storm","memory_leak","config_error",
+];
 const SEVERITIES = ["low","medium","high","critical"];
 
 const STEPS = [
@@ -25,8 +28,8 @@ interface Props { onClose: () => void; }
 export function SimulateModal({ onClose }: Props) {
   const nav = useNavigate();
   const [form, setForm] = useState({
-    root_cause_service: "database",
-    fault_type: "latency_spike",
+    root_cause_service: "orderdb",
+    fault_type: "db_exhaustion",
     severity: "critical",
     duration_minutes: 5,
   });

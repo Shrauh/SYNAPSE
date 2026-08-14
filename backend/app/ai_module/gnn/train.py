@@ -16,9 +16,18 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    F = None      # type: ignore
+    optim = None  # type: ignore
+    HAS_TORCH = False
 
 from app.ai_module.gnn.model import GATAnomalyDetector, FallbackAnomalyDetector, HAS_PYG
 
