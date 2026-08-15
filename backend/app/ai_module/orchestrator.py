@@ -258,14 +258,37 @@ class RCAPipeline:
             anomalous_names = [name for name, _ in anomalous]
             anomalous_scores = dict(anomalous)
 
-        # ── Stage 5: Causal Discovery ──
+        # ── Stage 5: Causal Discovery (DECI + LLM-RAG Prior W0) ──
         t0 = time.time()
         # Build time-series matrix for anomalous subset
         ts_matrix = self._build_causal_input(metrics_df, anomalous_names)
 
+        # Generate RAG prior matrix W0 from runbooks to constrain DECI search space
+        w0_prior = None
+        try:
+            from app.services.rag import SynapseRAG, SERVICE_IDS
+            rag = SynapseRAG()
+            anomaly_desc = f"Anomalous services: {', '.join(anomalous_names)}"
+            w0_full = rag.generate_w0_prior(anomaly_desc)
+            k = len(anomalous_names)
+            w0_sub = np.zeros((k, k), dtype=np.float32)
+            svc_to_idx = {s: i for i, s in enumerate(SERVICE_IDS)}
+            for i, s1 in enumerate(anomalous_names):
+                for j, s2 in enumerate(anomalous_names):
+                    s1_clean = s1.replace("-service", "").replace("service", "").lower()
+                    s2_clean = s2.replace("-service", "").replace("service", "").lower()
+                    idx1 = svc_to_idx.get(s1_clean, -1)
+                    idx2 = svc_to_idx.get(s2_clean, -1)
+                    if idx1 != -1 and idx2 != -1:
+                        w0_sub[i, j] = w0_full[idx1, idx2]
+            w0_prior = w0_sub
+        except Exception:
+            w0_prior = None
+
         causal_result = self._causal_engine.discover(
             time_series_matrix=ts_matrix,
             service_names=anomalous_names,
+            w0_prior=w0_prior,
         )
 
         # Validate against dependency graph
@@ -283,7 +306,7 @@ class RCAPipeline:
 
         timeline.append({
             "time": datetime.now(timezone.utc).isoformat(),
-            "event": f"Causal inference — root candidates: {[r[0] for r in root_candidates[:3]]}",
+            "event": f"DECI Causal Inference — root: {[r[0] for r in root_candidates[:3]]} (h(G)={causal_result.get('h_score', 0)})",
             "score": round(time.time() - t0, 3),
         })
 
@@ -348,6 +371,31 @@ class RCAPipeline:
             resolved=action_result.success,
         )
 
+        # ── Stage 8.5: Continual Learning & Meta-Adaptation (EWC + MAML) ──
+        is_drift, drift_score = continual_manager.detect_drift(feature_matrix)
+        maml_adapted = False
+        adaptation_steps = 0
+        if is_drift and HAS_TORCH and self._gnn_trainer:
+            try:
+                support_data = [
+                    type('Data', (), {
+                        'x': torch.tensor(feature_matrix, dtype=torch.float32),
+                        'edge_index': torch.tensor(edge_index, dtype=torch.long),
+                    })()
+                ]
+                # MAML 3-step rapid adaptation
+                maml_adapter.adapt(support_data)
+                maml_adapted = True
+                adaptation_steps = maml_adapter.inner_steps
+                # Online EWC Fisher update + Replay buffer registration
+                continual_manager.register_completed_task(
+                    task_id=f"incident_{incident.id}_{root_cause_svc}",
+                    training_data=support_data,
+                    task_performance=drift_score,
+                )
+            except Exception:
+                pass
+
         # ── Stage 9: Store Results ──
         total_time_ms = (time.time() - start_time) * 1000
 
@@ -376,9 +424,11 @@ class RCAPipeline:
             causal_graph=causal_graph_json,
             model_info={
                 "gnn_type": "VAE-GNN" if HAS_PYG else "Statistical Fallback",
-                "maml_adapted": False,
-                "adaptation_steps": 0,
-                "causal_method": "PC Algorithm" if causal_result.get("adjacency") else "Temporal Correlation",
+                "maml_adapted": maml_adapted,
+                "adaptation_steps": adaptation_steps,
+                "drift_score": drift_score,
+                "causal_method": causal_result.get("method", "DECI (Differentiable Causal Discovery)"),
+                "h_score": causal_result.get("h_score", 0.0),
                 "execution_time_ms": round(total_time_ms, 1),
                 "severity_level": severity_result.level.name,
                 "recovery_action": recovery_action.action_type.value,
