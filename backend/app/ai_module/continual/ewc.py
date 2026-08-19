@@ -14,8 +14,14 @@ from __future__ import annotations
 import copy
 from typing import Dict, List, Optional
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    HAS_TORCH = False
 
 
 class EWC:

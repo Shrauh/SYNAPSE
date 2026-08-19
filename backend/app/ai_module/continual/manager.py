@@ -10,8 +10,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    HAS_TORCH = False
 
 from app.ai_module.continual.ewc import EWC
 from app.ai_module.continual.replay_buffer import ReplayBuffer
@@ -85,14 +91,14 @@ class ContinualLearningManager:
         # Track performance for forgetting rate computation
         self._prev_performance[task_id] = task_performance
 
-    def get_ewc_penalty(self) -> torch.Tensor:
+    def get_ewc_penalty(self):
         """Get the EWC regularization penalty to add to training loss.
 
         Returns:
-            Scalar tensor. Add to base loss during training.
+            Scalar tensor or 0.0. Add to base loss during training.
         """
-        if not self.is_initialized or self._ewc is None:
-            return torch.tensor(0.0)
+        if not HAS_TORCH or not self.is_initialized or self._ewc is None:
+            return 0.0
         return self._ewc.penalty()
 
     def get_replay_samples(self, batch_size: int = 10) -> list:

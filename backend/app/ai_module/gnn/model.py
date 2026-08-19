@@ -13,9 +13,16 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    F = None      # type: ignore
+    HAS_TORCH = False
 
 try:
     from torch_geometric.nn import GATConv

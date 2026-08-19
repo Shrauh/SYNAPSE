@@ -41,7 +41,7 @@ export default function IncidentDetailPage() {
   const topScores = Object.entries(incident.anomaly_scores ?? {}).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div style={{ padding: "84px 2rem 3rem", maxWidth: 1100, margin: "0 auto" }}>
+    <div className="page-content" style={{ maxWidth: 1100 }}>
       {/* Back + Header */}
       <Link to="/incidents" style={{ display: "inline-flex", alignItems: "center", gap: 6,
         color: "var(--text-muted)", fontSize: "0.82rem", textDecoration: "none", marginBottom: 20 }}>

@@ -12,7 +12,12 @@ import random
 from collections import deque
 from typing import Any, Dict, List, Optional
 
-import torch
+try:
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore
+    HAS_TORCH = False
 
 
 class ReplayBuffer:

@@ -14,9 +14,16 @@ from __future__ import annotations
 import copy
 from typing import Any, Dict, List, Optional, Tuple
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
+try:
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    HAS_TORCH = True
+except ImportError:
+    torch = None   # type: ignore
+    nn = None      # type: ignore
+    optim = None   # type: ignore
+    HAS_TORCH = False
 
 from app.config import settings
 
