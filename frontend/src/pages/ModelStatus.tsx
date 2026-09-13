@@ -29,15 +29,19 @@ export default function ModelStatusPage() {
   }));
 
   return (
-    <div style={{ padding: "84px 2rem 3rem", maxWidth: 1000, margin: "0 auto" }}>
+    <div className="page-content" style={{ maxWidth: 1000 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
-        <div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em" }}>AI Model Status</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginTop: 3 }}>
-            GNN · Continual Learning · MAML · Causal Inference
-          </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(139,92,246,0.15)",
+            border: "1px solid rgba(139,92,246,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Brain size={20} color="#8b5cf6" />
+          </div>
+          <div>
+            <h1 className="page-title">AI Model Status</h1>
+            <p className="page-subtitle">GNN · Continual Learning · MAML · Causal Inference</p>
+          </div>
         </div>
-        <button className="btn btn-ghost" onClick={load}><RefreshCw size={13} /> Refresh</button>
+        <button className="btn btn-ghost btn-sm" onClick={load}><RefreshCw size={13} /> Refresh</button>
       </div>
 
       {loading ? (

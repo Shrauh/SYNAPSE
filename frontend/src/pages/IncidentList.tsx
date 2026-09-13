@@ -24,13 +24,13 @@ export default function IncidentList() {
   const totalPages = Math.ceil(total / 20) || 1;
 
   return (
-    <div style={{ padding: "84px 2rem 2rem" }}>
+    <div className="page-content">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em" }}>Incidents</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginTop: 3 }}>{total} total incidents</p>
+          <h1 className="page-title">Incident Feed</h1>
+          <p className="page-subtitle">{total} total incidents — real-time AIOps analysis</p>
         </div>
-        <button className="btn btn-danger" onClick={() => setShowSim(true)}><Zap size={14} /> Simulate Fault</button>
+        <button className="btn btn-primary" style={{ background: "rgba(239,68,68,0.15)", color: "var(--status-critical)", border: "1px solid rgba(239,68,68,0.3)" }} onClick={() => setShowSim(true)}><Zap size={14} /> Simulate Fault</button>
       </div>
 
       <div className="card">

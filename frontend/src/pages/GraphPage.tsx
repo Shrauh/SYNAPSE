@@ -20,19 +20,20 @@ export default function GraphPage() {
   useEffect(() => { load(); }, []);
 
   return (
-    <div style={{ padding: "56px 0 0", height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Toolbar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "12px 1.5rem", borderBottom: "1px solid var(--border)", background: "var(--bg-card)" }}>
+        padding: "14px 1.75rem", borderBottom: "1px solid var(--border)",
+        background: "rgba(7,11,20,0.8)", backdropFilter: "blur(12px)" }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: "1rem" }}>Service Dependency Graph</div>
+          <div style={{ fontWeight: 800, fontSize: "1rem", fontFamily: "Outfit, sans-serif" }}>Causal Service Graph</div>
           <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
             {graph ? `${graph.metadata.total_services} services · ${graph.metadata.total_edges} edges` : "Loading..."}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost" onClick={load}><RefreshCw size={13} /> Refresh</button>
-          <button className="btn btn-danger" onClick={() => setShowSim(true)}><Zap size={13} /> Simulate Fault</button>
+          <button className="btn btn-ghost btn-sm" onClick={load}><RefreshCw size={13} /> Refresh</button>
+          <button className="btn btn-sm" style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.3)" }} onClick={() => setShowSim(true)}><Zap size={13} /> Simulate Fault</button>
         </div>
       </div>
 
