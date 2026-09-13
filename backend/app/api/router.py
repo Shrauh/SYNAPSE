@@ -5,6 +5,7 @@ API Router — aggregates all sub-routers into a single v1 router.
 from fastapi import APIRouter
 
 from app.api import graph, health, incidents, metrics, model, rca, severity, ws
+from app.api import fault_injection, ollama
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -27,3 +28,7 @@ api_router.include_router(severity.router)
 
 # WebSocket (no prefix — mounted at /api/v1/live)
 api_router.include_router(ws.router)
+
+# Fault Injection & Ollama
+api_router.include_router(fault_injection.router)
+api_router.include_router(ollama.router)

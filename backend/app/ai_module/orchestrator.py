@@ -52,6 +52,8 @@ from app.ai_module.llm.reasoner import llm_reasoner
 from app.ai_module.meta.maml import maml_adapter
 from app.ai_module.rl.recovery_engine import recovery_engine
 from app.ai_module.severity.classifier import severity_classifier, SeverityLevel
+from app.ai_module.pattern.analyzer import pattern_analyzer
+from app.ai_module.causal.multi_root import MultiRootCauseDetector
 from app.config import settings
 from app.db.models import Incident, RCAResult
 from app.services.graph_builder import graph_builder
@@ -348,12 +350,16 @@ class RCAPipeline:
 
         # ── Stage 8: Recovery Action ──
         t0 = time.time()
+
+        # Compute propagation chain before recovery needs it
+        chain = get_propagation_chain(dag, root_cause_svc)
+
         recovery_action = recovery_engine.select_action(
             severity_level=severity_result.level.value,
             root_cause_service=root_cause_svc,
             fault_type=explanation_result.get("fault_type"),
             causal_confidence=confidence,
-            propagation_chain=chain if 'chain' in dir() else None,
+            propagation_chain=chain,
         )
 
         action_result = recovery_engine.execute_action(recovery_action)
@@ -370,6 +376,28 @@ class RCAPipeline:
             severity=severity_result.level,
             resolved=action_result.success,
         )
+
+        # Record in pattern analyzer for recurring pattern detection
+        pattern_analyzer.record_incident(
+            root_cause_service=root_cause_svc,
+            fault_type=explanation_result.get("fault_type", "unknown"),
+            severity_level=severity_result.level.value,
+            num_affected=severity_result.num_anomalous,
+        )
+
+        # Multi-root cause detection for L3 systemic incidents
+        multi_root_results = None
+        if severity_result.level == SeverityLevel.L3_SYSTEMIC:
+            try:
+                multi_root_detector = MultiRootCauseDetector()
+                multi_root_results = multi_root_detector.analyze(
+                    anomaly_scores=anomalous_scores,
+                    feature_matrix=feature_matrix,
+                    service_names=anomalous_services,
+                    topology=graph_builder.get_graph(),
+                )
+            except Exception:
+                pass
 
         # ── Stage 8.5: Continual Learning & Meta-Adaptation (EWC + MAML) ──
         is_drift, drift_score = continual_manager.detect_drift(feature_matrix)
