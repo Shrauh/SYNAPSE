@@ -2,40 +2,16 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, GitBranch, AlertTriangle, Zap, Cpu,
-  Activity, Search, Map, BookOpen, BarChart3, ChevronLeft,
-  ChevronRight, Brain, TrendingUp, Server, Shield, Sun, Moon,
+  ChevronLeft, ChevronRight, Sun, Moon,
 } from "lucide-react";
 import { useStore } from "../store";
 
-const NAV_SECTIONS = [
-  {
-    label: "Core",
-    items: [
-      { to: "/",          icon: LayoutDashboard, label: "Dashboard",          badge: null },
-      { to: "/incidents", icon: AlertTriangle,   label: "Incident Feed",      badge: "live" },
-      { to: "/graph",     icon: GitBranch,       label: "Causal Graph",       badge: null },
-      { to: "/simulate",  icon: Zap,             label: "Fault Simulation",   badge: null },
-      { to: "/model",     icon: Cpu,             label: "Model Status",       badge: null },
-    ],
-  },
-  {
-    label: "Analytics",
-    items: [
-      { to: "/incidents", icon: Brain,      label: "Root Cause Analysis", badge: null },
-      { to: "/graph",     icon: Search,     label: "Anomaly Detection",   badge: null },
-      { to: "/graph",     icon: TrendingUp, label: "Predictive Insights", badge: null },
-      { to: "/model",     icon: BarChart3,  label: "Reports & Analytics", badge: null },
-    ],
-  },
-  {
-    label: "Infrastructure",
-    items: [
-      { to: "/graph",     icon: Map,      label: "Service Dependency",  badge: null },
-      { to: "/model",     icon: Server,   label: "Cloud Infrastructure",badge: null },
-      { to: "/incidents", icon: Shield,   label: "Runbook Repository",  badge: null },
-      { to: "/model",     icon: Activity, label: "Metrics Dashboard",   badge: null },
-    ],
-  },
+const NAV_ITEMS = [
+  { to: "/",          icon: LayoutDashboard, label: "Dashboard",        badge: null },
+  { to: "/incidents", icon: AlertTriangle,   label: "Incident Feed",    badge: "live" },
+  { to: "/graph",     icon: GitBranch,       label: "Causal Graph",     badge: null },
+  { to: "/simulate",  icon: Zap,             label: "Fault Simulation", badge: null },
+  { to: "/model",     icon: Cpu,             label: "Model Status",     badge: null },
 ];
 
 interface SidebarProps {
@@ -44,14 +20,13 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const wsConnected = useStore(s => s.wsConnected);
+  const wsConnected  = useStore(s => s.wsConnected);
   const anomalyScores = useStore(s => s.anomalyScores);
-  const navigate = useNavigate();
+  const navigate     = useNavigate();
+  const theme        = useStore(s => s.theme);
+  const toggleTheme  = useStore(s => s.toggleTheme);
 
-  const maxScore = Math.max(0, ...Object.values(anomalyScores));
   const criticalCount = Object.values(anomalyScores).filter(s => s > 0.8).length;
-  const theme = useStore(s => s.theme);
-  const toggleTheme = useStore(s => s.toggleTheme);
 
   return (
     <motion.div
@@ -88,52 +63,46 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.label}>
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.div
+              className="sidebar-section-label"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            >
+              Navigation
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.to + item.label}
+            to={item.to}
+            end={item.to === "/"}
+            className={({ isActive }) => `sidebar-item${isActive ? " active" : ""}`}
+            title={collapsed ? item.label : undefined}
+          >
+            <div className="sidebar-icon">
+              <item.icon size={16} />
+            </div>
             <AnimatePresence>
               {!collapsed && (
-                <motion.div
-                  className="sidebar-section-label"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                <motion.span
+                  className="sidebar-label"
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.18 }}
                 >
-                  {section.label}
-                </motion.div>
+                  {item.label}
+                </motion.span>
               )}
             </AnimatePresence>
 
-            {section.items.map((item) => (
-              <NavLink
-                key={`${item.to}-${item.label}`}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) => `sidebar-item${isActive ? " active" : ""}`}
-                title={collapsed ? item.label : undefined}
-              >
-                <div className="sidebar-icon">
-                  <item.icon size={16} />
-                </div>
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      className="sidebar-label"
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -8 }}
-                      transition={{ duration: 0.18 }}
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-
-                {!collapsed && item.badge === "live" && criticalCount > 0 && (
-                  <span className="sidebar-badge blink">{criticalCount}</span>
-                )}
-              </NavLink>
-            ))}
-
-            {!collapsed && <div style={{ height: 4 }} />}
-          </div>
+            {!collapsed && item.badge === "live" && criticalCount > 0 && (
+              <span className="sidebar-badge blink">{criticalCount}</span>
+            )}
+          </NavLink>
         ))}
       </nav>
 
@@ -162,10 +131,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
 
         {/* Theme Toggle */}
-        <button className="theme-toggle" onClick={toggleTheme} title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"} style={{ width: "100%", justifyContent: collapsed ? "center" : "flex-start", marginBottom: 6 }}>
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          style={{ width: "100%", justifyContent: collapsed ? "center" : "flex-start", marginBottom: 6 }}
+        >
           {theme === "dark"
             ? <Sun size={14} color="#f59e0b" />
-            : <Moon size={14} color="#4F46E5" />}
+            : <Moon size={14} color="#7c3aed" />}
           <AnimatePresence>
             {!collapsed && (
               <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: "0.72rem" }}>

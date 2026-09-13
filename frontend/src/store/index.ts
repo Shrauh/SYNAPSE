@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import type { IncidentSummary } from "../types/api";
 
 interface AppStore {
@@ -17,7 +17,7 @@ export const useStore = create<AppStore>((set) => ({
   anomalyScores: {},
   wsConnected: false,
   incidents: [],
-  theme: "dark",
+  theme: "light",
   setAnomalyScores: (anomalyScores) => set({ anomalyScores }),
   setWsConnected: (wsConnected) => set({ wsConnected }),
   setIncidents: (incidents) => set({ incidents }),
@@ -28,3 +28,5 @@ export const useStore = create<AppStore>((set) => ({
     return { theme: next };
   }),
 }));
+
+

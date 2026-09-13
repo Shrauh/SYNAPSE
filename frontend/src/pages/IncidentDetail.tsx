@@ -6,7 +6,49 @@ import { fetchIncident, fetchCausalGraph } from "../api/endpoints";
 import type { IncidentDetail, CausalGraph } from "../types/api";
 import { StatusBadge, ScoreBar, Spinner } from "../components/UI";
 import { CausalGraphViz } from "../components/CausalGraph";
+import { Pipeline3D } from "../components/Pipeline3D";
 import { usePollReport } from "../hooks/usePollReport";
+
+/* ── derive pipeline stages from timeline entries ── */
+function buildStages(timeline: { event: string; score: number }[] | null | undefined, status: string) {
+  const STAGE_DEFS = [
+    { id: "ingestion", label: "Data Ingestion",        sublabel: "Metrics ingestion & aggregation",   key: "Data ingestion" },
+    { id: "gnn",       label: "VAE-GNN Detection",     sublabel: "Graph neural network anomaly scan",  key: "VAE-GNN" },
+    { id: "causal",    label: "DECI Causal Inference", sublabel: "Differentiable causal discovery",    key: "DECI Causal" },
+    { id: "llm",       label: "LLM Reasoning",         sublabel: "Large-language root cause narration", key: "LLM reasoning" },
+    { id: "severity",  label: "Severity Classification", sublabel: "L1-L4 impact assessment",          key: "Severity classified" },
+    { id: "recovery",  label: "Recovery Execution",    sublabel: "Automated remediation dispatch",      key: "Recovery" },
+  ];
+
+  const isError    = status === "error";
+  const isResolved = status === "resolved" || status === "detected";
+  const isAnalyzing = status === "analyzing";
+
+  return STAGE_DEFS.map((def, idx) => {
+    const match = timeline?.find(t => t.event.includes(def.key));
+    const allDone = isResolved && timeline && timeline.length > 0;
+
+    let stageStatus: "pending" | "active" | "done" | "error" = "pending";
+    let detail: string | undefined;
+    let duration: string | undefined;
+
+    if (match) {
+      stageStatus = "done";
+      detail = match.event.split("→").pop()?.trim() ?? match.event;
+      duration = match.score > 0 ? `${match.score.toFixed(2)}s` : "<1ms";
+    } else if (isError && idx === 0) {
+      stageStatus = "error";
+    } else if (isAnalyzing && !match) {
+      const doneCount = timeline?.length ?? 0;
+      if (idx === doneCount) stageStatus = "active";
+    } else if (allDone && !match) {
+      // completed but this stage wasn't in timeline — mark done
+      stageStatus = "done";
+    }
+
+    return { ...def, status: stageStatus, detail, duration };
+  });
+}
 
 export default function IncidentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,15 +81,20 @@ export default function IncidentDetailPage() {
   );
 
   const topScores = Object.entries(incident.anomaly_scores ?? {}).sort((a, b) => b[1] - a[1]);
+  const stages    = buildStages(incident.timeline, incident.status);
 
   return (
     <div className="page-content" style={{ maxWidth: 1100 }}>
-      {/* Back + Header */}
-      <Link to="/incidents" style={{ display: "inline-flex", alignItems: "center", gap: 6,
-        color: "var(--text-muted)", fontSize: "0.82rem", textDecoration: "none", marginBottom: 20 }}>
+      {/* Back */}
+      <Link to="/incidents" style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        color: "var(--text-muted)", fontSize: "0.82rem",
+        textDecoration: "none", marginBottom: 20,
+      }}>
         <ArrowLeft size={14} /> All Incidents
       </Link>
 
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: "1.4rem", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 6 }}>
@@ -61,89 +108,121 @@ export default function IncidentDetailPage() {
         {incident.root_cause && (
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 4 }}>CONFIDENCE</div>
-            <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--accent-blue)" }}>
+            <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--accent-violet)" }}>
               {(incident.root_cause.confidence * 100).toFixed(0)}%
             </div>
           </div>
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-        {/* Root Cause Card */}
-        <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <Target size={15} color="var(--status-critical)" />
-            <span className="section-title" style={{ marginBottom: 0 }}>Root Cause</span>
+      {/* Two columns: Pipeline + Root Cause */}
+      <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 20, marginBottom: 20 }}>
+
+        {/* 3D Pipeline */}
+        <div>
+          <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em",
+            color: "var(--text-muted)", marginBottom: 10 }}>
+            AI Pipeline
           </div>
-          {isAnalyzing && !report ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              <Loader size={16} style={{ animation: "spin 1s linear infinite" }} />
-              AI pipeline analyzing...
-            </div>
-          ) : report ? (
-            <>
-              <div style={{ fontSize: "1.4rem", fontWeight: 800, fontFamily: "JetBrains Mono",
-                color: "var(--status-critical)", marginBottom: 6 }}>
-                {report.root_cause.service}
-              </div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <span className={`badge badge-${report.root_cause.fault_type === "latency_spike" ? "warning" : report.root_cause.fault_type === "error_burst" ? "critical" : "degraded"}`}>
-                  {report.root_cause.fault_type?.replace(/_/g, " ")}
-                </span>
-              </div>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                {report.explanation}
-              </p>
-            </>
-          ) : (
-            <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>No RCA report yet.</div>
-          )}
+          <Pipeline3D stages={stages} />
         </div>
 
-        {/* Propagation Chain */}
-        <div className="card">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <GitBranch size={15} color="var(--accent-purple)" />
-            <span className="section-title" style={{ marginBottom: 0 }}>Propagation Chain</span>
-          </div>
-          {report?.propagation_chain ? (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-              {report.propagation_chain.split("→").map((s, i, arr) => (
-                <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{
-                    padding: "4px 10px", borderRadius: 6,
-                    background: i === 0 ? "rgba(239,68,68,0.15)" : "var(--bg-elevated)",
-                    color: i === 0 ? "var(--status-critical)" : "var(--text-secondary)",
-                    fontSize: "0.8rem", fontFamily: "JetBrains Mono", fontWeight: 600,
-                    border: `1px solid ${i === 0 ? "rgba(239,68,68,0.3)" : "var(--border)"}`,
-                  }}>
-                    {s.trim()}
-                  </span>
-                  {i < arr.length - 1 && <span style={{ color: "var(--text-muted)" }}>→</span>}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              {isAnalyzing ? "Awaiting causal analysis..." : "No propagation chain."}
-            </div>
-          )}
+        {/* Right column: RCA + Propagation */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* Anomaly Scores */}
-          {topScores.length > 0 && (
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginBottom: 10,
-                textTransform: "uppercase", letterSpacing: "0.07em" }}>Anomaly Scores</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {topScores.map(([svc, score]) => (
-                  <div key={svc} style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <span style={{ width: 130, fontSize: "0.75rem", color: "var(--text-secondary)", fontFamily: "JetBrains Mono", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{svc}</span>
-                    <div style={{ flex: 1 }}><ScoreBar score={score} /></div>
-                  </div>
+          {/* Root Cause Card */}
+          <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)", flex: "none" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <Target size={15} color="var(--status-critical)" />
+              <span className="section-title" style={{ marginBottom: 0 }}>Root Cause</span>
+            </div>
+            {isAnalyzing && !report ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                <Loader size={16} style={{ animation: "spin 1s linear infinite" }} />
+                AI pipeline analyzing...
+              </div>
+            ) : report ? (
+              <>
+                <div style={{
+                  fontSize: "1.3rem", fontWeight: 800, fontFamily: "JetBrains Mono",
+                  color: "var(--status-critical)", marginBottom: 6,
+                }}>
+                  {report.root_cause.service}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <span className={`badge badge-${report.root_cause.fault_type === "latency_spike" ? "warning" : report.root_cause.fault_type === "error_burst" ? "critical" : "degraded"}`}>
+                    {report.root_cause.fault_type?.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                  {report.explanation}
+                </p>
+              </>
+            ) : (
+              <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>No RCA report yet.</div>
+            )}
+          </div>
+
+          {/* Propagation Chain */}
+          <div className="card" style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <GitBranch size={15} color="var(--accent-violet)" />
+              <span className="section-title" style={{ marginBottom: 0 }}>Propagation Chain</span>
+            </div>
+            {report?.propagation_chain ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                {report.propagation_chain.split("→").map((s, i, arr) => (
+                  <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.1 }}
+                      style={{
+                        padding: "4px 10px", borderRadius: 6,
+                        background: i === 0 ? "rgba(239,68,68,0.15)" : "var(--bg-elevated)",
+                        color: i === 0 ? "var(--status-critical)" : "var(--text-secondary)",
+                        fontSize: "0.8rem", fontFamily: "JetBrains Mono", fontWeight: 600,
+                        border: `1px solid ${i === 0 ? "rgba(239,68,68,0.3)" : "var(--border)"}`,
+                        boxShadow: i === 0 ? "0 0 12px rgba(239,68,68,0.1)" : "none",
+                      }}
+                    >
+                      {s.trim()}
+                    </motion.span>
+                    {i < arr.length - 1 && <span style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>›</span>}
+                  </span>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                {isAnalyzing ? "Awaiting causal analysis..." : "No propagation chain."}
+              </div>
+            )}
+
+            {/* Anomaly Scores */}
+            {topScores.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginBottom: 10,
+                  textTransform: "uppercase", letterSpacing: "0.07em" }}>Anomaly Scores
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {topScores.map(([svc, score]) => (
+                    <motion.div
+                      key={svc}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      style={{ display: "flex", gap: 10, alignItems: "center" }}
+                    >
+                      <span style={{ width: 130, fontSize: "0.75rem", color: "var(--text-secondary)",
+                        fontFamily: "JetBrains Mono", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {svc}
+                      </span>
+                      <div style={{ flex: 1 }}><ScoreBar score={score} /></div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -151,19 +230,20 @@ export default function IncidentDetailPage() {
       {causal && causal.causal_nodes.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <BarChart2 size={15} color="var(--accent-cyan)" />
+            <BarChart2 size={15} color="var(--accent-teal)" />
             <span className="section-title" style={{ marginBottom: 0 }}>Causal Graph</span>
           </div>
           <CausalGraphViz graph={causal} />
         </div>
       )}
 
+      {/* Bottom row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         {/* Recommended Actions */}
         {report?.recommended_actions && (
           <div className="card">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <Wrench size={15} color="var(--accent-blue)" />
+              <Wrench size={15} color="var(--accent-violet)" />
               <span className="section-title" style={{ marginBottom: 0 }}>Recommended Actions</span>
             </div>
             <ol style={{ paddingLeft: 18, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -184,11 +264,14 @@ export default function IncidentDetailPage() {
             <div className="section-title">Metric Deltas</div>
             {Object.entries(report.metric_deltas).map(([svc, deltas]) => (
               <div key={svc} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: "0.78rem", fontFamily: "JetBrains Mono", color: "var(--accent-blue)", marginBottom: 4 }}>{svc}</div>
+                <div style={{ fontSize: "0.78rem", fontFamily: "JetBrains Mono",
+                  color: "var(--accent-violet)", marginBottom: 4 }}>{svc}
+                </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {Object.entries(deltas).map(([k, v]) => (
                     <span key={k} style={{ padding: "2px 8px", background: "var(--bg-elevated)",
-                      borderRadius: 4, fontSize: "0.72rem", color: v.startsWith("+") ? "var(--status-critical)" : "var(--status-healthy)" }}>
+                      borderRadius: 4, fontSize: "0.72rem",
+                      color: v.startsWith("+") ? "var(--status-critical)" : "var(--status-healthy)" }}>
                       {k}: {v}
                     </span>
                   ))}
@@ -206,7 +289,7 @@ export default function IncidentDetailPage() {
               <span className="section-title" style={{ marginBottom: 0 }}>Severity Classification</span>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
-              <span className={`badge badge-${report.severity.level === 'L4' || report.severity.level === 'L3' ? 'critical' : report.severity.level === 'L2' ? 'warning' : 'healthy'}`}>
+              <span className={`badge badge-${report.severity.level === "L4" || report.severity.level === "L3" ? "critical" : report.severity.level === "L2" ? "warning" : "healthy"}`}>
                 {report.severity.level}
               </span>
               {report.severity.is_recurring && (
@@ -226,28 +309,28 @@ export default function IncidentDetailPage() {
         {report?.recovery && (
           <div className="card">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <Terminal size={15} color="var(--accent-cyan)" />
+              <Terminal size={15} color="var(--accent-teal)" />
               <span className="section-title" style={{ marginBottom: 0 }}>Recovery Action</span>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
-              <span className={`badge badge-${report.recovery.success ? 'healthy' : 'critical'}`}>
-                {report.recovery.success ? 'Success' : 'Failed'}
+              <span className={`badge badge-${report.recovery.success ? "healthy" : "critical"}`}>
+                {report.recovery.success ? "Executed" : "Failed"}
               </span>
               {report.recovery.simulated && (
                 <span className="badge badge-degraded">Simulated</span>
               )}
             </div>
             <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: 8 }}>
-              <strong>Action:</strong> {report.recovery.action} on {report.recovery.target}
+              <strong>Action:</strong> {report.recovery.action} on <code style={{ fontFamily: "JetBrains Mono" }}>{report.recovery.target}</code>
             </p>
-            <div style={{ 
-              background: "var(--bg-elevated)", 
-              padding: "10px", 
-              borderRadius: "6px",
+            <div style={{
+              background: "var(--bg-elevated)",
+              padding: "10px 14px",
+              borderRadius: 8,
               fontFamily: "JetBrains Mono",
               fontSize: "0.75rem",
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)"
+              color: "var(--accent-teal)",
+              border: "1px solid var(--border)",
             }}>
               <code>{report.recovery.kubectl_command}</code>
             </div>
