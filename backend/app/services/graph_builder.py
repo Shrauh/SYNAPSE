@@ -210,6 +210,7 @@ class ServiceGraphBuilder:
                 weight=data.get("weight", 0.0),
             ))
 
+
         return GraphResponse(
             nodes=nodes,
             edges=edges,

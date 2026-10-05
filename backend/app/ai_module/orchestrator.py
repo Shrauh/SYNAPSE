@@ -382,7 +382,6 @@ class RCAPipeline:
             root_cause_service=root_cause_svc,
             fault_type=explanation_result.get("fault_type", "unknown"),
             severity_level=severity_result.level.value,
-            num_affected=severity_result.num_anomalous,
         )
 
         # Multi-root cause detection for L3 systemic incidents
