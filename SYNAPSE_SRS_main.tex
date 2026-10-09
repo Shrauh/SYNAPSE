@@ -1,0 +1,947 @@
+\documentclass[11pt,a4paper]{article}
+
+% ============================================================
+% SYNAPSE - SOFTWARE REQUIREMENTS SPECIFICATION
+% Boxed running header/footer SRS template
+% (Same structure as AgriTwin SRS by AgriNexus)
+% Place all diagram JPG/PNG files in the same folder as this file.
+% ============================================================
+
+\usepackage[a4paper,left=1.8cm,right=1.8cm,top=0.8cm,bottom=1.5cm,
+            includehead,includefoot,headheight=2.4cm,headsep=0.35cm,footskip=0.75cm]{geometry}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{ragged2e}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{url}
+\usepackage{needspace}
+\usepackage{etoolbox}
+\usepackage{placeins}
+\usepackage{hyperref} % keep hyperref last
+
+% ------------------------------------------------------------
+% General document appearance
+% ------------------------------------------------------------
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setstretch{1.05}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=black,
+    citecolor=black,
+    pdftitle={SYNAPSE - Software Requirements Specification},
+    pdfauthor={Team SYNAPSE}
+}
+
+% ------------------------------------------------------------
+% Project information  —  EDIT THESE FIELDS
+% ------------------------------------------------------------
+
+\newcommand{\ProjectName}{SYNAPSE}
+\newcommand{\ProjectVersion}{Version 1.0}
+\newcommand{\DocumentTitle}{Software Requirements Specification}
+\newcommand{\DocumentDate}{08 October 2026}
+\newcommand{\TeamName}{Team SYNAPSE}
+\newcommand{\CollegeName}{[Your College Name], [City]}
+\newcommand{\DepartmentName}{[Your Department Name]}
+\newcommand{\StateName}{[Your State]}
+\newcommand{\GuideName}{Prof. [Guide Name]}
+
+% ------------------------------------------------------------
+% Boxed running header  (identical to AgriTwin template)
+% ------------------------------------------------------------
+
+\newcommand{\SRSHeader}{%
+\begin{tabularx}{\textwidth}{|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|}
+\hline
+\ProjectName & \ProjectVersion \\ \hline
+\DocumentTitle & \DocumentDate \\ \hline
+\TeamName & \\ \hline
+\end{tabularx}
+}
+
+\fancypagestyle{srsstyle}{%
+    \fancyhf{}
+    \fancyhead[L]{\SRSHeader}
+    \fancyfoot[L]{\small\TeamName\ /\ \CollegeName}
+    \fancyfoot[R]{\small Page \thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\fancypagestyle{firstpage}{%
+    \fancyhf{}
+    \fancyhead[L]{\SRSHeader}
+    \fancyfoot[L]{\small\TeamName\ /\ \CollegeName}
+    \fancyfoot[R]{\small Page \thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\pagestyle{srsstyle}
+
+% ------------------------------------------------------------
+% Heading styles
+% ------------------------------------------------------------
+
+\titleformat{\section}
+  {\bfseries\large}
+  {\thesection}{0.7em}{\underline}
+
+\titleformat{\subsection}
+  {\bfseries\normalsize}
+  {\thesubsection}{0.7em}{\underline}
+
+\titleformat{\subsubsection}
+  {\bfseries\normalsize}
+  {\thesubsubsection}{0.7em}{\underline}
+
+\titlespacing*{\section}{0pt}{14pt}{8pt}
+\titlespacing*{\subsection}{0pt}{10pt}{5pt}
+\titlespacing*{\subsubsection}{0pt}{8pt}{4pt}
+
+% ------------------------------------------------------------
+% Lists and tables
+% ------------------------------------------------------------
+
+\setlist[itemize]{leftmargin=1.15cm,itemsep=4pt,topsep=4pt}
+\setlist[enumerate]{leftmargin=1.25cm,itemsep=4pt,topsep=4pt}
+
+\renewcommand{\arraystretch}{1.25}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% ------------------------------------------------------------
+% DIAGRAM COMMAND  (identical to AgriTwin template)
+% ------------------------------------------------------------
+
+\graphicspath{{./}{diagrams/}}
+
+\newcommand{\diagramplaceholder}[1]{%
+    \fbox{%
+        \begin{minipage}[c][0.60\textheight][c]{0.94\textwidth}
+            \centering
+            {\Huge\bfseries Diagram Placeholder}\\[1cm]
+            {\Large Upload the following file:}\\[0.4cm]
+            {\Large\ttfamily\detokenize{#1}}
+        \end{minipage}%
+    }%
+}
+
+\newcommand{\diagram}[2]{%
+    \par\vspace{6pt}
+    \noindent\begin{minipage}{\textwidth}
+        \centering
+        \IfFileExists{#1}{%
+            \includegraphics[width=0.98\textwidth,height=0.80\textheight,keepaspectratio]{#1}%
+        }{\diagramplaceholder{#1}}
+        \par\vspace{0.20cm}
+        {\small\bfseries Figure: #2}
+    \end{minipage}
+    \par\vspace{6pt}
+}
+
+% ============================================================
+% DOCUMENT
+% ============================================================
+
+\begin{document}
+
+% ============================================================
+% TITLE PAGE
+% ============================================================
+
+\thispagestyle{firstpage}
+
+\vspace*{0.55cm}
+
+\begin{center}
+    {\Large\bfseries \TeamName}\\[0.65cm]
+
+    {\fontsize{21}{25}\selectfont\bfseries
+    AI-Powered AIOps Platform for Automated\\
+    Root Cause Analysis of Microservice Failures}\\[0.75cm]
+
+    {\large\bfseries\underline{\DocumentTitle}}\\[0.65cm]
+
+    {\large \ProjectVersion}
+\end{center}
+
+\vspace{1.0cm}
+
+\begin{flushleft}
+\renewcommand{\arraystretch}{1.28}
+\begin{tabular}{@{}p{3.35cm}p{11.0cm}@{}}
+
+\textbf{\underline{Team Guide:}} & \GuideName \\[0.08cm]
+
+\textbf{\underline{Members:}} & Shravani \\
+& [Teammate 2] \\
+& [Teammate 3] \\
+& [Teammate 4] \\[0.08cm]
+
+\textbf{\underline{College Name:}} & \CollegeName \\[0.08cm]
+
+\textbf{\underline{Department:}} & \DepartmentName \\[0.08cm]
+
+\textbf{\underline{State:}} & \StateName
+
+\end{tabular}
+\end{flushleft}
+
+\clearpage
+
+% ============================================================
+% REVISION HISTORY
+% ============================================================
+
+\thispagestyle{srsstyle}
+
+\begin{center}
+    {\Large\bfseries\underline{Revision History}}
+\end{center}
+
+\vspace{0.35cm}
+
+\begin{center}
+\begin{tabular}{|C{2.6cm}|C{2.0cm}|L{7.2cm}|L{3.0cm}|}
+\hline
+\textbf{Date} & \textbf{Version} & \textbf{Description} & \textbf{Author} \\
+\hline
+08 Oct 2026 & 1.0 & Initial Software Requirements Specification & Team SYNAPSE \\
+\hline
+\end{tabular}
+\end{center}
+
+\vfill
+
+% ============================================================
+% TABLE OF CONTENTS
+% ============================================================
+
+\clearpage
+\thispagestyle{srsstyle}
+
+\begin{center}
+    {\Large\bfseries\underline{Table of Contents}}
+\end{center}
+
+\vspace{0.25cm}
+
+\tableofcontents
+
+\clearpage
+
+% ============================================================
+% 1.0 INTRODUCTION
+% ============================================================
+
+\section{Introduction}
+
+\subsection{Purpose}
+
+SYNAPSE is an AI-powered AIOps platform built for automated Root Cause Analysis (RCA) of microservice failures. It integrates time-series metrics from microservice environments, builds a live service dependency graph, applies a VAE-GNN (Variational Autoencoder--Graph Neural Network) for anomaly detection, runs differentiable causal discovery (DECI) to establish fault propagation chains, and employs an LLM-based reasoner to generate human-readable RCA explanations and recovery recommendations. The system continuously learns and adapts using Elastic Weight Consolidation (EWC), an Experience Replay buffer, and Model-Agnostic Meta-Learning (MAML), ensuring it does not forget previously seen patterns when adapting to new faults.
+
+The purpose of this Software Requirements Specification is to define the functional requirements, non-functional requirements, interfaces, constraints, assumptions, dependencies, actors, data requirements, and system behaviour of SYNAPSE.
+
+The SRS provides a common reference for the project team, faculty guide, developers, testers, and other stakeholders throughout analysis, design, implementation, testing, deployment, and maintenance.
+
+% ------------------------------------------------------------
+
+\subsection{Scope}
+
+The scope of SYNAPSE includes:
+
+\begin{itemize}
+    \item Ingestion of time-series metrics (latency, error rate, CPU, memory, request rate) from microservice environments via Prometheus scraping or synthetic simulation.
+    \item Construction and continuous update of a weighted service dependency graph representing inter-service call topology.
+    \item VAE-GNN anomaly detection that produces per-service anomaly scores and uncertainty estimates.
+    \item Severity classification of incidents into four levels: L1 (Simple), L2 (Cascading), L3 (Systemic), and L4 (Design Flaw / Recurring).
+    \item DECI-based causal discovery on the anomalous subset of services to identify root cause candidates and fault propagation chains (DAGs), validated against the topology graph.
+    \item RAG (Retrieval-Augmented Generation) prior matrix generation from runbooks to constrain the causal search space.
+    \item LLM-powered explanation of root cause, fault type, affected services, and recommended recovery actions.
+    \item Automated recovery action selection and simulated execution (kubectl commands) based on severity level and fault type.
+    \item Recurring pattern detection and multi-root cause analysis for systemic (L3) incidents.
+    \item Continual learning via EWC and Experience Replay to prevent catastrophic forgetting.
+    \item MAML-based rapid few-shot adaptation when data distribution drift is detected.
+    \item A React-based frontend dashboard for visualising incidents, service graphs, causal DAGs, RCA reports, and model status.
+    \item A WebSocket stream for real-time live anomaly updates.
+    \item Fault injection simulation for testing and evaluation.
+    \item REST API layer (FastAPI) exposing all platform functionality.
+    \item Logging, monitoring, and health-check endpoints.
+\end{itemize}
+
+The principal stakeholders are Site Reliability Engineers (SREs), Platform Engineers, DevOps Engineers, Engineering Managers, and System Administrators.
+
+% ------------------------------------------------------------
+
+\subsection{Definition, Acronyms, and Abbreviations}
+
+\begin{itemize}
+    \item \textbf{AIOps (AI for IT Operations):} Application of AI and ML techniques to automate and enhance IT operations tasks such as anomaly detection, incident management, and root cause analysis.
+    \item \textbf{RCA (Root Cause Analysis):} The process of identifying the primary cause of a system failure or incident.
+    \item \textbf{GNN (Graph Neural Network):} A neural network that operates directly on graph-structured data, learning representations of nodes, edges, and graph topology.
+    \item \textbf{VAE (Variational Autoencoder):} A generative neural network that learns a latent distribution of normal behaviour; reconstruction error indicates anomalies.
+    \item \textbf{VAE-GNN:} A hybrid model combining VAE reconstruction loss with GNN-based neighbourhood aggregation (GAT Autoencoder) for per-node anomaly scoring with uncertainty.
+    \item \textbf{DECI (Differentiable Expected Causal Inference):} A differentiable, score-based causal discovery algorithm that learns a DAG from observational time-series data.
+    \item \textbf{DAG (Directed Acyclic Graph):} A directed graph with no cycles, used to represent causal relationships between variables.
+    \item \textbf{LLM (Large Language Model):} A machine-learning model capable of processing and generating natural language.
+    \item \textbf{MAML (Model-Agnostic Meta-Learning):} A meta-learning algorithm that trains a model to rapidly adapt to new tasks using only a few gradient steps.
+    \item \textbf{EWC (Elastic Weight Consolidation):} A continual learning technique that penalizes large changes to important model parameters to prevent forgetting.
+    \item \textbf{RAG (Retrieval-Augmented Generation):} A technique that retrieves relevant context (e.g., runbook text) to inform LLM generation or prior matrix construction.
+    \item \textbf{SRE (Site Reliability Engineer):} An engineer responsible for maintaining the reliability and availability of production systems.
+    \item \textbf{Prometheus:} An open-source monitoring system and time-series database commonly used for microservice metrics.
+    \item \textbf{Kubernetes (k8s):} An open-source container orchestration system for automating deployment and management of containerized applications.
+    \item \textbf{FastAPI:} A Python framework for building web APIs.
+    \item \textbf{GAT (Graph Attention Network):} A GNN variant that uses attention mechanisms to aggregate neighbour information.
+    \item \textbf{API (Application Programming Interface):} A defined interface through which software systems communicate.
+    \item \textbf{REST API:} An HTTP-based interface used to expose and consume web services.
+    \item \textbf{WebSocket:} A communication protocol providing full-duplex channels over a single TCP connection.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{References}
+
+\begin{itemize}
+    \item Prometheus official documentation and metrics exposition format.
+    \item Kubernetes API and kubectl command reference.
+    \item PyTorch and PyTorch Geometric official documentation.
+    \item causal-learn library documentation (PC Algorithm).
+    \item OpenAI API documentation (GPT-4o-mini).
+    \item FastAPI and SQLAlchemy official documentation.
+    \item MAML: Finn et al., ``Model-Agnostic Meta-Learning for Fast Adaptation of Deep Networks'', ICML 2017.
+    \item EWC: Kirkpatrick et al., ``Overcoming catastrophic forgetting in neural networks'', PNAS 2017.
+    \item DECI: Geffner et al., ``Deep End-to-End Causal Inference'', 2022.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Technologies to be used}
+
+\begin{itemize}
+    \item \textbf{Dashboard / Frontend:} React 18, TypeScript, Vite, Zustand (state management), D3.js / Cytoscape.js (graph visualization), Axios (HTTP client).
+    \item \textbf{Backend / API:} Python 3.10+, FastAPI, Uvicorn, SQLAlchemy (async), Pydantic v2, aiosqlite (dev) / PostgreSQL (prod).
+    \item \textbf{Metrics Ingestion:} Prometheus (scraping), custom Python ingestion service, synthetic MicroserviceSimulator (for testing and training).
+    \item \textbf{AI/ML -- Anomaly Detection:} PyTorch, PyTorch Geometric (GAT Autoencoder / VAE-GNN), NumPy, Pandas, scikit-learn.
+    \item \textbf{AI/ML -- Causal Discovery:} causal-learn (PC Algorithm), custom DECI implementation, NetworkX (graph operations).
+    \item \textbf{AI/ML -- LLM Reasoning:} OpenAI API (GPT-4o-mini) / Mock LLM (configurable), prompt templates.
+    \item \textbf{AI/ML -- Continual Learning:} EWC (Fisher Information Matrix), Experience Replay Buffer.
+    \item \textbf{AI/ML -- Meta-Learning:} MAML (inner-loop gradient adaptation).
+    \item \textbf{AI/ML -- Recovery:} Rule-based recovery engine, kubectl command generation (simulated).
+    \item \textbf{Database:} SQLite (development), PostgreSQL (production), managed via SQLAlchemy ORM.
+    \item \textbf{Development and Deployment:} Git, GitHub, Docker, Docker Compose, Kubernetes YAML manifests, Visual Studio Code, Swagger/OpenAPI (auto-generated by FastAPI).
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Overview}
+
+The SRS includes two major sections:
+
+\begin{itemize}
+    \item \textbf{Overall Description:} describes the major components of the system, stakeholders, system perspective, interfaces, AI modules, architecture, constraints, assumptions, and dependencies, together with the architecture, use case, class, sequence, database, and ER diagrams.
+    \item \textbf{Specific Requirements:} describes use case reports, functional requirements, external interfaces, non-functional requirements, AI/model requirements, data requirements, logging, error handling, and acceptance criteria.
+\end{itemize}
+
+% ============================================================
+% 2.0 OVERALL DESCRIPTION
+% ============================================================
+
+\section{Overall Description}
+
+\subsection{Product Perspective}
+
+SYNAPSE is an intelligent AIOps platform for automated Root Cause Analysis of microservice failures. It continuously ingests telemetry (metrics) from a microservice mesh, maintains a live service dependency graph (nodes = services, edges = inter-service calls weighted by latency and call frequency), and detects anomalies using a VAE-GNN model trained on normal baseline behaviour.
+
+The RCA pipeline executes the following stages in order:
+
+\begin{enumerate}
+    \item \textbf{Metrics Ingestion} -- collect and normalize time-series metrics per service.
+    \item \textbf{Feature Extraction} -- aggregate a time window into per-service feature vectors (z-scored latency, error rate, CPU, memory, request rate).
+    \item \textbf{VAE-GNN Anomaly Detection} -- compute per-service anomaly scores (reconstruction error) and uncertainty estimates (KL divergence).
+    \item \textbf{Severity Classification} -- classify the incident into L1--L4 severity levels and select a response strategy.
+    \item \textbf{DECI Causal Discovery} -- run differentiable causal discovery on the anomalous service subset, constrained by an LLM-RAG prior matrix derived from runbooks; validate and orient causal edges against the topology graph; break cycles to produce a DAG.
+    \item \textbf{Root Cause Extraction} -- identify root nodes in the DAG weighted by anomaly scores.
+    \item \textbf{LLM Reasoning} -- generate a human-readable explanation, fault type, affected services list, and recommended actions.
+    \item \textbf{Recovery Action Selection} -- select and simulate a kubectl recovery action (restart, scale, rollback, or alert) based on severity level and fault type.
+    \item \textbf{Continual Learning \& Meta-Adaptation} -- detect distribution drift; apply MAML rapid adaptation and EWC/Replay registration when drift is detected.
+    \item \textbf{Persistence} -- store the incident, RCA result, recovery log, and pattern history in the database.
+\end{enumerate}
+
+% ------------------------------------------------------------
+
+\subsection{Software Interface}
+
+\textbf{Front End Client:}
+The dashboard is a React + TypeScript single-page application (SPA) served by Vite in development or the FastAPI static file mount in production. It renders the service dependency graph, causal DAG, incident list, RCA report detail, simulation controls, and model status. It communicates with the backend through REST calls and a WebSocket connection for live anomaly streaming.
+
+\textbf{Web/API Server:}
+The backend uses Python and FastAPI as the API and data-integration layer. It handles all REST routes, WebSocket streams, incident management, RCA pipeline triggering, fault simulation, and model status reporting.
+
+\textbf{Database Server:}
+\begin{itemize}
+    \item \textbf{SQLite (development) / PostgreSQL (production)} is the system of record. It stores incidents, RCA results, service metrics, recovery action logs, and pattern history, managed via the SQLAlchemy ORM with async support.
+\end{itemize}
+
+\textbf{Back End:}
+FastAPI services, SQLAlchemy models and async sessions, Pydantic schemas, AI module (GNN, Causal, LLM, Severity, Recovery, Continual, Meta, Pattern, RAG), service graph builder, and metrics ingestion service.
+
+% ------------------------------------------------------------
+
+\subsection{Hardware Interface}
+
+\textbf{Client Side:}
+\begin{itemize}
+    \item Desktop computer, laptop, tablet, or smartphone.
+    \item Internet connection.
+    \item Modern web browser with JavaScript enabled.
+\end{itemize}
+
+\textbf{Server Side:}
+\begin{itemize}
+    \item Processor capable of running Python backend services, PyTorch GNN inference, and causal discovery computations.
+    \item Sufficient RAM for the application, GNN model, causal discovery matrices, and experience replay buffer.
+    \item GPU (optional but recommended) to accelerate GNN training and inference.
+    \item Adequate storage for the database, model checkpoint files, logs, and application files.
+    \item Reliable internet connectivity for OpenAI API calls (mock mode is available offline).
+    \item Kubernetes cluster or Docker-capable host for containerized deployment.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Product Function}
+
+The major functions of SYNAPSE are:
+
+\begin{enumerate}
+    \item \textbf{Metrics Ingestion and Feature Extraction:} Collect time-series metrics from Prometheus or the simulator; aggregate and normalize into per-service feature vectors.
+    \item \textbf{Service Dependency Graph Management:} Build, maintain, and update the weighted directed graph of microservice dependencies; provide graph queries such as adjacency lists and edge-index tensors.
+    \item \textbf{VAE-GNN Anomaly Detection:} Detect per-service anomalies using a trained Graph Attention Autoencoder; score and rank services by anomaly severity with uncertainty.
+    \item \textbf{Severity Classification:} Classify incidents into L1 (Simple), L2 (Cascading), L3 (Systemic), or L4 (Design Flaw) based on anomaly count, causal confidence, and recurrence history.
+    \item \textbf{DECI Causal Discovery:} Identify the fault propagation chain and root cause candidates through differentiable causal inference, constrained by topology and a runbook-derived prior.
+    \item \textbf{LLM-Powered RCA Explanation:} Generate a human-readable explanation of root cause, fault type, propagation chain, affected services, and recovery recommendations.
+    \item \textbf{Recovery Action Selection and Execution:} Select the most appropriate kubectl recovery action based on severity level and confidence; execute in simulated mode.
+    \item \textbf{Recurring Pattern Detection:} Track root cause recurrence and common fault types; detect and record recurring patterns for proactive reporting.
+    \item \textbf{Multi-Root Cause Analysis:} For L3 systemic incidents, apply multi-root cause detection to identify simultaneously failing independent sub-systems.
+    \item \textbf{Continual Learning (EWC + Replay):} Maintain Fisher Information Matrix and experience replay buffer to allow the GNN to learn new fault patterns without forgetting.
+    \item \textbf{MAML Meta-Adaptation:} Detect distribution drift and perform rapid few-shot adaptation of the GNN model using MAML inner-loop gradient updates.
+    \item \textbf{Fault Simulation:} Inject synthetic faults (latency spike, error surge, CPU throttle, memory leak, network partition) to generate training data and evaluate the RCA pipeline.
+    \item \textbf{Live Anomaly Streaming:} Continuously push anomaly score updates to connected clients via WebSocket.
+    \item \textbf{Incident Management:} Create, list, detail, and update incidents; link RCA results and recovery logs to incidents.
+    \item \textbf{Administration:} Monitor system health, view model training status, manage the database, and configure system parameters.
+\end{enumerate}
+
+% ------------------------------------------------------------
+
+\subsection{User Characteristics}
+
+\textbf{Site Reliability Engineer (SRE):} Primary user. Monitors the dashboard, reviews incoming incidents, reads RCA reports, approves or overrides recommended recovery actions, and provides feedback on report accuracy.
+
+\textbf{Platform / DevOps Engineer:} Configures the service dependency graph, manages Prometheus scraping targets, triggers fault simulations, and reviews pattern history for infrastructure improvements.
+
+\textbf{Engineering Manager:} Views aggregated incident metrics, severity trends, and recurring pattern summaries to make architectural and staffing decisions.
+
+\textbf{System Administrator:} Manages users, monitors system health endpoints, reviews logs, manages database maintenance, and configures environment settings.
+
+% ------------------------------------------------------------
+
+\subsection{Constraints}
+
+\begin{itemize}
+    \item The quality and accuracy of RCA results depends on the representativeness of the training data used for GNN baseline learning.
+    \item The DECI causal discovery algorithm is computationally intensive and may be slow for large service subsets.
+    \item LLM-based reasoning requires connectivity to the OpenAI API in live mode; mock mode is available for offline and testing scenarios.
+    \item PyTorch Geometric (PyG) must be installed for full VAE-GNN capability; a statistical fallback anomaly detector is used when PyG is unavailable.
+    \item Recovery actions are executed in simulated mode by default; real kubectl execution requires cluster access and explicit configuration.
+    \item The system monitors only metrics exposed in the configured Prometheus scrape targets.
+    \item The causal discovery step assumes the anomalous service subset is small enough for tractable computation within the request timeout.
+    \item AI recommendations are decision-support outputs and do not guarantee correct root cause identification; human review is expected for high-stakes recovery decisions.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Architecture Design}
+
+SYNAPSE follows a layered architecture consisting of a data ingestion layer, an AI processing layer, a backend API layer, and a frontend presentation layer:
+
+\begin{enumerate}
+    \item \textbf{Metrics Sources:} Prometheus metrics endpoints (live microservice clusters or Kubernetes stacks), synthetic MicroserviceSimulator (for testing, training data generation, and fault injection).
+    \item \textbf{Module 1 -- Ingestion and Feature Engineering:} Metrics ingestion service (z-score normalisation, window aggregation, feature matrix construction), graph builder (topology construction and real-time metric updates).
+    \item \textbf{Module 2 -- AI Pipeline:} VAE-GNN anomaly detection (GAT Autoencoder, reconstruction error scoring, uncertainty via KL divergence), severity classifier (L1--L4 classification, recurring pattern check), DECI causal discovery engine (differentiable causal inference, topology validation, cycle breaking, RAG prior), multi-root cause detector (for L3 systemic incidents), LLM reasoner (explanation, fault type, recommended actions), recovery engine (action selection, simulated kubectl execution).
+    \item \textbf{Module 3 -- Continual Learning:} EWC (Fisher Information Matrix, parameter importance weighting), Experience Replay Buffer, MAML adapter (distribution drift detection, few-shot inner-loop adaptation), pattern analyzer (recurring fault tracking).
+    \item \textbf{FastAPI -- API and Data Integration Layer:} REST endpoints, WebSocket live stream, incident management, simulation control, model status reporting, health checks.
+    \item \textbf{Database Layer:} SQLite (dev) / PostgreSQL (prod) storing incidents, RCA results, service metrics, recovery action logs, and pattern history via SQLAlchemy ORM.
+    \item \textbf{Frontend -- React Dashboard:} Service dependency graph visualization, causal DAG viewer, incident list and detail, RCA report viewer, fault simulation panel, model status panel, live anomaly WebSocket consumer.
+\end{enumerate}
+
+\diagram{01_architecture.jpg}{SYNAPSE Layered System Architecture}
+
+The end-to-end data and decision flow is: Prometheus/Simulator $\rightarrow$ Ingestion $\rightarrow$ Feature Matrix $\rightarrow$ VAE-GNN $\rightarrow$ Anomaly Scores $\rightarrow$ Severity Classification $\rightarrow$ DECI Causal Discovery (RAG-constrained) $\rightarrow$ Root Cause Candidates $\rightarrow$ LLM Explanation $\rightarrow$ Recovery Action $\rightarrow$ Continual Learning Update $\rightarrow$ Store to DB $\rightarrow$ Push to Frontend Dashboard + WebSocket stream.
+
+\diagram{02_data_flow.jpg}{SYNAPSE End-to-End RCA Pipeline Flow}
+
+% ------------------------------------------------------------
+
+\subsection{Use Case Model Description}
+
+The primary actors are SRE / Platform Engineer, Engineering Manager, and System Administrator. The AI Pipeline is an internal system function, not an actor.
+
+SRE and Platform Engineer use cases:
+\begin{itemize}
+    \item Login; View Dashboard; View Live Anomaly Stream.
+    \item View Service Dependency Graph; View Causal DAG.
+    \item Trigger RCA Pipeline; View Incident List; View Incident Detail; View RCA Report.
+    \item Simulate Fault; Run Fault + RCA Pipeline; View Simulation Result.
+    \item View Model Training Status; View Continual Learning State.
+    \item Included system use cases: Trigger RCA (includes Ingest Metrics, Run VAE-GNN, Run Causal Discovery, Run LLM Reasoning), Execute Recovery Action (extends Trigger RCA).
+\end{itemize}
+
+Engineering Manager use cases:
+\begin{itemize}
+    \item View Aggregated Incident Metrics; View Severity Trend; View Recurring Pattern Summary.
+\end{itemize}
+
+System Administrator use cases:
+\begin{itemize}
+    \item Monitor System Health; View Logs; Manage Database; Configure Environment.
+\end{itemize}
+
+\diagram{03a_use_case_sre.jpg}{Use Case Diagram -- RCA and Incident Management (SRE / Platform Engineer)}
+
+\diagram{03b_use_case_admin.jpg}{Use Case Diagram -- Administration and Management Functions}
+
+% ------------------------------------------------------------
+
+\subsection{Class Diagram}
+
+The class model is split into two diagrams.
+
+\textbf{Domain and data classes:} Incident (stores title, status, severity, root cause service, confidence, fault type, affected services, anomaly scores, timeline), RCAResult (stores incident reference, root cause service, confidence, fault type, explanation, propagation chain, metric deltas, recommended actions, causal graph JSON, model info JSON), ServiceMetric (time-series snapshot per service: latency, error rate, CPU, memory, request rate), RecoveryActionLog (incident reference, action type, target service, kubectl command, confidence, success flag, simulated flag, severity level, execution time), PatternHistory (root cause service, occurrence count, common fault type, severity trend, recommendation text, priority).
+
+\textbf{AI pipeline and orchestration classes:} abstract AIModule (specialised into GNNAnomalyDetector, CausalDiscoveryEngine, LLMReasoner, SeverityClassifier, RecoveryEngine, ContinualManager, MAMLAdapter, PatternAnalyzer, SynapseRAG), RCAPipeline (orchestrates all AI modules, manages lifecycle), GraphBuilder (builds and updates service dependency graph, provides edge-index tensors and adjacency lists), IngestionService (normalizes and aggregates metrics, extracts feature matrices).
+
+\diagram{04a_class_domain.jpg}{Class Diagram -- Domain and Data Classes}
+
+\diagram{04b_class_agents.jpg}{Class Diagram -- AI Pipeline and Orchestration Classes}
+
+% ------------------------------------------------------------
+
+\subsection{Sequence Diagrams}
+
+The sequence diagrams describe interactions among the React frontend, FastAPI backend, AI pipeline modules, and the database. Four scenarios are modelled:
+
+\begin{enumerate}
+    \item \textbf{Anomaly Detection and Incident Creation:} the SRE triggers an RCA from the dashboard; FastAPI creates an incident with status \texttt{analyzing}; the orchestrator ingests metrics, builds the feature matrix, runs the VAE-GNN, and computes per-service anomaly scores; the incident is updated with severity and anomaly scores and the status is returned to the frontend.
+    \item \textbf{Causal Discovery and Root Cause Identification:} the orchestrator filters anomalous services above the threshold; the RAG service generates the W0 prior matrix from runbook embeddings; the DECI engine runs causal discovery on the anomalous subset; topology validation and cycle-breaking produce the final DAG; root candidates are extracted from DAG root nodes weighted by anomaly scores.
+    \item \textbf{LLM Reasoning and Recovery:} the LLM reasoner receives root candidates, anomaly scores, causal edges, and metric deltas; it generates a natural-language explanation, fault type label, affected services list, and recovery recommendations; the severity classifier determines the response strategy; the recovery engine selects and simulates the kubectl action; the RCA result and recovery log are persisted.
+    \item \textbf{Continual Learning Cycle:} after each RCA, the continual manager checks for distribution drift against the feature matrix; if drift is detected, MAML performs a 3-step inner-loop adaptation; the experience replay buffer is updated and the EWC Fisher matrix is refreshed to prevent forgetting; the model state is saved to disk.
+\end{enumerate}
+
+% NOTE: Sequence diagram images (05_seq_anomaly.jpg, 06_seq_causal.jpg,
+% 07_seq_llm_recovery.jpg, 08_seq_continual.jpg) — draw these in draw.io
+% or Lucidchart and place them in the same folder as this .tex file,
+% then uncomment the \diagram commands below.
+
+% \diagram{05_seq_anomaly.jpg}{Sequence Diagram 1 -- Anomaly Detection and Incident Creation}
+% \diagram{06_seq_causal.jpg}{Sequence Diagram 2 -- Causal Discovery and Root Cause Identification}
+% \diagram{07_seq_llm_recovery.jpg}{Sequence Diagram 3 -- LLM Reasoning and Recovery}
+% \diagram{08_seq_continual.jpg}{Sequence Diagram 4 -- Continual Learning Cycle}
+
+% ------------------------------------------------------------
+
+\subsection{Database Design}
+
+SYNAPSE uses a single relational database (SQLite in development, PostgreSQL in production) with the following tables:
+
+\begin{itemize}
+    \item \textbf{Incidents:} system of record for detected failures. Stores all incident metadata including anomaly scores, timeline events, affected services, severity, root cause service, and resolution timestamps.
+    \item \textbf{RCA Results:} detailed RCA output per incident. Stores root cause service, confidence, fault type, natural-language explanation, propagation chain string, metric deltas (JSON), recommended actions (JSON), causal graph (JSON), and model info (JSON including GNN type, MAML adaptation status, severity level, recovery action, execution time ms).
+    \item \textbf{Service Metrics:} time-series telemetry snapshots per service. Stores latency, error rate, CPU, memory, and request rate per service per timestamp for historical analysis and model re-training.
+    \item \textbf{Recovery Action Logs:} record of each recovery action taken. Stores action type, target service, kubectl command, confidence, success flag, simulated flag, severity level, and execution time.
+    \item \textbf{Pattern History:} recurring fault pattern records. Stores root cause service, occurrence count, common fault type, severity trend, recommendation text, and priority for proactive pattern reporting.
+\end{itemize}
+
+% \diagram{09_database_architecture.jpg}{SYNAPSE Database Architecture}
+
+% ------------------------------------------------------------
+
+\subsection{ER Diagram}
+
+The ER model represents relationships among INCIDENT, RCA\_RESULT, SERVICE\_METRIC, RECOVERY\_ACTION\_LOG, and PATTERN\_HISTORY. INCIDENT has a one-to-one relationship with RCA\_RESULT (via \texttt{incident\_id}) and a one-to-many relationship with RECOVERY\_ACTION\_LOG. SERVICE\_METRIC is correlated to INCIDENT by service name and overlapping time window. PATTERN\_HISTORY tracks recurrence by root cause service name across historical incidents.
+
+% \diagram{10_er.jpg}{SYNAPSE Entity Relationship Diagram}
+
+% ------------------------------------------------------------
+
+\subsection{Schema}
+
+A representative relational schema includes the following major entities:
+
+\begin{center}
+\begin{tabular}{|L{4.3cm}|L{11.5cm}|}
+\hline
+\textbf{Entity} & \textbf{Purpose} \\
+\hline
+Incident & Stores incident metadata: title, status (analyzing $|$ detected $|$ resolved), severity (critical $|$ high $|$ medium $|$ low), root cause service, confidence, fault type, affected services (JSON list), anomaly scores (JSON map), timeline (JSON list of events), window start/end, detected and resolved timestamps. \\
+\hline
+RCAResult & Stores the complete RCA output: root cause service, confidence, fault type, natural-language explanation, propagation chain (string), metric deltas (JSON), recommended actions (JSON list), causal graph (JSON with nodes and edges), and model info (JSON: GNN type, MAML adapted, drift score, severity level, recovery action, execution time ms). \\
+\hline
+ServiceMetric & Stores a time-series snapshot of one service at one timestamp: latency (ms), error rate (fraction), CPU usage (fraction), memory usage (fraction), request rate (req/s). \\
+\hline
+RecoveryActionLog & Stores a record of one recovery action: action type (restart $|$ scale\_up $|$ rollback $|$ alert), target service, kubectl command string, confidence score, success flag, simulated flag, severity level label, and execution time in ms. \\
+\hline
+PatternHistory & Stores a recurring fault pattern: root cause service name, occurrence count, common fault type, severity trend (stable $|$ worsening $|$ improving), recommendation text, priority label, first seen, and last seen timestamps. \\
+\hline
+\end{tabular}
+\end{center}
+
+% ------------------------------------------------------------
+
+\subsection{Assumptions and Dependencies}
+
+\begin{itemize}
+    \item Users have access to a supported device and modern browser with JavaScript enabled.
+    \item Prometheus metrics endpoints are reachable from the backend server in live deployment; synthetic simulation is used when Prometheus is unavailable.
+    \item The service dependency graph topology is pre-configured or auto-discovered via Kubernetes service mesh.
+    \item ML models (VAE-GNN) are trained on representative normal baseline data before production use; the system performs auto-training on synthetic normal data if no saved model is found.
+    \item The OpenAI API is accessible when LLM provider is set to \texttt{openai}; mock mode is used otherwise.
+    \item PyTorch and PyTorch Geometric are installed for full VAE-GNN capability; the system falls back to a statistical anomaly detector if they are not.
+    \item The database (SQLite or PostgreSQL) remains available throughout system operation.
+    \item Recovery actions are executed in simulated mode unless real kubectl cluster access is explicitly configured.
+\end{itemize}
+
+% ============================================================
+% 3.0 SPECIFIC REQUIREMENTS
+% ============================================================
+
+\FloatBarrier
+\section{Specific Requirements}
+
+\subsection{Use Case Reports}
+
+The following use cases describe the principal interactions between system actors and SYNAPSE.
+
+\subsubsection{User Authentication / Login}
+
+\textbf{Primary Actor:} SRE / Platform Engineer / System Administrator
+
+\textbf{Precondition:} The application is available and the user has valid credentials.
+
+\textbf{Main Flow:}
+\begin{enumerate}
+    \item User opens the application and navigates to the login page.
+    \item User provides credentials (username and password).
+    \item System validates the credentials and establishes a session.
+    \item System provides access to the role-appropriate dashboard view.
+\end{enumerate}
+
+\textbf{Postcondition:} The authenticated user can access authorized system functions.
+
+\subsubsection{Trigger RCA Pipeline}
+
+\textbf{Primary Actor:} SRE / Platform Engineer
+
+\textbf{Precondition:} The system is running and metrics are available (live Prometheus or simulator).
+
+\textbf{Main Flow:}
+\begin{enumerate}
+    \item User navigates to the RCA trigger panel and specifies an analysis time window and optional fault type hint.
+    \item System creates an incident record with status \texttt{analyzing}.
+    \item The RCA pipeline ingests metrics for the window, extracts features, runs the VAE-GNN, classifies severity, runs DECI causal discovery, generates an LLM explanation, selects and simulates a recovery action, and updates the continual learning state.
+    \item Incident status is updated to \texttt{detected} with the root cause service, confidence, and fault type.
+    \item The completed RCA result is stored and the user is directed to the incident detail view.
+\end{enumerate}
+
+\textbf{Postcondition:} An incident record and RCA result are stored; the user can view the full report.
+
+\subsubsection{View Incident and RCA Report}
+
+\textbf{Primary Actor:} SRE / Engineering Manager
+
+\begin{enumerate}
+    \item User opens the incident list and selects an incident.
+    \item System displays incident detail: title, severity, status, timeline of pipeline events, anomaly scores per service.
+    \item User navigates to the RCA report tab.
+    \item System displays: root cause service, confidence, fault type, natural-language explanation, propagation chain, metric deltas per service, recommended actions, and model info.
+    \item User may view the causal DAG visualization linked to the incident.
+\end{enumerate}
+
+\subsubsection{Simulate Fault and Run RCA}
+
+\textbf{Primary Actor:} Platform / DevOps Engineer
+
+\begin{enumerate}
+    \item User navigates to the Simulate panel and selects fault type (e.g., latency spike, error surge, CPU throttle, memory leak, network partition), root cause service, severity level, and duration.
+    \item System runs the MicroserviceSimulator to generate synthetic fault metrics.
+    \item System creates an incident and runs the full RCA pipeline on the simulated data.
+    \item System displays the simulation ID, injected fault details, and the full RCA result for evaluation.
+\end{enumerate}
+
+\subsubsection{View Service Dependency Graph}
+
+\textbf{Primary Actor:} SRE / Platform Engineer
+
+\begin{enumerate}
+    \item User navigates to the Graph page.
+    \item System renders the service dependency graph: nodes represent microservices, edges represent inter-service calls with latency and call frequency weights.
+    \item Node colour or size encodes the current anomaly score.
+    \item User can interact with the graph (hover for metrics, click for service details).
+\end{enumerate}
+
+\textbf{Postcondition:} The user can visually identify anomalous and heavily loaded services within the topology.
+
+\subsubsection{View Model Status and Continual Learning State}
+
+\textbf{Primary Actor:} SRE / Platform Engineer
+
+\begin{enumerate}
+    \item User navigates to the Model Status page.
+    \item System displays: GNN type (VAE-GNN or Statistical Fallback), whether the model is trained, training loss history, MAML adaptation history, EWC lambda and tasks learned, replay buffer size, forgetting rate, and recurring pattern counts.
+    \item The status is read in real time from the AI pipeline's singleton state.
+\end{enumerate}
+
+\subsubsection{Receive Live Anomaly Alerts (WebSocket)}
+
+\textbf{Primary Actor:} SRE (passive real-time consumer)
+
+\begin{enumerate}
+    \item The React dashboard establishes a WebSocket connection to \texttt{/api/v1/live} on page load.
+    \item The backend continuously pushes anomaly score updates to all connected clients.
+    \item The dashboard displays real-time anomaly severity indicators without requiring page refresh.
+    \item On disconnection, the client automatically attempts to reconnect.
+\end{enumerate}
+
+\subsubsection{Manage Recovery Actions}
+
+\textbf{Primary Actors:} SRE / System Administrator
+
+\begin{enumerate}
+    \item SRE reviews a completed RCA and its associated recovery action log (action type, kubectl command, target service, outcome).
+    \item SRE may manually trigger an alternative action or escalate to the on-call team if the recovery was unsuccessful.
+    \item System records any manual action in the recovery action log.
+    \item The pattern history is updated if the same root cause has now exceeded the recurrence threshold.
+\end{enumerate}
+
+\subsubsection{System Administration}
+
+\textbf{Primary Actor:} System Administrator
+
+\begin{enumerate}
+    \item Administrator monitors the \texttt{/api/v1/health} endpoint for component status (API, database, AI module, GNN model loaded, MAML ready).
+    \item Administrator views application logs for errors and warnings.
+    \item Administrator manages the database (backup, migration, cleanup of old incidents).
+    \item Administrator configures environment variables (database URL, LLM provider, anomaly threshold, GNN model path, CORS origins).
+\end{enumerate}
+
+% ------------------------------------------------------------
+
+\subsection{Functional Requirements}
+
+\begin{longtable}{|C{1.6cm}|L{4.0cm}|L{9.6cm}|}
+\hline
+\textbf{ID} & \textbf{Requirement} & \textbf{Description} \\
+\hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Requirement} & \textbf{Description} \\
+\hline
+\endhead
+
+FR-01 & User Authentication & The system shall allow authorized users to log in and access role-appropriate functionality. \\ \hline
+FR-02 & Metrics Ingestion & The system shall ingest time-series metrics (latency, error rate, CPU, memory, request rate) per service from Prometheus endpoints or the synthetic simulator. \\ \hline
+FR-03 & Feature Extraction & The system shall normalize and aggregate metrics into per-service feature vectors (z-score) within a configurable time window. \\ \hline
+FR-04 & Service Dependency Graph & The system shall build, maintain, and update a weighted directed service dependency graph and provide adjacency list and edge-index tensor queries. \\ \hline
+FR-05 & VAE-GNN Anomaly Detection & The VAE-GNN shall compute a per-service anomaly score (reconstruction error) and uncertainty estimate (KL divergence) for all services in the dependency graph. \\ \hline
+FR-06 & Severity Classification & The severity classifier shall classify incidents into L1 (Simple), L2 (Cascading), L3 (Systemic), or L4 (Design Flaw) based on anomaly count, causal confidence, and recurrence history, and determine a response strategy. \\ \hline
+FR-07 & Causal Discovery & The DECI engine shall perform differentiable causal discovery on the anomalous service subset, constrained by a topology-derived prior and a RAG runbook-derived prior matrix (W0), and return a validated, cycle-free DAG. \\ \hline
+FR-08 & Root Cause Extraction & The system shall extract root cause candidates from the DAG as root nodes weighted by anomaly scores and build the fault propagation chain string. \\ \hline
+FR-09 & LLM Reasoning & The LLM reasoner shall generate a natural-language explanation of the root cause, fault type, affected services, and recommended recovery actions. \\ \hline
+FR-10 & Recovery Action & The recovery engine shall select and simulate an appropriate recovery action (restart, scale\_up, rollback, or alert) based on severity level, fault type, and confidence, and log the action. \\ \hline
+FR-11 & Continual Learning & The system shall detect distribution drift; on drift, perform MAML inner-loop adaptation and register the task with EWC/Replay to prevent catastrophic forgetting. \\ \hline
+FR-12 & Pattern Detection & The pattern analyzer shall track root cause recurrence and common fault types; recurring root causes ($>$ 3 occurrences) shall be escalated to L4 severity. \\ \hline
+FR-13 & Multi-Root Cause Analysis & For L3 systemic incidents, the multi-root cause detector shall identify simultaneously failing independent service sub-clusters. \\ \hline
+FR-14 & Fault Simulation & The system shall allow users to inject synthetic faults (latency spike, error surge, CPU throttle, memory leak, network partition) and run the full RCA pipeline on the generated data. \\ \hline
+FR-15 & Live Anomaly Streaming & The system shall push real-time anomaly score updates to connected frontend clients via WebSocket. \\ \hline
+FR-16 & Incident Management & The system shall create, list, retrieve details of, and update incidents; link RCA results and recovery action logs to incidents. \\ \hline
+FR-17 & RCA Report and Causal Graph & The system shall provide a per-incident RCA report and a causal DAG (nodes and edges with strengths) through dedicated API endpoints. \\ \hline
+FR-18 & Model Training & The system shall support GNN training on synthetic normal baseline data with configurable scenario count and epoch count, saving the trained model checkpoint to disk. \\ \hline
+FR-19 & Model Status & The system shall expose a model status endpoint reporting GNN type, training state, MAML/EWC/Replay status, severity history, and recovery status. \\ \hline
+FR-20 & Health Check & The system shall expose a health-check endpoint reporting the status of all components (API, database, AI module, GNN model, MAML readiness) and application uptime. \\ \hline
+FR-21 & Dashboard & The React dashboard shall display the service dependency graph, causal DAG, incident list, RCA report detail, simulation panel, model status panel, and live anomaly stream. \\ \hline
+FR-22 & Administration & The system shall allow administrators to monitor health, view logs, manage the database, and configure environment settings. \\ \hline
+
+\end{longtable}
+
+% ------------------------------------------------------------
+
+\subsection{External Interface Requirements}
+
+\textbf{User Interface:}
+The application shall provide a web-based React SPA containing: a login screen, a service dependency graph visualization page, an incident list page, an incident detail and RCA report page, a simulation control page, a model status page, and a live anomaly indicator in the navigation bar.
+
+\textbf{Software Interfaces:}
+The system shall communicate through REST APIs (FastAPI) with internal components and shall obtain live metrics from Prometheus HTTP endpoints. Database interfaces use SQLAlchemy ORM (SQL). The LLM interface uses the OpenAI Chat Completions API (HTTPS) or the mock LLM (local). The Kubernetes interface uses kubectl subprocess calls (simulated by default).
+
+\textbf{Communication Interfaces:}
+The application shall use standard HTTP/HTTPS for REST communication and the WebSocket protocol (\texttt{ws://} or \texttt{wss://}) for the live anomaly stream.
+
+% ------------------------------------------------------------
+
+\subsection{Non-Functional Requirements}
+
+\subsubsection{Performance}
+\begin{itemize}
+    \item The dashboard and incident list endpoints should respond within acceptable time under expected load.
+    \item The full RCA pipeline should complete within a reasonable time; LLM reasoning is the primary latency source and may vary with provider.
+    \item VAE-GNN inference and DECI causal discovery should not block unrelated user requests; pipeline execution is asynchronous from the HTTP response.
+    \item Live anomaly WebSocket updates should be delivered at a sufficient rate for operational monitoring.
+\end{itemize}
+
+\subsubsection{Security}
+\begin{itemize}
+    \item Authentication credentials shall be protected and never stored in plaintext.
+    \item Role-based access shall restrict functions according to the user's authorization level.
+    \item Sensitive configuration (API keys, database URLs) shall be stored in environment variables or \texttt{.env} files, never in source code.
+    \item Input data received via API endpoints shall be validated using Pydantic schemas before processing.
+    \item Communication should use HTTPS and WSS in production deployment environments.
+\end{itemize}
+
+\subsubsection{Reliability and Availability}
+\begin{itemize}
+    \item The system should handle Prometheus scraping failures gracefully, falling back to the synthetic simulator or cached data.
+    \item External LLM API failures shall result in a graceful fallback (mock LLM response) rather than pipeline failure.
+    \item PyTorch Geometric unavailability shall result in automatic use of the statistical fallback anomaly detector.
+    \item All persistent data (incidents, RCA results, recovery logs) shall be maintained in the database and survive application restarts.
+    \item The WebSocket live stream should automatically reconnect on disconnection.
+\end{itemize}
+
+\subsubsection{Usability}
+\begin{itemize}
+    \item The React dashboard should be usable by engineers familiar with microservice operations without specialized AI knowledge.
+    \item RCA reports should present root cause, explanation, propagation chain, and recommended actions in clear, plain language.
+    \item Error responses from the API shall include descriptive error messages that help diagnose the issue.
+    \item The service dependency graph and causal DAG shall be interactive and labelled with service names and relevant metrics.
+\end{itemize}
+
+\subsubsection{Maintainability}
+\begin{itemize}
+    \item Backend services shall use a modular architecture with each AI module independently maintainable and testable.
+    \item Each AI module (GNN, Causal, LLM, Severity, Recovery, Continual, Meta, Pattern, RAG) shall be independently replaceable without redesigning the pipeline.
+    \item The GNN model checkpoint format shall remain backward-compatible across minor versions.
+    \item Source code shall be maintained using Git/GitHub with CI-friendly test suites (pytest).
+    \item API interfaces shall be documented automatically using Swagger/OpenAPI (auto-generated by FastAPI).
+\end{itemize}
+
+\subsubsection{Scalability}
+The architecture shall allow additional microservices, new fault types, additional Prometheus scrape targets, and new AI modules to be added without redesigning the complete application. The database can be migrated from SQLite to PostgreSQL for production scale without application code changes.
+
+\subsubsection{Portability}
+The application shall be deployable in supported environments using the defined Python and Docker-based development/deployment stack. Kubernetes manifests are provided for cluster deployment. The frontend builds to a static asset bundle that can be served by any web server.
+
+% ------------------------------------------------------------
+
+\subsection{AI/ML and Model Requirements}
+
+\begin{itemize}
+    \item The VAE-GNN shall be trained on representative normal-behaviour data from the target microservice topology before deployment; auto-training on synthetic normal data is performed if no checkpoint exists.
+    \item GNN model inputs shall be validated (non-NaN, correct shape) before inference.
+    \item Anomaly scores shall be treated as indicators, not ground-truth labels; human review is expected for high-stakes recovery actions.
+    \item Model performance shall be tracked through training loss curves and model info fields in RCA results.
+    \item DECI causal discovery outputs shall be validated against the known service dependency topology and cycle-broken before use.
+    \item LLM-generated explanations shall be treated as advisory text; critical recovery decisions require human confirmation for real (non-simulated) execution.
+    \item The EWC/Replay and MAML mechanisms shall be engaged automatically on drift detection without requiring manual intervention.
+    \item Pattern history shall be used to escalate recurring root causes and inform proactive infrastructure recommendations.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Data Requirements}
+
+\begin{itemize}
+    \item Time-series metrics per service per timestamp: latency, error rate, CPU usage, memory usage, request rate.
+    \item Service dependency graph: service node list, directed call edges with weight (latency, call frequency).
+    \item Incident metadata: title, description, status, severity, root cause service, confidence, fault type, affected services, anomaly scores, timeline events, detection and resolution timestamps.
+    \item RCA result: root cause service, confidence, fault type, explanation text, propagation chain, metric deltas, recommended actions, causal graph JSON, model info JSON.
+    \item Recovery action records: action type, target service, kubectl command, confidence, success, simulated flag, severity level, execution time.
+    \item Pattern history: root cause service, occurrence count, common fault type, severity trend, recommendation, priority, first/last seen timestamps.
+    \item GNN model checkpoint: trained parameter weights saved to disk for persistence across restarts.
+    \item Runbook content (for RAG): text descriptions of known fault patterns and their likely causal relationships between services.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Logging and Monitoring Requirements}
+
+\begin{itemize}
+    \item The system shall maintain application logs for all pipeline stages, API requests, and errors.
+    \item Pipeline execution times per stage shall be logged in the incident timeline.
+    \item Prometheus scraping failures and LLM API errors shall be identifiable through logs.
+    \item Important AI module errors (GNN inference failure, DECI failure, LLM timeout) shall be logged with sufficient context for troubleshooting.
+    \item The health-check endpoint (\texttt{/api/v1/health}) shall report all component statuses for external monitoring and alerting.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Error Handling Requirements}
+
+\begin{itemize}
+    \item Invalid API request payloads shall be rejected with HTTP 422 and a descriptive Pydantic validation error message.
+    \item Prometheus scraping failures shall be handled gracefully with fallback to the simulator or an informative error response.
+    \item LLM API failures shall fall back to the mock LLM and shall not cause pipeline termination.
+    \item PyTorch Geometric unavailability shall be detected at startup and the statistical fallback detector engaged automatically.
+    \item DECI causal discovery failures (convergence issues, singular matrices) shall be caught and a safe fallback result returned.
+    \item Database unavailability shall be reported through the health endpoint and logged; the pipeline shall not silently discard results on DB failure.
+    \item Recovery action execution failures (simulated kubectl errors) shall be logged and the \texttt{success} flag in the recovery log set to \texttt{False}.
+\end{itemize}
+
+% ------------------------------------------------------------
+
+\subsection{Acceptance Criteria}
+
+The SYNAPSE system shall be considered functionally acceptable when:
+
+\begin{enumerate}
+    \item Authorized users can log in and access the dashboard with role-appropriate views.
+    \item Metrics can be ingested from Prometheus or the synthetic simulator and feature matrices constructed correctly.
+    \item The service dependency graph can be built, updated with live metrics, and visualized on the Graph page.
+    \item The VAE-GNN correctly assigns higher anomaly scores to injected fault services than to healthy services in a controlled fault simulation.
+    \item The severity classifier correctly classifies L1 (single service, high confidence), L2 (2--3 cascading), L3 (4+ services or low confidence), and L4 (recurring $>$ 3) incidents.
+    \item The DECI causal discovery produces a valid, cycle-free DAG on the anomalous service subset and correctly identifies the injected root cause service as a root node.
+    \item The LLM reasoner generates a coherent, non-empty explanation for an incident with plausible fault type and recommended actions.
+    \item The recovery engine selects and simulates an appropriate kubectl action and logs the result.
+    \item Recurring root cause incidents ($>$ 3 occurrences) are escalated to L4 severity.
+    \item Fault simulation correctly injects a fault, runs the full RCA pipeline, and returns a SimulateResponse with a linked RCA result.
+    \item The WebSocket live anomaly stream connects, pushes updates, and can be consumed by the React frontend.
+    \item The model status endpoint accurately reflects GNN training state, MAML adaptation history, EWC/Replay state, and recurring patterns.
+    \item After a drift-triggering incident, MAML adaptation is applied and the continual learning state is updated.
+    \item Unauthorized users cannot access restricted API endpoints.
+    \item Major failures (LLM API down, PyG unavailable, DB unreachable) are handled gracefully without uncontrolled application termination.
+\end{enumerate}
+
+% ============================================================
+% END OF DOCUMENT
+% ============================================================
+
+\FloatBarrier
+\end{document}

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0" /><mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="SYNAPSE — Entity Relationship Diagram (SQLite / PostgreSQL)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="15" width="1240" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- INCIDENT -->
+    <mxCell id="INC" value="INCIDENT" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="460" y="60" width="310" height="320" as="geometry" />
+    </mxCell>
+    <mxCell id="INCA" value="🔑 id : VARCHAR (UUID, PK)&#xa;title : VARCHAR NOT NULL&#xa;description : TEXT&#xa;status : VARCHAR (analyzing|detected|resolved)&#xa;severity : VARCHAR (critical|high|medium|low)&#xa;root_cause_service : VARCHAR&#xa;confidence : FLOAT&#xa;fault_type : VARCHAR&#xa;affected_services : JSON&#xa;anomaly_scores : JSON&#xa;timeline : JSON&#xa;window_start : TIMESTAMP&#xa;window_end : TIMESTAMP&#xa;detected_at : TIMESTAMP&#xa;resolved_at : TIMESTAMP" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;fontSize=10;html=1;" vertex="1" parent="INC">
+      <mxGeometry x="0" y="30" width="310" height="290" as="geometry" />
+    </mxCell>
+
+    <!-- RCA_RESULT -->
+    <mxCell id="RCA" value="RCA_RESULT" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="880" y="60" width="320" height="310" as="geometry" />
+    </mxCell>
+    <mxCell id="RCAA" value="🔑 id : INTEGER (PK, autoincrement)&#xa;🔗 incident_id : VARCHAR (FK → INCIDENT.id)&#xa;root_cause_service : VARCHAR&#xa;confidence : FLOAT&#xa;fault_type : VARCHAR&#xa;explanation : TEXT&#xa;propagation_chain : TEXT&#xa;metric_deltas : JSON&#xa;recommended_actions : JSON&#xa;causal_graph : JSON&#xa;model_info : JSON&#xa;created_at : TIMESTAMP DEFAULT NOW()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;fontSize=10;html=1;" vertex="1" parent="RCA">
+      <mxGeometry x="0" y="30" width="320" height="280" as="geometry" />
+    </mxCell>
+
+    <!-- RECOVERY_ACTION_LOG -->
+    <mxCell id="RAL" value="RECOVERY_ACTION_LOG" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="880" y="420" width="320" height="270" as="geometry" />
+    </mxCell>
+    <mxCell id="RALA" value="🔑 id : INTEGER (PK, autoincrement)&#xa;🔗 incident_id : VARCHAR (FK → INCIDENT.id)&#xa;action_type : VARCHAR&#xa;  (restart|scale_up|rollback|alert)&#xa;target_service : VARCHAR&#xa;kubectl_command : TEXT&#xa;confidence : FLOAT&#xa;success : BOOLEAN&#xa;simulated : BOOLEAN DEFAULT TRUE&#xa;severity_level : VARCHAR&#xa;execution_time_ms : FLOAT&#xa;created_at : TIMESTAMP DEFAULT NOW()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;fontSize=10;html=1;" vertex="1" parent="RAL">
+      <mxGeometry x="0" y="30" width="320" height="240" as="geometry" />
+    </mxCell>
+
+    <!-- SERVICE_METRIC -->
+    <mxCell id="SM" value="SERVICE_METRIC" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="60" y="60" width="270" height="240" as="geometry" />
+    </mxCell>
+    <mxCell id="SMA" value="🔑 id : INTEGER (PK, autoincrement)&#xa;service_name : VARCHAR NOT NULL&#xa;timestamp : TIMESTAMP NOT NULL&#xa;latency : FLOAT (ms)&#xa;error_rate : FLOAT (0.0 – 1.0)&#xa;cpu : FLOAT (0.0 – 1.0)&#xa;memory : FLOAT (0.0 – 1.0)&#xa;request_rate : FLOAT (req/s)&#xa;&#xa;[correlated to INCIDENT via&#xa; service_name + time window]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;fontSize=10;html=1;" vertex="1" parent="SM">
+      <mxGeometry x="0" y="30" width="270" height="210" as="geometry" />
+    </mxCell>
+
+    <!-- PATTERN_HISTORY -->
+    <mxCell id="PH" value="PATTERN_HISTORY" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="60" y="420" width="280" height="260" as="geometry" />
+    </mxCell>
+    <mxCell id="PHA" value="🔑 id : INTEGER (PK, autoincrement)&#xa;root_cause_service : VARCHAR NOT NULL&#xa;occurrence_count : INTEGER DEFAULT 1&#xa;common_fault_type : VARCHAR&#xa;severity_trend : VARCHAR&#xa;  (stable|worsening|improving)&#xa;recommendation : TEXT&#xa;priority : VARCHAR&#xa;first_seen : TIMESTAMP&#xa;last_seen : TIMESTAMP&#xa;&#xa;[correlated to INCIDENT via&#xa; root_cause_service — no FK]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;fontSize=10;html=1;" vertex="1" parent="PH">
+      <mxGeometry x="0" y="30" width="280" height="230" as="geometry" />
+    </mxCell>
+
+    <!-- Relationships -->
+    <!-- INCIDENT 1 -> RCA_RESULT 0..1 -->
+    <mxCell id="r1" value="has (1:0..1)" style="endArrow=ERone;startArrow=ERone;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.3;fontStyle=1;fontSize=10;" edge="1" parent="1" source="INC" target="RCA">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- INCIDENT 1 -> RECOVERY_ACTION_LOG 0..* -->
+    <mxCell id="r2" value="has (1:0..*)" style="endArrow=ERmanyToOne;startArrow=ERone;html=1;exitX=1;exitY=0.7;entryX=0;entryY=0.3;fontStyle=1;fontSize=10;" edge="1" parent="1" source="INC" target="RAL">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- SERVICE_METRIC correlated (dotted) -> INCIDENT -->
+    <mxCell id="r3" value="correlated by&#xa;service_name + time window" style="endArrow=open;endFill=0;dashed=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=9;fontStyle=2;" edge="1" parent="1" source="SM" target="INC">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- PATTERN_HISTORY correlated (dotted) -> INCIDENT -->
+    <mxCell id="r4" value="tracks recurrence of&#xa;root_cause_service" style="endArrow=open;endFill=0;dashed=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.7;fontSize=9;fontStyle=2;" edge="1" parent="1" source="PH" target="INC">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Legend -->
+    <mxCell id="leg" value="Legend:&#xa;🔑 Primary Key&#xa;🔗 Foreign Key&#xa;──  FK relationship (enforced)&#xa;- -  Correlation (by field, no FK)" style="text;html=1;strokeColor=#666;fillColor=#f5f5f5;align=left;fontSize=10;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1220" y="750" width="200" height="110" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

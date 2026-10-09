@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+  <root>
+    <mxCell id="0" /><mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="Class Diagram — AI Pipeline and Orchestration Classes" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="100" y="15" width="1400" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- Abstract AIModule -->
+    <mxCell id="AI" value="«abstract»&#xa;AIModule" style="swimlane;startSize=40;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=3;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="620" y="60" width="220" height="110" as="geometry" />
+    </mxCell>
+    <mxCell id="AIA" value="──────────────&#xa;+ initialize() : void&#xa;+ process(*args) : dict" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="AI">
+      <mxGeometry x="0" y="40" width="220" height="70" as="geometry" />
+    </mxCell>
+
+    <!-- RCAPipeline (centre) -->
+    <mxCell id="RCP" value="RCAPipeline" style="swimlane;startSize=30;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="570" y="530" width="320" height="200" as="geometry" />
+    </mxCell>
+    <mxCell id="RCPA" value="- _initialized : bool&#xa;- _model_trained : bool&#xa;- _gnn_type : str&#xa;──────────────&#xa;+ initialize() : void&#xa;+ run_rca_pipeline(incident, db) : dict&#xa;+ train_on_normal_data(scenarios, epochs) : dict&#xa;+ get_model_status() : dict&#xa;+ _detect_and_handle_drift(matrix) : void" style="text;strokeColor=none;fillColor=#006EAF;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="RCP">
+      <mxGeometry x="0" y="30" width="320" height="170" as="geometry" />
+    </mxCell>
+
+    <!-- GNNAnomalyDetector -->
+    <mxCell id="GNN" value="GNNAnomalyDetector" style="swimlane;startSize=30;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="40" y="60" width="250" height="180" as="geometry" />
+    </mxCell>
+    <mxCell id="GNNA" value="- model : VAEGNNModel&#xa;- device : str&#xa;- threshold : float = 0.6&#xa;──────────────&#xa;+ compute_scores(matrix, edge_index) : dict&#xa;+ get_top_anomalous(scores, threshold) : list&#xa;+ train(normal_data, edge_index, epochs) : float&#xa;+ save_model(path) : void&#xa;+ load_model(path) : void" style="text;strokeColor=none;fillColor=#9673a6;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="GNN">
+      <mxGeometry x="0" y="30" width="250" height="150" as="geometry" />
+    </mxCell>
+
+    <!-- CausalDiscoveryEngine -->
+    <mxCell id="CDE" value="CausalDiscoveryEngine" style="swimlane;startSize=30;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="330" y="60" width="250" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="CDEA" value="- alpha : float = 0.05&#xa;- method : str = 'deci'&#xa;──────────────&#xa;+ discover(ts_matrix, service_names,&#xa;  w0_prior) : dict&#xa;+ validate_edges(result, graph) : dict&#xa;+ reorient_by_topology(result, graph) : dict&#xa;+ break_cycles(dag, scores) : dict" style="text;strokeColor=none;fillColor=#6d3a6d;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="CDE">
+      <mxGeometry x="0" y="30" width="250" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- LLMReasoner -->
+    <mxCell id="LLM" value="LLMReasoner" style="swimlane;startSize=30;fillColor=#007d7d;strokeColor=#007d7d;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="910" y="60" width="250" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="LLMA" value="- provider : str&#xa;- model : str = 'gpt-4o-mini'&#xa;- mock_mode : bool&#xa;──────────────&#xa;+ explain(root_candidates, scores,&#xa;  causal_edges, metric_deltas) : dict&#xa;+ generate_prompt(context) : str&#xa;+ parse_response(text) : dict" style="text;strokeColor=none;fillColor=#007d7d;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="LLM">
+      <mxGeometry x="0" y="30" width="250" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- SeverityClassifier -->
+    <mxCell id="SC" value="SeverityClassifier" style="swimlane;startSize=30;fillColor=#f0a30a;strokeColor=#BD7000;fontColor=#000000;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="60" width="270" height="180" as="geometry" />
+    </mxCell>
+    <mxCell id="SCA" value="- incident_history : List&#xa;──────────────&#xa;+ classify(anomaly_scores, confidence,&#xa;  root_cause) : SeverityResult&#xa;+ record_incident(root_cause, severity,&#xa;  fault_type) : void&#xa;+ get_recurring_patterns() : dict&#xa;+ _count_recurrences(service) : int" style="text;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="SC">
+      <mxGeometry x="0" y="30" width="270" height="150" as="geometry" />
+    </mxCell>
+
+    <!-- RecoveryEngine -->
+    <mxCell id="RE" value="RecoveryEngine" style="swimlane;startSize=30;fillColor=#d73a1a;strokeColor=#d73a1a;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="40" y="420" width="250" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="REA" value="- action_map : dict&#xa;──────────────&#xa;+ select_action(severity, root_cause,&#xa;  fault_type) : RecoveryAction&#xa;+ execute_action(action,&#xa;  simulate) : ActionResult&#xa;+ log_action(action, result, db) : void" style="text;strokeColor=none;fillColor=#d73a1a;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="RE">
+      <mxGeometry x="0" y="30" width="250" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- ContinualManager -->
+    <mxCell id="CM" value="ContinualManager" style="swimlane;startSize=30;fillColor=#d6b656;strokeColor=#d6b656;fontColor=#000000;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="330" y="420" width="250" height="180" as="geometry" />
+    </mxCell>
+    <mxCell id="CMA" value="- ewc_lambda : float&#xa;- fisher_matrix : dict&#xa;- replay_buffer : List&#xa;- buffer_size : int&#xa;──────────────&#xa;+ detect_drift(feature_matrix) : tuple&#xa;+ register_completed_task(model,&#xa;  data) : void&#xa;+ get_ewc_loss(model) : Tensor" style="text;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="CM">
+      <mxGeometry x="0" y="30" width="250" height="150" as="geometry" />
+    </mxCell>
+
+    <!-- MAMLAdapter -->
+    <mxCell id="MA" value="MAMLAdapter" style="swimlane;startSize=30;fillColor=#82b366;strokeColor=#82b366;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="910" y="420" width="250" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="MAA" value="- inner_lr : float&#xa;- inner_steps : int = 3&#xa;- adaptation_history : List&#xa;──────────────&#xa;+ initialize(model) : void&#xa;+ adapt(support_data,&#xa;  model) : nn.Module&#xa;+ get_adaptation_count() : int" style="text;strokeColor=none;fillColor=#d5e8d4;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="MA">
+      <mxGeometry x="0" y="30" width="250" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- PatternAnalyzer -->
+    <mxCell id="PA" value="PatternAnalyzer" style="swimlane;startSize=30;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="420" width="250" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="PAA" value="──────────────&#xa;+ detect_recurring(root_cause,&#xa;  db) : PatternHistory&#xa;+ multi_root_cause(scores,&#xa;  dag) : List[str]&#xa;+ update_pattern(root_cause,&#xa;  fault_type, db) : void" style="text;strokeColor=none;fillColor=#647687;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="PA">
+      <mxGeometry x="0" y="30" width="250" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- SynapseRAG -->
+    <mxCell id="RAG" value="SynapseRAG" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="330" y="280" width="250" height="110" as="geometry" />
+    </mxCell>
+    <mxCell id="RAGA" value="- runbooks : List[str]&#xa;──────────────&#xa;+ generate_w0_prior(desc,&#xa;  service_names) : np.ndarray" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="RAG">
+      <mxGeometry x="0" y="30" width="250" height="80" as="geometry" />
+    </mxCell>
+
+    <!-- Inheritance arrows (AIModule -> subclasses) -->
+    <mxCell id="inh1" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="GNN" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh2" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="CDE" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh3" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="LLM" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh4" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="SC" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh5" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="RE" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh6" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="CM" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh7" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="MA" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh8" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="PA" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inh9" value="" style="endArrow=block;endFill=0;endSize=10;html=1;" edge="1" parent="1" source="RAG" target="AI"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+    <!-- Composition: RCAPipeline -> all modules -->
+    <mxCell id="c1" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="GNN"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c2" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="CDE"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c3" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="LLM"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c4" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="SC"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c5" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="RE"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c6" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="CM"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c7" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="MA"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c8" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="PA"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c9" value="uses" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="RCP" target="RAG"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

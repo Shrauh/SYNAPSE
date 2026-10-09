@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0" /><mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="Sequence Diagram 1 — Anomaly Detection and Incident Creation" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="15" width="1240" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- Lifeline headers -->
+    <mxCell id="lh1" value="SRE" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="60" y="60" width="100" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh2" value="React UI" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="230" y="60" width="100" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh3" value="FastAPI" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="420" y="60" width="100" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh4" value="RCAPipeline" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="620" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh5" value="GNNDetector" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh6" value="Database" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="60" width="100" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Dashed lifelines -->
+    <mxCell id="ll1" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry x="110" y="120" width="0" height="760" as="geometry"><Array as="points"><mxPoint x="110" y="120"/><mxPoint x="110" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll2" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="280" y="120"/><mxPoint x="280" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll3" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="470" y="120"/><mxPoint x="470" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll4" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="680" y="120"/><mxPoint x="680" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll5" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="890" y="120"/><mxPoint x="890" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll6" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1110" y="120"/><mxPoint x="1110" y="880"/></Array></mxGeometry></mxCell>
+
+    <!-- Message 1: SRE -> React: trigger RCA -->
+    <mxCell id="m1" value="1. trigger RCA (click button)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="110" y="160"/><mxPoint x="280" y="160"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 2: React -> FastAPI: POST /rca/simulate -->
+    <mxCell id="m2" value="2. POST /api/v1/rca/simulate {incident_data}" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="280" y="200"/><mxPoint x="470" y="200"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 3: FastAPI -> DB: INSERT incident -->
+    <mxCell id="m3" value="3. INSERT incident (status=analyzing)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="470" y="240"/><mxPoint x="1110" y="240"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Return: DB -> FastAPI -->
+    <mxCell id="m3r" value="incident_id" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="1110" y="270"/><mxPoint x="470" y="270"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 4: FastAPI -> RCAPipeline: run_rca_pipeline -->
+    <mxCell id="m4" value="4. run_rca_pipeline(incident, db)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="470" y="310"/><mxPoint x="680" y="310"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 5: RCAPipeline -> RCAPipeline: ingest_and_extract -->
+    <mxCell id="m5" value="5. ingest_metrics() + extract_features()" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="680" y="350"/><mxPoint x="730" y="350"/><mxPoint x="730" y="370"/><mxPoint x="680" y="370"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 6: RCAPipeline -> GNNDetector: compute_scores -->
+    <mxCell id="m6" value="6. compute_scores(feature_matrix, edge_index)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="680" y="410"/><mxPoint x="890" y="410"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Return: GNNDetector -> RCAPipeline: scores -->
+    <mxCell id="m6r" value="anomaly_scores{svc:score}, uncertainty_scores" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="890" y="450"/><mxPoint x="680" y="450"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 7: RCAPipeline: filter anomalous -->
+    <mxCell id="m7" value="7. filter_anomalous(scores, threshold=0.6)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="680" y="490"/><mxPoint x="740" y="490"/><mxPoint x="740" y="510"/><mxPoint x="680" y="510"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 8: RCAPipeline -> FastAPI: pipeline started -->
+    <mxCell id="m8" value="8. pipeline_started (async)" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="680" y="550"/><mxPoint x="470" y="550"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 9: FastAPI -> React: response -->
+    <mxCell id="m9" value="9. HTTP 202 {incident_id, status: 'analyzing'}" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="470" y="590"/><mxPoint x="280" y="590"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 10: React -> SRE -->
+    <mxCell id="m10" value="10. display incident card (status: analyzing)" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="280" y="630"/><mxPoint x="110" y="630"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- [async continues] -->
+    <mxCell id="async1" value="[pipeline continues asynchronously...]" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="580" y="660" width="320" height="30" as="geometry" />
+    </mxCell>
+
+    <!-- Message 11: RCAPipeline -> DB: UPDATE incident -->
+    <mxCell id="m11" value="11. UPDATE incident (severity, anomaly_scores, root_cause)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="680" y="710"/><mxPoint x="1110" y="710"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Message 12: RCAPipeline -> DB: INSERT rca_result -->
+    <mxCell id="m12" value="12. INSERT rca_result, recovery_log" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="680" y="750"/><mxPoint x="1110" y="750"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- WebSocket push -->
+    <mxCell id="m13" value="13. WS push: anomaly_scores update (live)" style="endArrow=block;endFill=1;html=1;strokeColor=#007d7d;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="470" y="800"/><mxPoint x="280" y="800"/></Array></mxGeometry>
+    </mxCell>
+
+  </root>
+</mxGraphModel>
