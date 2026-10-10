@@ -6,15 +6,20 @@ Uses aiosqlite for development, easily swappable to asyncpg + PostgreSQL.
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
+logger = logging.getLogger("synapse.db")
+
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
     future=True,
+    pool_pre_ping=True,
 )
 
 async_session = async_sessionmaker(
@@ -31,8 +36,19 @@ class Base(DeclarativeBase):
 
 async def init_db() -> None:
     """Create all tables. Called on application startup."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables initialized.")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        raise
+
+
+async def shutdown_db() -> None:
+    """Dispose engine on shutdown."""
+    await engine.dispose()
+    logger.info("Database engine disposed.")
 
 
 async def get_db() -> AsyncSession:
@@ -40,5 +56,9 @@ async def get_db() -> AsyncSession:
     async with async_session() as session:
         try:
             yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
         finally:
             await session.close()

@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- Title -->
+    <mxCell id="title" value="SYNAPSE — Layered System Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="100" y="20" width="970" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- Layer 1: Presentation -->
+    <mxCell id="L1bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;opacity=50;" vertex="1" parent="1">
+      <mxGeometry x="100" y="80" width="970" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="L1label" value="Presentation Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="110" y="80" width="160" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="L1a" value="SRE Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="290" y="100" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="L1b" value="DevOps Engineer Panel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="490" y="100" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="L1c" value="Engineering Manager View" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="690" y="100" width="180" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- Arrow L1 -> L2 -->
+    <mxCell id="a12" value="" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="L1bg" target="L2bg">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Layer 2: React Frontend -->
+    <mxCell id="L2bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=50;" vertex="1" parent="1">
+      <mxGeometry x="100" y="180" width="970" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="L2label" value="React Frontend&#xa;(TypeScript + Vite)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="110" y="180" width="160" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="L2a" value="Service Graph Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="290" y="200" width="120" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="L2b" value="Incident List" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="420" y="200" width="110" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="L2c" value="RCA Report" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="540" y="200" width="110" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="L2d" value="Simulate Panel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="200" width="110" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="L2e" value="Model Status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="780" y="200" width="110" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="L2f" value="Live Anomaly&#xa;(WebSocket)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="900" y="200" width="110" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- Arrow L2 -> L3 -->
+    <mxCell id="a23" value="" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="L2bg" target="L3bg">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Layer 3: FastAPI -->
+    <mxCell id="L3bg" value="FastAPI Backend  (REST + WebSocket  /api/v1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+      <mxGeometry x="100" y="280" width="970" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- Arrow L3 -> L4 -->
+    <mxCell id="a34" value="" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="L3bg" target="L4bg">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Layer 4: AI Pipeline -->
+    <mxCell id="L4bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;opacity=50;" vertex="1" parent="1">
+      <mxGeometry x="100" y="350" width="970" height="90" as="geometry" />
+    </mxCell>
+    <mxCell id="L4label" value="AI Pipeline&#xa;(Module 2)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="110" y="350" width="130" height="90" as="geometry" />
+    </mxCell>
+    <mxCell id="L4a" value="VAE-GNN&#xa;Anomaly Detection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="250" y="370" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L4b" value="DECI Causal&#xa;Discovery" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="400" y="370" width="130" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L4c" value="LLM Reasoning&#xa;(GPT-4o / Mock)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="540" y="370" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L4d" value="Severity&#xa;Classifier L1-L4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="690" y="370" width="130" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L4e" value="Recovery Engine&#xa;(kubectl Simulated)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="830" y="370" width="140" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- Arrow L4 -> L5 -->
+    <mxCell id="a45" value="" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="L4bg" target="L5bg">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Layer 5: Continual Learning -->
+    <mxCell id="L5bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;opacity=50;" vertex="1" parent="1">
+      <mxGeometry x="100" y="460" width="970" height="90" as="geometry" />
+    </mxCell>
+    <mxCell id="L5label" value="Continual Learning&#xa;(Module 3)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="110" y="460" width="130" height="90" as="geometry" />
+    </mxCell>
+    <mxCell id="L5a" value="EWC&#xa;(Fisher Matrix)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="260" y="480" width="150" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L5b" value="Experience Replay&#xa;Buffer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="430" y="480" width="150" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L5c" value="MAML&#xa;Adaptation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="600" y="480" width="150" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L5d" value="Pattern Analyzer&#xa;(Recurring Faults)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="770" y="480" width="150" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- Arrow L5 -> L6 -->
+    <mxCell id="a56" value="" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="L5bg" target="L6bg">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Layer 6: Ingestion -->
+    <mxCell id="L6bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=70;" vertex="1" parent="1">
+      <mxGeometry x="100" y="570" width="970" height="90" as="geometry" />
+    </mxCell>
+    <mxCell id="L6label" value="Ingestion &amp; Feature&#xa;Engineering (Module 1)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="110" y="570" width="130" height="90" as="geometry" />
+    </mxCell>
+    <mxCell id="L6a" value="Prometheus&#xa;Scraping" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#82b366;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="260" y="590" width="150" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L6b" value="Synthetic&#xa;Simulator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#82b366;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="430" y="590" width="150" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L6c" value="Z-score&#xa;Normalisation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#82b366;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="600" y="590" width="150" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="L6d" value="Graph Builder&#xa;(Topology)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#82b366;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="770" y="590" width="150" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- Arrow L6 -> L7 -->
+    <mxCell id="a67" value="" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="L6bg" target="L7bg">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Layer 7: Database -->
+    <mxCell id="L7bg" value="Database Layer — SQLite (dev) / PostgreSQL (prod)  |  Incidents  |  RCA Results  |  Service Metrics  |  Recovery Logs  |  Pattern History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="100" y="680" width="970" height="50" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

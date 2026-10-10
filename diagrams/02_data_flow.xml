@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1200" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- Title -->
+    <mxCell id="title" value="SYNAPSE — End-to-End RCA Pipeline Flow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="150" y="20" width="500" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- Step 1 -->
+    <mxCell id="s1" value="Prometheus / Synthetic Simulator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="200" y="80" width="400" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="a1" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s1" target="s2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 2 -->
+    <mxCell id="s2" value="Step 1 — Metrics Ingestion&#xa;(latency, error_rate, cpu, memory, request_rate)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="160" width="400" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="a2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s2" target="s3">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 3 -->
+    <mxCell id="s3" value="Step 2 — Feature Extraction &amp; Z-score Normalisation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="240" width="400" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="a3" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s3" target="s4">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 4: VAE-GNN -->
+    <mxCell id="s4" value="Step 3 — VAE-GNN Anomaly Detection&#xa;→ anomaly_score + uncertainty per service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#7B5EA7;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="320" width="400" height="55" as="geometry" />
+    </mxCell>
+    <mxCell id="a4" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s4" target="s5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 5: Severity -->
+    <mxCell id="s5" value="Step 4 — Severity Classification (L1 / L2 / L3 / L4)&#xa;+ Recurring Pattern Check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontColor=#000000;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="405" width="400" height="55" as="geometry" />
+    </mxCell>
+    <mxCell id="a5" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s5" target="s6">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RAG side input -->
+    <mxCell id="rag" value="RAG Prior W₀&#xa;from Runbooks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="660" y="475" width="130" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="arag" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="rag" target="s6">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 6: DECI -->
+    <mxCell id="s6" value="Step 5 — DECI Causal Discovery on Anomalous Subset&#xa;Topology Validation → Cycle Breaking → DAG" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="490" width="400" height="55" as="geometry" />
+    </mxCell>
+    <mxCell id="a6" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s6" target="s7">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 7: Root Cause -->
+    <mxCell id="s7" value="Step 6 — Root Cause Extraction&#xa;(root nodes in DAG, propagation chain)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="575" width="400" height="55" as="geometry" />
+    </mxCell>
+    <mxCell id="a7" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s7" target="s8">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 8: LLM -->
+    <mxCell id="s8" value="Step 7 — LLM Reasoning&#xa;→ Explanation + Fault Type + Recommended Actions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007d7d;strokeColor=#007d7d;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="660" width="400" height="55" as="geometry" />
+    </mxCell>
+    <mxCell id="a8" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s8" target="s9">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 9: Recovery -->
+    <mxCell id="s9" value="Step 8 — Recovery Action Selection&#xa;→ Simulated kubectl Execution" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d73a1a;strokeColor=#d73a1a;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="745" width="400" height="55" as="geometry" />
+    </mxCell>
+
+    <!-- MAML side -->
+    <mxCell id="maml" value="Step 8.5 — Drift Detection&#xa;→ MAML Adaptation (if drift)&#xa;+ EWC / Replay Update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="660" y="745" width="160" height="55" as="geometry" />
+    </mxCell>
+    <mxCell id="amaml" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="s9" target="maml">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="a9" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s9" target="s10">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 10: Store -->
+    <mxCell id="s10" value="Step 9 — Store Incident + RCA Result + Recovery Log → DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="830" width="400" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="a10" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="s10" target="s11">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Step 11: Push to Frontend -->
+    <mxCell id="s11" value="Step 10 — Push to React Dashboard + WebSocket Live Feed&#xa;→ Feedback Loop (Continual Learning)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#28a745;strokeColor=#28a745;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="200" y="910" width="400" height="55" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

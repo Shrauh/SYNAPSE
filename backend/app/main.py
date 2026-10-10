@@ -10,8 +10,17 @@ from __future__ import annotations
 import os
 import sys
 import time
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Configure structured logging for production
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("synapse")
 
 # Ensure backend root directory is in sys.path for Windows spawned workers
 _backend_root = str(Path(__file__).resolve().parent.parent)
@@ -47,16 +56,18 @@ async def lifespan(app: FastAPI):
     try:
         from app.ai_module.orchestrator import pipeline
         await pipeline.initialize()
-        print("[SYNAPSE] AI pipeline initialized successfully.")
+        logger.info("AI pipeline initialized successfully.")
     except Exception as e:
-        print(f"[SYNAPSE] AI pipeline init skipped: {e}")
+        logger.warning(f"AI pipeline init skipped: {e}")
 
-    print(f"[SYNAPSE] Server started — {settings.app_name} v{settings.app_version}")
+    logger.info(f"Server started — {settings.app_name} v{settings.app_version}")
 
     yield
 
     # Shutdown cleanup
-    print("[SYNAPSE] Server shutting down.")
+    logger.info("Server shutting down.")
+    from app.db.database import shutdown_db
+    await shutdown_db()
 
 
 app = FastAPI(
@@ -80,6 +91,13 @@ app.add_middleware(
 
 # Mount all API routes under /api/v1
 app.include_router(api_router)
+
+@app.get("/health", tags=["Root"], include_in_schema=False)
+async def health_shortcut():
+    """Convenience shortcut — redirects to /api/v1/health."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/v1/health")
+
 
 # Mount built React frontend if available
 _frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
@@ -139,9 +157,4 @@ else:
         from fastapi.responses import Response
         return Response(status_code=204)
 
-@app.get("/health", tags=["Root"], include_in_schema=False)
-async def health_shortcut():
-    """Convenience shortcut — redirects to /api/v1/health."""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/api/v1/health")
 

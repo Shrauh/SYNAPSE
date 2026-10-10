@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./synapse.db"
 
     # --- AI Module ---
-    gnn_model_path: str = "./models/deic_gnn.pt"
+    gnn_model_path: str = "./models/deci_gnn.pt"
     anomaly_threshold: float = 0.6
     maml_inner_lr: float = 0.01
     maml_outer_lr: float = 0.001
@@ -43,9 +43,16 @@ class Settings(BaseSettings):
     ewc_lambda: float = 5000.0
 
     # --- LLM ---
-    llm_provider: str = "mock"  # "mock" | "openai"
+    llm_provider: str = "mock"  # "mock" | "openai" | "ollama"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2:3b"
+
+    # --- Infrastructure ---
+    prometheus_url: str = "http://localhost:9090"
+    k8s_namespace: str = "default"
+    recovery_dry_run: bool = True
 
     # --- CORS ---
     cors_origins: str = '["http://localhost:3000","http://localhost:5173"]'

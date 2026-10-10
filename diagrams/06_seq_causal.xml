@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0" /><mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="Sequence Diagram 2 — DECI Causal Discovery and Root Cause Extraction" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="15" width="1240" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- Lifeline headers -->
+    <mxCell id="lh1" value="RCAPipeline" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="60" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh2" value="SynapseRAG" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="250" y="60" width="110" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh3" value="DECIEngine" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="440" y="60" width="110" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh4" value="TopologyValidator" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="640" y="60" width="130" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh5" value="DAGUtils" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="870" y="60" width="110" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh6" value="LLMReasoner" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#007d7d;strokeColor=#007d7d;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1090" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Dashed lifelines -->
+    <mxCell id="ll1" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="120"/><mxPoint x="120" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll2" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="305" y="120"/><mxPoint x="305" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll3" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="495" y="120"/><mxPoint x="495" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll4" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="705" y="120"/><mxPoint x="705" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll5" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="925" y="120"/><mxPoint x="925" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll6" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1150" y="120"/><mxPoint x="1150" y="880"/></Array></mxGeometry></mxCell>
+
+    <!-- Messages -->
+    <mxCell id="m1" value="1. generate_w0_prior(anomaly_description, service_names)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="165"/><mxPoint x="305" y="165"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m1r" value="w0_prior[k×k float matrix]" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="305" y="200"/><mxPoint x="120" y="200"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m2" value="2. discover(ts_matrix, service_names, w0_prior)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="245"/><mxPoint x="495" y="245"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m2i" value="[internal] fit DAG via differentiable causal inference (DECI / PC)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="495" y="280"/><mxPoint x="560" y="280"/><mxPoint x="560" y="300"/><mxPoint x="495" y="300"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m2r" value="{dag, edges_with_strength, h_score, method}" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="495" y="335"/><mxPoint x="120" y="335"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m3" value="3. validate_causal_edges(causal_result, graph_builder)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="380"/><mxPoint x="705" y="380"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m3r" value="validated_result" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="705" y="415"/><mxPoint x="120" y="415"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m4" value="4. reorient_by_topology(result, graph_builder)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="455"/><mxPoint x="705" y="455"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m4r" value="topology-oriented result" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="705" y="490"/><mxPoint x="120" y="490"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m5" value="5. break_cycles(dag, anomaly_scores)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="535"/><mxPoint x="925" y="535"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m5r" value="acyclic_dag (valid DAG)" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="925" y="570"/><mxPoint x="120" y="570"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m6" value="6. get_root_nodes(dag, anomaly_scores)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="615"/><mxPoint x="925" y="615"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m6r" value="root_candidates [(service, confidence_score)]" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="925" y="650"/><mxPoint x="120" y="650"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m7" value="7. get_propagation_chain(dag, root_cause)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="695"/><mxPoint x="925" y="695"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m7r" value="'svcA → svcB → svcC' (propagation chain string)" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="925" y="730"/><mxPoint x="120" y="730"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m8" value="8. explain(root_candidates, scores, edges, metric_deltas)" style="endArrow=block;endFill=1;html=1;strokeColor=#007d7d;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="780"/><mxPoint x="1150" y="780"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m8r" value="{explanation, fault_type, affected_services, rec_actions}" style="endArrow=open;endFill=0;dashed=1;html=1;strokeColor=#007d7d;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="1150" y="820"/><mxPoint x="120" y="820"/></Array></mxGeometry>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

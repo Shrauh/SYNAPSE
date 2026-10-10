@@ -4,10 +4,11 @@ Incident endpoints — CRUD + RCA reports + causal graphs.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
@@ -28,13 +29,21 @@ from app.models.schemas import (
 )
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
+logger = logging.getLogger("synapse.incidents")
 
 
 @router.get("", response_model=IncidentListResponse)
 async def list_incidents(
-    page: int = 1, per_page: int = 20, db: AsyncSession = Depends(get_db)
+    page: int = Query(1, ge=1, description="Page number (starts at 1)"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    db: AsyncSession = Depends(get_db),
 ):
     """List all incidents with pagination."""
+    # Get total count
+    total_result = await db.execute(select(func.count(Incident.id)))
+    total = total_result.scalar() or 0
+
+    # Get paginated results
     result = await db.execute(
         select(Incident).order_by(Incident.detected_at.desc())
         .offset((page - 1) * per_page)
@@ -59,7 +68,7 @@ async def list_incidents(
 
     return IncidentListResponse(
         incidents=summaries,
-        total=len(summaries),
+        total=total,
         page=page,
         per_page=per_page,
     )
@@ -113,6 +122,14 @@ async def get_incident(incident_id: str, db: AsyncSession = Depends(get_db)):
             fault_type=incident.fault_type,
         )
 
+    # Safe timeline parsing
+    timeline = []
+    for e in (incident.timeline or []):
+        try:
+            timeline.append(TimelineEvent(**e))
+        except Exception:
+            pass
+
     return IncidentDetailResponse(
         id=incident.id,
         title=incident.title,
@@ -123,7 +140,7 @@ async def get_incident(incident_id: str, db: AsyncSession = Depends(get_db)):
         anomaly_scores=incident.anomaly_scores or {},
         root_cause=root_cause,
         affected_services=incident.affected_services,
-        timeline=[TimelineEvent(**e) for e in (incident.timeline or [])],
+        timeline=timeline,
     )
 
 
@@ -132,8 +149,9 @@ async def get_incident_report(incident_id: str, db: AsyncSession = Depends(get_d
     """Get the AI-generated RCA report for an incident."""
     result = await db.execute(
         select(RCAResult).where(RCAResult.incident_id == incident_id)
+        .order_by(RCAResult.id.desc())
     )
-    rca = result.scalar_one_or_none()
+    rca = result.scalars().first()
 
     if not rca:
         raise HTTPException(
@@ -160,8 +178,9 @@ async def get_causal_graph(incident_id: str, db: AsyncSession = Depends(get_db))
     """Get the causal DAG visualization for an incident."""
     result = await db.execute(
         select(RCAResult).where(RCAResult.incident_id == incident_id)
+        .order_by(RCAResult.id.desc())
     )
-    rca = result.scalar_one_or_none()
+    rca = result.scalars().first()
 
     if not rca or not rca.causal_graph:
         raise HTTPException(
@@ -169,8 +188,18 @@ async def get_causal_graph(incident_id: str, db: AsyncSession = Depends(get_db))
         )
 
     cg = rca.causal_graph
+    # Safe node/edge parsing
+    try:
+        nodes = [CausalNode(**n) for n in cg.get("nodes", [])]
+    except Exception:
+        nodes = []
+    try:
+        edges = [CausalEdge(**e) for e in cg.get("edges", [])]
+    except Exception:
+        edges = []
+
     return CausalGraphResponse(
         incident_id=incident_id,
-        causal_nodes=[CausalNode(**n) for n in cg.get("nodes", [])],
-        causal_edges=[CausalEdge(**e) for e in cg.get("edges", [])],
+        causal_nodes=nodes,
+        causal_edges=edges,
     )

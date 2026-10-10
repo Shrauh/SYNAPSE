@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+  <root>
+    <mxCell id="0" /><mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="Use Case Diagram — Administration and Management Functions" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="15" width="1000" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- System boundary -->
+    <mxCell id="boundary" value="SYNAPSE AIOps Platform" style="points=[[0,0],[1,0],[1,1],[0,1]];shape=mxgraph.flowchart.start_2;fillColor=none;strokeColor=#007d7d;strokeWidth=2;fontSize=13;fontStyle=1;verticalAlign=top;html=1;" vertex="1" parent="1">
+      <mxGeometry x="220" y="60" width="820" height="700" as="geometry" />
+    </mxCell>
+
+    <!-- Actor: Engineering Manager -->
+    <mxCell id="mgr" value="Engineering&#xa;Manager" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="50" y="120" width="60" height="90" as="geometry" />
+    </mxCell>
+
+    <!-- Actor: System Administrator -->
+    <mxCell id="admin" value="System&#xa;Administrator" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="50" y="350" width="60" height="90" as="geometry" />
+    </mxCell>
+
+    <!-- Actor: DevOps Engineer -->
+    <mxCell id="devops" value="DevOps /&#xa;Platform Engineer" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="50" y="590" width="60" height="90" as="geometry" />
+    </mxCell>
+
+    <!-- Engineering Manager use cases -->
+    <mxCell id="m1" value="View Incident Metrics &amp; Trends" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="280" y="90" width="240" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="m2" value="View Severity Level Summary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="280" y="160" width="240" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="m3" value="View Recurring Pattern Report" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="280" y="230" width="240" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- System Administrator use cases -->
+    <mxCell id="a1" value="Monitor System Health&#xa;(/api/v1/health)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="280" y="310" width="240" height="55" as="geometry" />
+    </mxCell>
+    <mxCell id="a2" value="View Application Logs" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="280" y="385" width="240" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="a3" value="Manage Database" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="280" y="455" width="240" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="a4" value="Configure Environment Settings" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="280" y="525" width="240" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- DevOps use cases -->
+    <mxCell id="d1" value="Configure Service Dependency Graph" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="280" y="595" width="240" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d2" value="Manage Prometheus Scrape Targets" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="280" y="665" width="240" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d3" value="Trigger Fault Simulation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="580" y="595" width="240" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d4" value="Review Pattern History" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="580" y="665" width="240" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- Edges: Manager -->
+    <mxCell id="em1" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="mgr" target="m1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="em2" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="mgr" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="em3" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="mgr" target="m3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+    <!-- Edges: Admin -->
+    <mxCell id="ea1" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="admin" target="a1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ea2" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="admin" target="a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ea3" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="admin" target="a3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ea4" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="admin" target="a4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+    <!-- Edges: DevOps -->
+    <mxCell id="ed1" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="devops" target="d1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed2" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="devops" target="d2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed3" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="devops" target="d3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed4" value="" style="endArrow=open;endFill=0;" edge="1" parent="1" source="devops" target="d4"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

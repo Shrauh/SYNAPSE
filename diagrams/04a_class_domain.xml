@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+  <root>
+    <mxCell id="0" /><mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="Class Diagram — Domain and Data Classes" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="100" y="15" width="1200" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- Incident -->
+    <mxCell id="Inc" value="Incident" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="40" y="80" width="260" height="300" as="geometry" />
+    </mxCell>
+    <mxCell id="IncA" value="+ id : str (UUID, PK)&#xa;+ title : str&#xa;+ description : str&#xa;+ status : str&#xa;+ severity : str&#xa;+ root_cause_service : str&#xa;+ confidence : float&#xa;+ fault_type : str&#xa;+ affected_services : JSON&#xa;+ anomaly_scores : JSON&#xa;+ timeline : JSON&#xa;+ window_start : datetime&#xa;+ window_end : datetime&#xa;+ detected_at : datetime&#xa;+ resolved_at : datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="Inc">
+      <mxGeometry x="0" y="30" width="260" height="270" as="geometry" />
+    </mxCell>
+
+    <!-- RCAResult -->
+    <mxCell id="RCA" value="RCAResult" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="340" y="80" width="280" height="300" as="geometry" />
+    </mxCell>
+    <mxCell id="RCAA" value="+ id : int (PK, autoincrement)&#xa;+ incident_id : str (FK → Incident)&#xa;+ root_cause_service : str&#xa;+ confidence : float&#xa;+ fault_type : str&#xa;+ explanation : str&#xa;+ propagation_chain : str&#xa;+ metric_deltas : JSON&#xa;+ recommended_actions : JSON&#xa;+ causal_graph : JSON&#xa;+ model_info : JSON&#xa;+ created_at : datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="RCA">
+      <mxGeometry x="0" y="30" width="280" height="270" as="geometry" />
+    </mxCell>
+
+    <!-- ServiceMetric -->
+    <mxCell id="SM" value="ServiceMetric" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="660" y="80" width="240" height="230" as="geometry" />
+    </mxCell>
+    <mxCell id="SMA" value="+ id : int (PK, autoincrement)&#xa;+ service_name : str&#xa;+ timestamp : datetime&#xa;+ latency : float (ms)&#xa;+ error_rate : float (0-1)&#xa;+ cpu : float (0-1)&#xa;+ memory : float (0-1)&#xa;+ request_rate : float (req/s)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="SM">
+      <mxGeometry x="0" y="30" width="240" height="200" as="geometry" />
+    </mxCell>
+
+    <!-- RecoveryActionLog -->
+    <mxCell id="RA" value="RecoveryActionLog" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="940" y="80" width="270" height="270" as="geometry" />
+    </mxCell>
+    <mxCell id="RAA" value="+ id : int (PK, autoincrement)&#xa;+ incident_id : str (FK → Incident)&#xa;+ action_type : str&#xa;  (restart | scale_up | rollback | alert)&#xa;+ target_service : str&#xa;+ kubectl_command : str&#xa;+ confidence : float&#xa;+ success : bool&#xa;+ simulated : bool&#xa;+ severity_level : str&#xa;+ execution_time_ms : float&#xa;+ created_at : datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="RA">
+      <mxGeometry x="0" y="30" width="270" height="240" as="geometry" />
+    </mxCell>
+
+    <!-- PatternHistory -->
+    <mxCell id="PH" value="PatternHistory" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="40" y="430" width="260" height="250" as="geometry" />
+    </mxCell>
+    <mxCell id="PHA" value="+ id : int (PK, autoincrement)&#xa;+ root_cause_service : str&#xa;+ occurrence_count : int&#xa;+ common_fault_type : str&#xa;+ severity_trend : str&#xa;  (stable | worsening | improving)&#xa;+ recommendation : str&#xa;+ priority : str&#xa;+ first_seen : datetime&#xa;+ last_seen : datetime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="PH">
+      <mxGeometry x="0" y="30" width="260" height="220" as="geometry" />
+    </mxCell>
+
+    <!-- ServiceGraph -->
+    <mxCell id="SG" value="ServiceGraph" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="340" y="430" width="270" height="200" as="geometry" />
+    </mxCell>
+    <mxCell id="SGA" value="+ nodes : List[GraphNode]&#xa;+ edges : List[GraphEdge]&#xa;──────────────&#xa;+ get_adjacency_list() : dict&#xa;+ get_edge_index_tensor() : Tensor&#xa;+ get_feature_matrix() : np.ndarray&#xa;+ update_with_metrics(metrics) : void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="SG">
+      <mxGeometry x="0" y="30" width="270" height="170" as="geometry" />
+    </mxCell>
+
+    <!-- GraphNode -->
+    <mxCell id="GN" value="GraphNode" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="660" y="360" width="240" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="GNA" value="+ id : str&#xa;+ label : str&#xa;+ type : str&#xa;+ anomaly_score : float&#xa;+ status : str&#xa;+ latency : float&#xa;+ error_rate : float" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="GN">
+      <mxGeometry x="0" y="30" width="240" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- GraphEdge -->
+    <mxCell id="GE" value="GraphEdge" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="940" y="360" width="240" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="GEA" value="+ source : str&#xa;+ target : str&#xa;+ call_type : str&#xa;+ avg_latency : float&#xa;+ call_frequency : float&#xa;+ weight : float" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="GE">
+      <mxGeometry x="0" y="30" width="240" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- Associations -->
+    <!-- Incident 1 --> RCAResult -->
+    <mxCell id="r1" value="1" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;startArrow=none;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.3;" edge="1" parent="1" source="Inc" target="RCA">
+      <mxGeometry relative="1" as="geometry"><Array as="points"/></mxGeometry>
+    </mxCell>
+    <mxCell id="r1lbl" value="1     0..1" style="text;html=1;fontSize=10;" vertex="1" parent="1"><mxGeometry x="315" y="110" width="30" height="20" as="geometry"/></mxCell>
+
+    <!-- Incident 1 --> RecoveryActionLog -->
+    <mxCell id="r2" value="" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;html=1;exitX=1;exitY=0.7;entryX=0;entryY=0.3;" edge="1" parent="1" source="Inc" target="RA">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="r2lbl" value="1     0..*" style="text;html=1;fontSize=10;" vertex="1" parent="1"><mxGeometry x="315" y="190" width="30" height="20" as="geometry"/></mxCell>
+
+    <!-- ServiceGraph 1 --> * GraphNode -->
+    <mxCell id="r3" value="1     *" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;html=1;" edge="1" parent="1" source="SG" target="GN">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- ServiceGraph 1 --> * GraphEdge -->
+    <mxCell id="r4" value="1     *" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;html=1;" edge="1" parent="1" source="SG" target="GE">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>

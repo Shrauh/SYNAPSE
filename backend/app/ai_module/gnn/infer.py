@@ -55,7 +55,7 @@ class GNNInference:
             scores = self.model.compute_anomaly_scores(x)
         else:
             # Final fallback: use variance-based scoring
-            mean = x.mean(dim=1)
+            mean = x.mean(dim=1).clamp(min=1e-8)
             std = x.std(dim=1).clamp(min=1e-6)
             scores = torch.sigmoid(std / mean - 1.0)
 

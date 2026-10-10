@@ -126,7 +126,7 @@ class EWC:
             self.model.zero_grad()
             try:
                 if hasattr(data, 'edge_index') and data.edge_index is not None:
-                    x_hat, _, _ = self.model(data.x, data.edge_index)
+                    x_hat, *_rest = self.model(data.x, data.edge_index)
                 else:
                     x_hat = self.model(data.x) if callable(self.model) else data.x
                 loss = criterion(x_hat, data.x)

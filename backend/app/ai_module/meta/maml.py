@@ -97,7 +97,7 @@ class MAMLAdapter:
                     data_ei = data.edge_index.to(device) if hasattr(data, 'edge_index') else None
 
                     if data_ei is not None:
-                        x_hat, _, _ = adapted_model(data_x, data_ei)
+                        x_hat, *_rest = adapted_model(data_x, data_ei)
                     else:
                         # Fallback for non-graph data
                         continue
@@ -159,7 +159,7 @@ class MAMLAdapter:
                 try:
                     data_x = data.x.to(device)
                     data_ei = data.edge_index.to(device)
-                    x_hat, _, _ = adapted(data_x, data_ei)
+                    x_hat, *_rest = adapted(data_x, data_ei)
                     task_loss += criterion(x_hat, data_x)
                 except Exception:
                     continue

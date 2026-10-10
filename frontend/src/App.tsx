@@ -7,6 +7,7 @@ import IncidentList from "./pages/IncidentList";
 import IncidentDetail from "./pages/IncidentDetail";
 import SimulatePage from "./pages/SimulatePage";
 import ModelStatusPage from "./pages/ModelStatus";
+import EvaluationPage from "./pages/EvaluationPage";
 
 function AppInner() {
   useLiveAnomalies(); // Start WebSocket globally
@@ -21,6 +22,7 @@ function AppInner() {
           <Route path="/incidents/:id" element={<IncidentDetail />} />
           <Route path="/simulate" element={<SimulatePage />} />
           <Route path="/model" element={<ModelStatusPage />} />
+          <Route path="/evaluation" element={<EvaluationPage />} />
         </Routes>
       </main>
     </div>

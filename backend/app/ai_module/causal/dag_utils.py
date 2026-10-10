@@ -163,27 +163,39 @@ def to_causal_graph_json(
 ) -> Dict[str, Any]:
     """Convert causal analysis results to JSON format for DB storage.
 
+    Only includes edges still present in the acyclic dag (after cycle-breaking)
+    to keep the graph consistent with the root cause analysis.
+
     Returns dict matching the CausalGraphResponse schema:
         {"nodes": [...], "edges": [...]}
     """
     root_services = {r[0] for r in root_candidates}
 
+    # Valid edges from the post-cycle-break acyclic dag
+    valid_edge_set = {
+        (src, tgt)
+        for src, targets in dag.items()
+        for tgt in targets
+    }
+
     nodes = [
         {
             "id": svc,
-            "anomaly_score": anomaly_scores.get(svc, 0.0),
+            "anomaly_score": round(anomaly_scores.get(svc, 0.0), 4),
             "is_root": svc in root_services,
         }
         for svc in dag.keys()
     ]
 
+    # Only include edges that survived cycle-breaking
     edges = [
         {
             "source": src,
             "target": tgt,
-            "strength": strength,
+            "strength": round(strength, 4),
         }
         for src, tgt, strength in edges_with_strength
+        if (src, tgt) in valid_edge_set
     ]
 
     return {"nodes": nodes, "edges": edges}

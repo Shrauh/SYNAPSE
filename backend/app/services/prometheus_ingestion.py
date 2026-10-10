@@ -1,8 +1,9 @@
 """
 Prometheus Real-Time Metrics Ingestion for SYNAPSE.
 
-Replaces the data simulator with real metrics scraped from
-Prometheus, enabling true real-time anomaly detection.
+Dynamically discovers services from K8s and fetches real metrics
+from Prometheus, enabling true real-time anomaly detection on
+ANY microservice system.
 """
 import httpx
 import logging
@@ -13,71 +14,124 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 PROMETHEUS_URL = "http://localhost:9090"
-SERVICES = [
-    "api-gateway", "auth-service", "user-service",
-    "order-service", "payment-service",
-]
 METRICS = ["latency", "error_rate", "cpu", "memory", "request_rate"]
 
 
 class PrometheusIngestion:
-    """Ingest real-time metrics from Prometheus API."""
+    """Ingest real-time metrics from Prometheus API.
+
+    Supports dynamic service discovery — works with any K8s deployment,
+    not just a hardcoded list.
+    """
 
     def __init__(self, prometheus_url: str = PROMETHEUS_URL):
         self.base_url = prometheus_url
         self._baseline: Dict[str, Dict[str, float]] = {}
+        self._services: List[str] = []
 
-    async def fetch_current_metrics(self) -> Dict[str, Dict[str, float]]:
+    def set_services(self, services: List[str]):
+        """Set the list of services to monitor (from K8s discovery)."""
+        self._services = services
+        logger.info(f"[Prometheus] Monitoring {len(services)} services: {services}")
+
+    async def discover_services_from_prometheus(self) -> List[str]:
+        """Auto-discover services from Prometheus targets."""
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{self.base_url}/api/v1/targets")
+                resp.raise_for_status()
+                data = resp.json()
+                targets = data.get("data", {}).get("activeTargets", [])
+                services = set()
+                for t in targets:
+                    labels = t.get("labels", {})
+                    # Try common label keys for service name
+                    for key in ["service", "app", "job", "kubernetes_name"]:
+                        if key in labels and labels[key] not in ("prometheus", "node-exporter"):
+                            services.add(labels[key])
+                            break
+                return sorted(services)
+        except Exception as e:
+            logger.debug(f"Prometheus target discovery failed: {e}")
+            return []
+
+    async def fetch_current_metrics(self, services: List[str] = None) -> Dict[str, Dict[str, float]]:
         """
         Fetch current metrics for all services from Prometheus.
+
+        Args:
+            services: Optional list of service names. If None, uses self._services.
 
         Returns:
             Dict mapping service_name -> {metric_name: value}
         """
+        svc_list = services or self._services
+        if not svc_list:
+            svc_list = await self.discover_services_from_prometheus()
+            self._services = svc_list
+
         metrics = {}
-        for service in SERVICES:
-            metrics[service] = {
-                "latency": await self._query_metric(
-                    f'rate(http_request_duration_seconds_sum{{service="{service}"}}[1m]) / '
-                    f'rate(http_request_duration_seconds_count{{service="{service}"}}[1m])'
-                ),
-                "error_rate": await self._query_metric(
-                    f'rate(http_errors_total{{service="{service}"}}[1m])'
-                ),
-                "cpu": await self._query_metric(
-                    f'process_cpu_percent{{service="{service}"}}'
-                ),
-                "memory": await self._query_metric(
-                    f'process_memory_mb{{service="{service}"}}'
-                ),
-                "request_rate": await self._query_metric(
-                    f'rate(http_requests_total{{service="{service}"}}[1m])'
-                ),
-            }
+        for service in svc_list:
+            svc_metrics = {}
+
+            # Try multiple label formats (different systems use different labels)
+            for label_key in ["service", "app", "job"]:
+                svc_metrics["latency"] = await self._query_metric(
+                    f'rate(http_request_duration_seconds_sum{{{label_key}="{service}"}}[1m]) / '
+                    f'rate(http_request_duration_seconds_count{{{label_key}="{service}"}}[1m])'
+                )
+                if svc_metrics["latency"] > 0:
+                    break
+
+            svc_metrics["error_rate"] = await self._query_metric_multi_label(
+                service, 'rate(http_errors_total{{{key}="{svc}"}}[1m])'
+            )
+            svc_metrics["cpu"] = await self._query_metric_multi_label(
+                service, 'process_cpu_percent{{{key}="{svc}"}}'
+            )
+            svc_metrics["memory"] = await self._query_metric_multi_label(
+                service, 'process_memory_mb{{{key}="{svc}"}}'
+            )
+            svc_metrics["request_rate"] = await self._query_metric_multi_label(
+                service, 'rate(http_requests_total{{{key}="{svc}"}}[1m])'
+            )
+
+            # Fallback: try container metrics from K8s
+            if all(v == 0.0 for v in svc_metrics.values()):
+                svc_metrics["cpu"] = await self._query_metric(
+                    f'rate(container_cpu_usage_seconds_total{{pod=~"{service}.*"}}[1m]) * 100'
+                )
+                svc_metrics["memory"] = await self._query_metric(
+                    f'container_memory_usage_bytes{{pod=~"{service}.*"}} / 1024 / 1024'
+                )
+
+            metrics[service] = svc_metrics
         return metrics
 
-    async def fetch_feature_matrix(self) -> np.ndarray:
+    async def fetch_feature_matrix(self, services: List[str] = None) -> np.ndarray:
         """
         Fetch metrics and return as feature matrix for GNN.
 
         Returns:
             numpy array of shape [num_services, num_features]
         """
-        metrics = await self.fetch_current_metrics()
-        matrix = np.zeros((len(SERVICES), len(METRICS)))
-        for i, svc in enumerate(SERVICES):
+        svc_list = services or self._services
+        metrics = await self.fetch_current_metrics(svc_list)
+        svc_list = list(metrics.keys())
+        matrix = np.zeros((len(svc_list), len(METRICS)))
+        for i, svc in enumerate(svc_list):
             for j, metric in enumerate(METRICS):
                 matrix[i, j] = metrics.get(svc, {}).get(metric, 0.0)
         return matrix
 
-    async def compute_deltas(self) -> Dict[str, Dict[str, str]]:
+    async def compute_deltas(self, services: List[str] = None) -> Dict[str, Dict[str, str]]:
         """
         Compute metric deltas from baseline for LLM context.
 
         Returns:
             Dict mapping service -> {metric: "+XX%" or "-XX%"}
         """
-        current = await self.fetch_current_metrics()
+        current = await self.fetch_current_metrics(services)
         deltas = {}
 
         for svc, values in current.items():
@@ -99,6 +153,15 @@ class PrometheusIngestion:
         self._baseline = {
             svc: dict(vals) for svc, vals in metrics.items()
         }
+
+    async def _query_metric_multi_label(self, service: str, query_template: str) -> float:
+        """Try querying with multiple label keys (service, app, job)."""
+        for key in ["service", "app", "job"]:
+            query = query_template.format(key=key, svc=service)
+            val = await self._query_metric(query)
+            if val > 0:
+                return val
+        return 0.0
 
     async def _query_metric(self, query: str) -> float:
         """Query a single metric from Prometheus."""

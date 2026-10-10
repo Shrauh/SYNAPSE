@@ -1,0 +1,304 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fintech-app-code
+data:
+  main.py: |
+    import os
+    import time
+    import random
+    import asyncio
+    from fastapi import FastAPI, Request, Response
+    from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+    import httpx
+    import uvicorn
+
+    app = FastAPI()
+
+    SERVICE_NAME = os.getenv("SERVICE_NAME", "unknown")
+    PORT = int(os.getenv("PORT", "8000"))
+    DOWNSTREAM = os.getenv("DOWNSTREAM", "").split(",")
+
+    # Metrics
+    REQUESTS = Counter("http_requests_total", "Total HTTP requests", ["method", "endpoint", "status", "service"])
+    ERRORS = Counter("http_errors_total", "Total HTTP errors", ["method", "endpoint", "service"])
+    LATENCY = Histogram("http_request_duration_seconds", "HTTP request latency", ["method", "endpoint", "service"])
+
+    fault_mode = {"latency": 0.0, "error_rate": 0.0}
+
+    @app.middleware("http")
+    async def monitor_requests(request: Request, call_next):
+        if request.url.path in ["/metrics", "/health", "/fault"]:
+            return await call_next(request)
+            
+        start_time = time.time()
+        
+        # Fault injection
+        if fault_mode["latency"] > 0:
+            await asyncio.sleep(fault_mode["latency"])
+            
+        if random.random() < fault_mode["error_rate"]:
+            ERRORS.labels(method=request.method, endpoint=request.url.path, service=SERVICE_NAME).inc()
+            return Response(status_code=500, content="Injected error")
+
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            ERRORS.labels(method=request.method, endpoint=request.url.path, service=SERVICE_NAME).inc()
+            raise e
+        
+        process_time = time.time() - start_time
+        REQUESTS.labels(method=request.method, endpoint=request.url.path, status=response.status_code, service=SERVICE_NAME).inc()
+        LATENCY.labels(method=request.method, endpoint=request.url.path, service=SERVICE_NAME).observe(process_time)
+        
+        if response.status_code >= 500:
+            ERRORS.labels(method=request.method, endpoint=request.url.path, service=SERVICE_NAME).inc()
+            
+        return response
+
+    @app.get("/health")
+    def health():
+        return {"status": "healthy", "service": SERVICE_NAME}
+
+    @app.get("/metrics")
+    def metrics():
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+    @app.post("/fault")
+    def set_fault(latency: float = 0.0, error_rate: float = 0.0):
+        fault_mode["latency"] = latency
+        fault_mode["error_rate"] = error_rate
+        return {"message": "Fault mode updated", "current": fault_mode}
+
+    @app.get("/process")
+    async def process(request: Request):
+        results = {}
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for ds in DOWNSTREAM:
+                ds = ds.strip()
+                if ds:
+                    try:
+                        resp = await client.get(f"{ds}/process")
+                        results[ds] = resp.json()
+                    except Exception as e:
+                        results[ds] = {"error": str(e)}
+        return {"service": SERVICE_NAME, "message": "Processed successfully", "downstream_results": results}
+
+    if __name__ == "__main__":
+        uvicorn.run(app, host="0.0.0.0", port=PORT)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: app
+        image: python:3.12-slim
+        command: ["/bin/sh", "-c"]
+        args: ["pip install fastapi uvicorn prometheus-client httpx && uvicorn main:app --host 0.0.0.0 --port 8080"]
+        workingDir: /app
+        env:
+        - name: SERVICE_NAME
+          value: "api-gateway"
+        - name: PORT
+          value: "8080"
+        - name: DOWNSTREAM
+          value: "http://transaction-service:8081,http://account-service:8083"
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+        volumeMounts:
+        - name: code-volume
+          mountPath: /app/main.py
+          subPath: main.py
+      volumes:
+      - name: code-volume
+        configMap:
+          name: fintech-app-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  selector:
+    app: api-gateway
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+      - name: app
+        image: python:3.12-slim
+        command: ["/bin/sh", "-c"]
+        args: ["pip install fastapi uvicorn prometheus-client httpx && uvicorn main:app --host 0.0.0.0 --port 8081"]
+        workingDir: /app
+        env:
+        - name: SERVICE_NAME
+          value: "transaction-service"
+        - name: PORT
+          value: "8081"
+        - name: DOWNSTREAM
+          value: "http://fraud-detection:8082"
+        ports:
+        - containerPort: 8081
+        resources:
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+        volumeMounts:
+        - name: code-volume
+          mountPath: /app/main.py
+          subPath: main.py
+      volumes:
+      - name: code-volume
+        configMap:
+          name: fintech-app-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-service
+spec:
+  selector:
+    app: transaction-service
+  ports:
+  - port: 8081
+    targetPort: 8081
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-detection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud-detection
+  template:
+    metadata:
+      labels:
+        app: fraud-detection
+    spec:
+      containers:
+      - name: app
+        image: python:3.12-slim
+        command: ["/bin/sh", "-c"]
+        args: ["pip install fastapi uvicorn prometheus-client httpx && uvicorn main:app --host 0.0.0.0 --port 8082"]
+        workingDir: /app
+        env:
+        - name: SERVICE_NAME
+          value: "fraud-detection"
+        - name: PORT
+          value: "8082"
+        - name: DOWNSTREAM
+          value: ""
+        ports:
+        - containerPort: 8082
+        resources:
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+        volumeMounts:
+        - name: code-volume
+          mountPath: /app/main.py
+          subPath: main.py
+      volumes:
+      - name: code-volume
+        configMap:
+          name: fintech-app-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-detection
+spec:
+  selector:
+    app: fraud-detection
+  ports:
+  - port: 8082
+    targetPort: 8082
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+      - name: app
+        image: python:3.12-slim
+        command: ["/bin/sh", "-c"]
+        args: ["pip install fastapi uvicorn prometheus-client httpx && uvicorn main:app --host 0.0.0.0 --port 8083"]
+        workingDir: /app
+        env:
+        - name: SERVICE_NAME
+          value: "account-service"
+        - name: PORT
+          value: "8083"
+        - name: DOWNSTREAM
+          value: ""
+        ports:
+        - containerPort: 8083
+        resources:
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+        volumeMounts:
+        - name: code-volume
+          mountPath: /app/main.py
+          subPath: main.py
+      volumes:
+      - name: code-volume
+        configMap:
+          name: fintech-app-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-service
+spec:
+  selector:
+    app: account-service
+  ports:
+  - port: 8083
+    targetPort: 8083
+  type: ClusterIP

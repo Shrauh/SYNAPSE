@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0" /><mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="Sequence Diagram 4 — Continual Learning Cycle" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="15" width="1140" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- Lifeline headers -->
+    <mxCell id="lh1" value="RCAPipeline" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="60" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh2" value="ContinualManager" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="265" y="60" width="140" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh3" value="MAMLAdapter" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#82b366;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="510" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh4" value="EWC / Replay" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="740" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="lh5" value="GNNDetector" style="shape=mxgraph.uml.lifeline;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="970" y="60" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Dashed lifelines -->
+    <mxCell id="ll1" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="120"/><mxPoint x="120" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll2" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="335" y="120"/><mxPoint x="335" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll3" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="570" y="120"/><mxPoint x="570" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll4" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="800" y="120"/><mxPoint x="800" y="880"/></Array></mxGeometry></mxCell>
+    <mxCell id="ll5" value="" style="dashed=1;html=1;endArrow=none;" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1030" y="120"/><mxPoint x="1030" y="880"/></Array></mxGeometry></mxCell>
+
+    <!-- note: after RCA pipeline completes -->
+    <mxCell id="note1" value="[After RCA pipeline step 9 completes]" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="60" y="148" width="300" height="25" as="geometry" />
+    </mxCell>
+
+    <mxCell id="m1" value="1. detect_drift(feature_matrix)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="190"/><mxPoint x="335" y="190"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m1i" value="[internal] compute distribution shift vs. historical baseline" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="335" y="225"/><mxPoint x="405" y="225"/><mxPoint x="405" y="245"/><mxPoint x="335" y="245"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m1r" value="(is_drift: bool, drift_score: float)" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="335" y="285"/><mxPoint x="120" y="285"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- Alt fragment: drift detected -->
+    <mxCell id="alt" value="alt [is_drift == True]" style="swimlane;startSize=25;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=2;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="80" y="310" width="1180" height="310" as="geometry" />
+    </mxCell>
+
+    <mxCell id="m2" value="2. initialize(gnn_model)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="alt">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="40" y="50"/><mxPoint x="490" y="50"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m2r" value="MAML ready" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="alt">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="490" y="80"/><mxPoint x="40" y="80"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m3" value="3. adapt(support_data=[recent_metrics], model)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="alt">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="40" y="115"/><mxPoint x="490" y="115"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m3i" value="[internal] 3-step inner-loop gradient update (MAML)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="alt">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="490" y="148"/><mxPoint x="560" y="148"/><mxPoint x="560" y="168"/><mxPoint x="490" y="168"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m3r" value="adapted_model (few-shot adapted GNN)" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="alt">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="490" y="200"/><mxPoint x="40" y="200"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m4" value="4. register_completed_task(adapted_model, support_data)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="alt">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="40" y="240"/><mxPoint x="720" y="240"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m4i" value="[internal] update Fisher Matrix + add to Replay Buffer" style="endArrow=block;endFill=1;html=1;" edge="1" parent="alt">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="720" y="268"/><mxPoint x="790" y="268"/><mxPoint x="790" y="285"/><mxPoint x="720" y="285"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- else fragment -->
+    <mxCell id="else1" value="else [no drift]" style="text;html=1;strokeColor=#d6b656;fillColor=#fff2cc;fontStyle=2;fontSize=10;" vertex="1" parent="alt">
+      <mxGeometry x="0" y="295" width="1180" height="5" as="geometry" />
+    </mxCell>
+
+    <!-- After alt fragment -->
+    <mxCell id="m5" value="5. register_completed_task(current_model, feature_matrix)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="650"/><mxPoint x="800" y="650"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m5r" value="EWC Fisher updated, replay buffer appended" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="800" y="685"/><mxPoint x="120" y="685"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="m6" value="6. save_model(checkpoint_path)" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="730"/><mxPoint x="1030" y="730"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="m6r" value="model saved to disk" style="endArrow=open;endFill=0;dashed=1;html=1;" edge="1" parent="1">
+      <mxGeometry as="geometry"><Array as="points"><mxPoint x="1030" y="765"/><mxPoint x="120" y="765"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="note2" value="Continual learning cycle complete — model is updated without forgetting past patterns" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="200" y="810" width="800" height="30" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
