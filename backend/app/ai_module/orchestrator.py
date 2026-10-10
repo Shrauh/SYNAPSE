@@ -361,10 +361,10 @@ class RCAPipeline:
         chain = get_propagation_chain(dag, root_cause_svc)
 
         recovery_action = recovery_engine.select_action(
-            severity_level=severity_result.level.value,
+            severity_level=int(severity_result.level.value),
             root_cause_service=root_cause_svc,
             fault_type=explanation_result.get("fault_type"),
-            causal_confidence=confidence,
+            causal_confidence=float(confidence),
             propagation_chain=chain,
         )
 
@@ -492,6 +492,22 @@ class RCAPipeline:
 
         await db.commit()
         await db.refresh(incident)
+
+        try:
+            from app.api.ws import broadcast_json
+            import asyncio
+            asyncio.create_task(broadcast_json({
+                "type": "rca_complete",
+                "incident_id": incident.id,
+                "root_cause": root_cause_svc,
+                "confidence": float(confidence),
+                "anomaly_scores": {k: float(v) for k, v in anomaly_scores.items()},
+                "propagation_chain": propagation_str,
+                "severity": severity_result.level.name if severity_result else "L1_SIMPLE",
+                "recovery_action": action_result.action.action_type.value if action_result and action_result.action else "none",
+            }))
+        except Exception as ws_err:
+            logger.debug(f"WS broadcast failed: {ws_err}")
 
         return {
             "incident_id": incident.id,

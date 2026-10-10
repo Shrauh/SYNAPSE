@@ -139,6 +139,20 @@ async def simulate_fault(
         num_steps=max(30, req.duration_minutes * 2),
     )
 
+    # Notify frontend simulation started
+    try:
+        from app.api.ws import broadcast_json
+        import asyncio
+        asyncio.create_task(broadcast_json({
+            "type": "simulation_started",
+            "incident_id": incident.id,
+            "fault_type": req.fault_type,
+            "root_cause_service": req.root_cause_service,
+            "status": "analyzing"
+        }))
+    except Exception:
+        pass
+
     # Run pipeline in background with pre-generated data
     background_tasks.add_task(
         _run_pipeline_background, incident.id, sim_result
