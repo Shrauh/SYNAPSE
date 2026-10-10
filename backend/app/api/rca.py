@@ -8,6 +8,8 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 
+from typing import Optional
+
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +30,10 @@ from app.models.schemas import (
 router = APIRouter(prefix="/rca", tags=["RCA Pipeline"])
 
 
-async def _run_pipeline_background(incident_id: str, simulation_result=None):
+async def _run_pipeline_background(
+    incident_id: str,
+    sim_hint: Optional[dict] = None,  # from alertmanager webhook
+) -> None:
     """Run the RCA pipeline in the background."""
     import logging
     import traceback
@@ -41,7 +46,7 @@ async def _run_pipeline_background(incident_id: str, simulation_result=None):
         if incident:
             try:
                 logger.info(f"Starting pipeline for incident {incident_id}")
-                await pipeline.run_rca_pipeline(incident, db, simulation_result)
+                await pipeline.run_rca_pipeline(incident, db, sim_hint)
                 logger.info(f"Pipeline completed for incident {incident_id}")
                 
                 # After successful pipeline run, send notification

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     app_name: str = "SYNAPSE"
     app_version: str = "1.0.0"
     debug: bool = True
+    log_level: str = "INFO"
     host: str = "0.0.0.0"
     port: int = 8000
 

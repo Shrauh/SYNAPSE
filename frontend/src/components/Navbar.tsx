@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, GitBranch, AlertTriangle, Cpu, Zap, Activity, Trophy
+  LayoutDashboard, GitBranch, AlertTriangle, Cpu, Zap, Activity, Trophy,
+  Bell, FileText, MessageSquare
 } from "lucide-react";
 import { useStore } from "../store";
 import { useEffect, useState } from "react";
@@ -13,6 +14,9 @@ const NAV = [
   { to: "/simulate", icon: Zap,             label: "Simulate" },
   { to: "/model",    icon: Cpu,             label: "Model Status" },
   { to: "/evaluation", icon: Trophy,        label: "Benchmark" },
+  { to: "/alerts",   icon: Bell,            label: "Alerts" },
+  { to: "/logs",     icon: FileText,        label: "Logs" },
+  { to: "/notifications", icon: MessageSquare, label: "Notify" },
 ];
 
 export function Navbar() {
