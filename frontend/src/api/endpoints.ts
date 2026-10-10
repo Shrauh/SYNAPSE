@@ -32,3 +32,11 @@ export const getBenchmark = () => api.get<any>("/eval/benchmark").then(r => r.da
 export const getEvalHistory = () => api.get<any>("/eval/history").then(r => r.data);
 export const evaluateManual = (req: { incident_id: string, predicted_ranking: string[], true_root_cause: string }) => api.post<any>("/eval/evaluate", req).then(r => r.data);
 
+// New API endpoints for Alerts, Logs, Notifications
+export const getAlertStatus = () => api.get("/alerts/status").then(r => r.data);
+export const testAlert = (req: { service: string; fault_type: string }) => api.post("/alerts/test", req).then(r => r.data);
+export const analyzeLog = (service: string) => api.get(`/logs/analyze/${service}`).then(r => r.data);
+export const pushLogs = (req: { service: string; logs: string[] }) => api.post("/logs/push", req).then(r => r.data);
+export const getPushStatus = () => api.get("/logs/push/status").then(r => r.data);
+export const getNotifyStatus = () => api.get("/notify/status").then(r => r.data);
+export const testNotification = (channel: string) => api.post(`/notify/test?channel=${channel}`).then(r => r.data);

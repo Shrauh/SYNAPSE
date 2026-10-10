@@ -10,7 +10,7 @@ from app.ai_module.orchestrator import pipeline
 from app.ai_module.meta.maml import maml_adapter
 from app.config import settings
 from app.models.schemas import ComponentStatus, HealthResponse
-from app.main import get_uptime
+from app.utils.uptime import get_uptime
 from app.db.database import get_db
 
 router = APIRouter(tags=["System"])

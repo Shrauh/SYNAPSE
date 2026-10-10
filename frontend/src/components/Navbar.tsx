@@ -1,8 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, GitBranch, AlertTriangle, Cpu, Zap, Activity
+  LayoutDashboard, GitBranch, AlertTriangle, Cpu, Zap, Activity, Trophy,
+  Bell, FileText, MessageSquare
 } from "lucide-react";
 import { useStore } from "../store";
+import { useEffect, useState } from "react";
+import { getActiveSystem } from "../api/endpoints";
 
 const NAV = [
   { to: "/",         icon: LayoutDashboard, label: "Dashboard" },
@@ -10,11 +13,31 @@ const NAV = [
   { to: "/incidents",icon: AlertTriangle,   label: "Incidents" },
   { to: "/simulate", icon: Zap,             label: "Simulate" },
   { to: "/model",    icon: Cpu,             label: "Model Status" },
+  { to: "/evaluation", icon: Trophy,        label: "Benchmark" },
+  { to: "/alerts",   icon: Bell,            label: "Alerts" },
+  { to: "/logs",     icon: FileText,        label: "Logs" },
+  { to: "/notifications", icon: MessageSquare, label: "Notify" },
 ];
 
 export function Navbar() {
   const loc = useLocation();
   const wsConnected = useStore((s) => s.wsConnected);
+  const [activeSystem, setActiveSystem] = useState("Loading...");
+  const [sysStatus, setSysStatus] = useState<"running" | "switching">("running");
+
+  useEffect(() => {
+    const fetchSys = () => {
+      getActiveSystem().then(r => {
+        setActiveSystem(r.active_system);
+        setSysStatus("running");
+      }).catch(() => {
+        setSysStatus("switching");
+      });
+    };
+    fetchSys();
+    const iv = setInterval(fetchSys, 30000);
+    return () => clearInterval(iv);
+  }, []);
 
   return (
     <nav style={{
@@ -62,14 +85,27 @@ export function Navbar() {
         })}
       </div>
 
-      {/* WS status */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "var(--text-muted)" }}>
-        <div style={{
-          width: 7, height: 7, borderRadius: "50%",
-          background: wsConnected ? "var(--status-healthy)" : "var(--text-muted)",
-          boxShadow: wsConnected ? "0 0 6px var(--status-healthy)" : "none",
-        }} />
-        {wsConnected ? "Live" : "Offline"}
+      {/* Status Indicators */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        {/* System status */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "var(--text-secondary)", background: "var(--bg-elevated)", padding: "4px 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--border-bright)" }}>
+          <div style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: sysStatus === "running" ? "var(--status-healthy)" : "var(--status-warning)",
+            boxShadow: sysStatus === "running" ? "0 0 6px var(--status-healthy)" : "0 0 6px var(--status-warning)",
+          }} />
+          {activeSystem}
+        </div>
+
+        {/* WS status */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "var(--text-muted)" }}>
+          <div style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: wsConnected ? "var(--status-healthy)" : "var(--text-muted)",
+            boxShadow: wsConnected ? "0 0 6px var(--status-healthy)" : "none",
+          }} />
+          {wsConnected ? "Live" : "Offline"}
+        </div>
       </div>
     </nav>
   );

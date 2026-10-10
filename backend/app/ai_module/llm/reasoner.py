@@ -55,6 +55,7 @@ class LLMReasoner:
         causal_edges: List[Tuple[str, str, float]],
         metric_deltas: Dict[str, Dict[str, str]],
         dependency_edges: Optional[List[Tuple[str, str]]] = None,
+        log_context: str = "",
         use_cache: bool = True,
     ) -> Dict[str, Any]:
         """Generate an RCA explanation from analysis results.
@@ -96,6 +97,7 @@ class LLMReasoner:
                 causal_edges=causal_edges,
                 metric_deltas=metric_deltas,
                 dependency_edges=dependency_edges,
+                log_context=log_context,
             )
         elif self.provider == "ollama":
             result = await self._call_ollama(
@@ -135,6 +137,7 @@ class LLMReasoner:
         causal_edges: List[Tuple[str, str, float]],
         metric_deltas: Dict[str, Dict[str, str]],
         dependency_edges: Optional[List[Tuple[str, str]]] = None,
+        log_context: str = "",
     ) -> Dict[str, Any]:
         """Call OpenAI API with structured JSON output."""
         user_prompt = build_rca_prompt(
@@ -144,6 +147,9 @@ class LLMReasoner:
             metric_deltas=metric_deltas,
             dependency_edges=dependency_edges,
         )
+
+        if log_context:
+            user_prompt += f"\n\n{log_context}"
 
         try:
             client = self._get_openai_client()

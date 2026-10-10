@@ -79,6 +79,15 @@ services:
     networks:
       - synapse-net
 
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - synapse-net
+    restart: unless-stopped
+
 networks:
   synapse-net:
     driver: bridge

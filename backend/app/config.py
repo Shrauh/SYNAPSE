@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     app_name: str = "SYNAPSE"
     app_version: str = "1.0.0"
     debug: bool = True
+    log_level: str = "INFO"
     host: str = "0.0.0.0"
     port: int = 8000
 
@@ -56,6 +57,12 @@ class Settings(BaseSettings):
 
     # --- CORS ---
     cors_origins: str = '["http://localhost:3000","http://localhost:5173"]'
+
+    # --- Notifications ---
+    slack_webhook_url: str = ""
+    teams_webhook_url: str = ""
+    notify_on_complete: bool = True
+    dashboard_url: str = "http://localhost:5173"
 
     @property
     def cors_origin_list(self) -> List[str]:

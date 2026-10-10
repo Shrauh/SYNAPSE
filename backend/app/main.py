@@ -34,20 +34,13 @@ from app.api.router import api_router
 from app.config import settings
 from app.db.database import init_db
 
-# Track application startup time for health checks
-_start_time: float = 0.0
-
-
-def get_uptime() -> float:
-    """Return seconds since application startup."""
-    return time.time() - _start_time
+from app.utils.uptime import set_start_time, get_uptime  # noqa: F401 (re-exported)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown hooks."""
-    global _start_time
-    _start_time = time.time()
+    set_start_time()
 
     # Initialize database tables
     await init_db()
@@ -83,7 +76,12 @@ app = FastAPI(
 # CORS — allow frontend dev servers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:80",
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
