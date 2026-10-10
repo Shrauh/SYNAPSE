@@ -39,3 +39,6 @@ api_router.include_router(k8s.router)
 
 from app.api import system
 api_router.include_router(system.router)
+
+from app.api import evaluation
+api_router.include_router(evaluation.router)

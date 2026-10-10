@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Activity, Clock, Cpu, ArrowRight } from "lucide-react";
-import { fetchHealth, fetchMetrics, fetchIncidents } from "../api/endpoints";
+import { AlertTriangle, Activity, Clock, Cpu, ArrowRight, Server } from "lucide-react";
+import { fetchHealth, fetchMetrics, fetchIncidents, getActiveSystem, switchSystem } from "../api/endpoints";
 import type { HealthResponse, MetricsResponse, IncidentSummary } from "../types/api";
 import { StatCard, StatusBadge, Spinner } from "../components/UI";
 import { useStore } from "../store";
 import { format } from "date-fns";
 
+const SYSTEMS = ["Online Boutique", "FinTech", "HealthCare", "Default"];
+
 export default function Dashboard() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [incidents, setIncidents] = useState<IncidentSummary[]>([]);
+  const [activeSystem, setActiveSystem] = useState<string>("Default");
+  const [switching, setSwitching] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const anomalyScores = useStore(s => s.anomalyScores || {});
 
@@ -20,12 +25,16 @@ export default function Dashboard() {
       fetchHealth().catch(() => null),
       fetchMetrics().catch(() => null),
       fetchIncidents(1).catch(() => ({ incidents: [], total: 0, page: 1, per_page: 20 })),
+      getActiveSystem().catch(() => ({ active_system: "Default" })),
     ])
-      .then(([h, m, i]) => {
+      .then(([h, m, i, sys]) => {
         if (h) setHealth(h);
         if (m) setMetrics(m);
         if (i && Array.isArray(i.incidents)) {
           setIncidents(i.incidents.slice(0, 6));
+        }
+        if (sys && sys.active_system) {
+          setActiveSystem(sys.active_system);
         }
       })
       .catch((err) => console.error("Dashboard load error:", err))
@@ -42,22 +51,72 @@ export default function Dashboard() {
     return () => clearInterval(iv);
   }, []);
 
+  const handleSystemSwitch = async (sys: string) => {
+    if (sys === activeSystem) return;
+    setSwitching(true);
+    try {
+      await switchSystem(sys);
+      setActiveSystem(sys);
+      setToast(`Now monitoring: ${sys}`);
+      setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setToast(`Failed to switch to ${sys}`);
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
   // Top anomalous services from WebSocket
   const topServices = Object.entries(anomalyScores || {})
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
   return (
-    <div style={{ padding: "84px 2rem 2rem" }}>
-      {/* Header */}
+    <div style={{ padding: "84px 2rem 2rem", position: "relative" }}>
+      {toast && (
+        <div style={{ position: "fixed", top: 80, right: 24, zIndex: 1000, background: "var(--status-healthy)", color: "#fff", padding: "8px 16px", borderRadius: 8, fontSize: "0.85rem", fontWeight: 600, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+          {toast}
+        </div>
+      )}
+      {/* Header and System Switcher */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-        style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: "1.6rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
-          Operations Dashboard
-        </h1>
-        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: 4 }}>
-          Real-time AIOps monitoring · {health?.version ?? "v1.0.0"}
-        </p>
+        style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ fontSize: "1.6rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
+            Operations Dashboard
+          </h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: 4 }}>
+            Real-time AIOps monitoring · {health?.version ?? "v1.0.0"}
+          </p>
+        </div>
+        
+        <div className="card glass" style={{ padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Server size={14} color="var(--accent-blue)" />
+            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>System:</span>
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {SYSTEMS.map(sys => (
+              <button
+                key={sys}
+                onClick={() => handleSystemSwitch(sys)}
+                disabled={switching}
+                className="btn btn-ghost"
+                style={{
+                  padding: "4px 10px",
+                  fontSize: "0.75rem",
+                  background: activeSystem === sys ? "var(--accent-glow)" : "transparent",
+                  borderColor: activeSystem === sys ? "rgba(59,130,246,0.3)" : "transparent",
+                  color: activeSystem === sys ? "var(--accent-blue)" : "var(--text-muted)",
+                }}
+              >
+                {sys}
+              </button>
+            ))}
+          </div>
+        </div>
       </motion.div>
 
       {loading ? (
