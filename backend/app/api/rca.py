@@ -43,6 +43,23 @@ async def _run_pipeline_background(incident_id: str, simulation_result=None):
                 logger.info(f"Starting pipeline for incident {incident_id}")
                 await pipeline.run_rca_pipeline(incident, db, simulation_result)
                 logger.info(f"Pipeline completed for incident {incident_id}")
+                
+                # After successful pipeline run, send notification
+                try:
+                    from app.services.notifications import notify_rca_complete
+                    # Get the result from the incident record
+                    result_payload = {
+                        "root_cause": incident.root_cause_service or "unknown",
+                        "confidence": incident.confidence or 0.0,
+                        "explanation": "",
+                        "propagation_chain": "",
+                        "execution_time_ms": 0,
+                        "severity": {"level": "L1_SIMPLE"},
+                        "recovery": {},
+                    }
+                    await notify_rca_complete(result_payload, incident.id)
+                except Exception as notify_err:
+                    logger.warning(f"Notification failed (non-critical): {notify_err}")
             except Exception as e:
                 await db.rollback()
                 incident.status = "error"

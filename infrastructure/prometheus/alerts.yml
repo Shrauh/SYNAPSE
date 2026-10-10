@@ -1,0 +1,40 @@
+# Prometheus alerting rules for SYNAPSE
+groups:
+  - name: synapse-microservices
+    interval: 15s
+    rules:
+      - alert: HighLatency
+        expr: rate(http_request_duration_seconds_sum[1m]) / rate(http_request_duration_seconds_count[1m]) > 1.0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has latency > 1s"
+
+      - alert: HighErrorRate
+        expr: rate(http_errors_total[1m]) > 0.05
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} error rate > 5%"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for 15 seconds"
+
+      - alert: HighCPU
+        expr: rate(container_cpu_usage_seconds_total[1m]) * 100 > 80
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on {{ $labels.pod }}"
+          description: "Pod {{ $labels.pod }} CPU > 80%"
