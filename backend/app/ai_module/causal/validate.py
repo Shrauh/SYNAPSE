@@ -58,7 +58,7 @@ def validate_causal_edges(
 
         if is_valid:
             valid_edges.append((src, tgt, strength))
-            valid_dag[src].append(tgt)
+            valid_dag.setdefault(src, []).append(tgt)
         else:
             removed_edges.append((src, tgt, strength))
 

@@ -40,7 +40,7 @@ class Incident(Base):
     root_cause_service: Mapped[str | None] = mapped_column(String(128), nullable=True)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     fault_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    affected_services: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    affected_services: Mapped[list | None] = mapped_column(JSON, nullable=True)
     anomaly_scores: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     timeline: Mapped[list | None] = mapped_column(JSON, nullable=True)
     window_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

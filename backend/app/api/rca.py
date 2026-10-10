@@ -30,18 +30,26 @@ router = APIRouter(prefix="/rca", tags=["RCA Pipeline"])
 
 async def _run_pipeline_background(incident_id: str, simulation_result=None):
     """Run the RCA pipeline in the background."""
+    import logging
+    import traceback
+    logger = logging.getLogger("synapse.rca")
+
     async with async_session() as db:
         from sqlalchemy import select
         result = await db.execute(select(Incident).where(Incident.id == incident_id))
         incident = result.scalar_one_or_none()
         if incident:
             try:
+                logger.info(f"Starting pipeline for incident {incident_id}")
                 await pipeline.run_rca_pipeline(incident, db, simulation_result)
+                logger.info(f"Pipeline completed for incident {incident_id}")
             except Exception as e:
+                await db.rollback()
                 incident.status = "error"
                 incident.description = (incident.description or "") + f"\nPipeline error: {e}"
                 await db.commit()
-                print(f"[RCA] Pipeline error for {incident_id}: {e}")
+                logger.error(f"Pipeline error for {incident_id}: {e}")
+                traceback.print_exc()
 
 
 @router.post("/trigger", response_model=TriggerRCAResponse)

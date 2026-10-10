@@ -131,8 +131,9 @@ class RecoveryEngine:
         Returns:
             ActionResult indicating success or failure.
         """
+        safe_params = {"replicas": 2, **action.parameters}
         kubectl_cmd = self.KUBECTL_TEMPLATES.get(action.action_type, '# unknown action').format(
-            service=action.target_service, **action.parameters
+            service=action.target_service, **safe_params
         )
         
         # Simulate execution

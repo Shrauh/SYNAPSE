@@ -6,36 +6,40 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import List
+import logging
+from typing import List, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(tags=["WebSocket"])
+logger = logging.getLogger("synapse.ws")
 
 
 class ConnectionManager:
-    """Manages active WebSocket connections."""
+    """Manages active WebSocket connections (thread-safe)."""
 
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: Set[WebSocket] = set()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        self.active_connections.add(websocket)
+        logger.info(f"WebSocket connected. Total: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        self.active_connections.discard(websocket)
+        logger.info(f"WebSocket disconnected. Total: {len(self.active_connections)}")
 
     async def broadcast(self, message: dict):
         """Send a message to all connected clients."""
         disconnected = []
-        for connection in self.active_connections:
+        for connection in list(self.active_connections):  # iterate a copy
             try:
                 await connection.send_json(message)
             except Exception:
                 disconnected.append(connection)
         for conn in disconnected:
-            self.active_connections.remove(conn)
+            self.active_connections.discard(conn)
 
 
 manager = ConnectionManager()
@@ -59,5 +63,5 @@ async def websocket_live(websocket: WebSocket):
             # Client can send ping/pong or filter commands
             if data == "ping":
                 await websocket.send_json({"type": "pong"})
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, ConnectionResetError, Exception):
         manager.disconnect(websocket)

@@ -20,11 +20,14 @@ Pipeline:
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+logger = logging.getLogger("synapse.pipeline")
 
 try:
     import torch
@@ -163,7 +166,7 @@ class RCAPipeline:
             device=self._gnn_trainer.device,
         )
 
-        print(f"[Orchestrator] Training complete: {stats}")
+        logger.info(f"Training complete: {stats}")
         return stats
 
     async def run_rca_pipeline(
@@ -333,7 +336,10 @@ class RCAPipeline:
         # ── Stage 7: Severity Classification ──
         t0 = time.time()
         root_cause_svc = explanation_result.get("root_cause", root_candidates[0][0] if root_candidates else "unknown")
-        confidence = float(explanation_result.get("confidence", root_candidates[0][1] if root_candidates else 0.0))
+        try:
+            confidence = float(explanation_result.get("confidence", root_candidates[0][1] if root_candidates else 0.0))
+        except (TypeError, ValueError):
+            confidence = root_candidates[0][1] if root_candidates else 0.5
 
         severity_result = severity_classifier.classify(
             anomaly_scores=anomaly_scores,
@@ -389,11 +395,16 @@ class RCAPipeline:
         if severity_result.level == SeverityLevel.L3_SYSTEMIC:
             try:
                 multi_root_detector = MultiRootCauseDetector()
+                # Build time_series_data dict for multi-root analysis
+                ts_data = {}
+                for svc in anomalous_names:
+                    svc_ts = self._build_causal_input(metrics_df, [svc])
+                    ts_data[svc] = svc_ts.flatten()
                 multi_root_results = multi_root_detector.analyze(
+                    anomalous_services=anomalous_names,
                     anomaly_scores=anomalous_scores,
-                    feature_matrix=feature_matrix,
-                    service_names=anomalous_services,
-                    topology=graph_builder.get_graph(),
+                    topology=graph_builder.graph,
+                    time_series_data=ts_data,
                 )
             except Exception:
                 pass
@@ -411,7 +422,12 @@ class RCAPipeline:
                     })()
                 ]
                 # MAML 3-step rapid adaptation
-                maml_adapter.adapt(support_data)
+                adapted_model = maml_adapter.adapt(support_data)
+                if adapted_model is not None:
+                    self._gnn_inference = GNNInference(
+                        model=adapted_model,
+                        device=self._gnn_trainer.device,
+                    )
                 maml_adapted = True
                 adaptation_steps = maml_adapter.inner_steps
                 # Online EWC Fisher update + Replay buffer registration

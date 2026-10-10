@@ -6,6 +6,7 @@ for demonstrating real-time anomaly detection.
 """
 import httpx
 import logging
+import os
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 
@@ -19,6 +20,13 @@ SERVICE_PORTS = {
     "order-service": 8083,
     "payment-service": 8085,
 }
+
+K8S_NAMESPACE = os.getenv("K8S_NAMESPACE", "")
+
+def _build_url(service: str, port: int, path: str) -> str:
+    if K8S_NAMESPACE:
+        return f"http://{service}.{K8S_NAMESPACE}.svc.cluster.local:{port}{path}"
+    return f"http://localhost:{port}{path}"
 
 
 @router.post("/inject")
@@ -36,7 +44,7 @@ async def inject_fault(
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.post(
-                f"http://localhost:{port}/fault",
+                _build_url(service, port, "/fault"),
                 params={
                     "latency_ms": latency_ms,
                     "error_rate": error_rate,
@@ -57,7 +65,7 @@ async def clear_fault(service: str):
     port = SERVICE_PORTS[service]
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.post(f"http://localhost:{port}/fault/clear")
+            resp = await client.post(_build_url(service, port, "/fault/clear"))
             return resp.json()
     except Exception as e:
         raise HTTPException(503, f"Cannot reach {service}: {e}")
@@ -70,7 +78,7 @@ async def clear_all_faults():
     for service, port in SERVICE_PORTS.items():
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(f"http://localhost:{port}/fault/clear")
+                resp = await client.post(_build_url(service, port, "/fault/clear"))
                 results[service] = "cleared"
         except Exception:
             results[service] = "unreachable"
@@ -84,7 +92,7 @@ async def list_services():
     for service, port in SERVICE_PORTS.items():
         try:
             async with httpx.AsyncClient(timeout=2.0) as client:
-                resp = await client.get(f"http://localhost:{port}/health")
+                resp = await client.get(_build_url(service, port, "/health"))
                 statuses[service] = {"status": "running", "port": port}
         except Exception:
             statuses[service] = {"status": "down", "port": port}

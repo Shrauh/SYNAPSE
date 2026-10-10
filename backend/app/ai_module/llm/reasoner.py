@@ -161,11 +161,11 @@ class LLMReasoner:
             content = response.choices[0].message.content
             result = json.loads(content)
 
-            # Validate required fields
-            required = ["root_cause", "confidence", "explanation"]
-            for field in required:
+            # Validate required fields with correct default types
+            field_defaults = {"root_cause": "unknown", "confidence": 0.0, "explanation": "No explanation available"}
+            for field, default in field_defaults.items():
                 if field not in result:
-                    result[field] = "unknown" if isinstance(field, str) else 0.0
+                    result[field] = default
 
             return result
 
