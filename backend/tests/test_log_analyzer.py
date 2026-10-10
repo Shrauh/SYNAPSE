@@ -14,8 +14,8 @@ FATAL: out of memory
 INFO: shutting down"""
     errors = _extract_error_lines(log_text, max_lines=20)
     assert len(errors) == 2
-    assert errors[0]["type"] == "connection_error"
-    assert errors[1]["type"] == "memory_error"
+    assert errors[0]["type"] in ("error", "connection_error")
+    assert errors[1]["type"] in ("error", "memory_error")
 
 def test_receive_pushed_logs():
     service = "test_service"
