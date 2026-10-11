@@ -130,10 +130,33 @@ async def simulate_fault(
     await db.refresh(incident)
 
     # Generate simulation data
+    from data.simulator import MicroserviceSimulator, SERVICE_NAMES
     sim = MicroserviceSimulator()
+
+    # Normalize service name: frontend accepts various formats
+    # Map common aliases to simulator service names
+    _ALIAS_MAP = {
+        "paymentservice": "payment-service",
+        "cartservice": "cache-service",
+        "checkoutservice": "order-service",
+        "frontend": "api-gateway",
+        "productcatalogservice": "inventory-service",
+        "recommendationservice": "search-service",
+        "shippingservice": "notification-service",
+        "emailservice": "notification-service",
+        "redis-cart": "cache-service",
+        "currencyservice": "auth-service",
+    }
+    normalized_service = _ALIAS_MAP.get(req.root_cause_service, req.root_cause_service)
+    if normalized_service not in SERVICE_NAMES:
+        # Pick the closest match or first service
+        import difflib
+        matches = difflib.get_close_matches(normalized_service, SERVICE_NAMES, n=1)
+        normalized_service = matches[0] if matches else SERVICE_NAMES[3]  # payment-service default
+
     severity_map = {"low": 2.0, "medium": 4.0, "high": 6.0, "critical": 8.0}
     sim_result = sim.simulate_incident(
-        root_cause=req.root_cause_service,
+        root_cause=normalized_service,
         fault_type=req.fault_type,
         severity=severity_map.get(req.severity, 5.0),
         num_steps=max(30, req.duration_minutes * 2),
@@ -143,7 +166,7 @@ async def simulate_fault(
     try:
         from app.api.ws import broadcast_json
         import asyncio
-        asyncio.create_task(broadcast_json({
+        asyncio.get_running_loop().create_task(broadcast_json({
             "type": "simulation_started",
             "incident_id": incident.id,
             "fault_type": req.fault_type,

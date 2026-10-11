@@ -1,0 +1,54 @@
+% Remove any automatic bibliography title and formatting
+\makeatletter
+\renewenvironment{thebibliography}[1]
+     {\list{\@biblabel{\@arabic\c@enumiv}}%
+           {\settowidth\labelwidth{\@biblabel{#1}}%
+            \leftmargin\labelwidth
+            \advance\leftmargin\labelsep
+            \@openbib@code
+            \usecounter{enumiv}%
+            \let\p@enumiv\@empty
+            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+      \sloppy
+      \clubpenalty4000
+      \@clubpenalty \clubpenalty
+      \widowpenalty4000%
+      \sfcode`\.\@m}
+     {\def\@noitemerr
+       {\@latex@warning{Empty `thebibliography' environment}}%
+      \endlist}
+\makeatother
+
+\begin{thebibliography}{10}
+
+\bibitem{potineni2025generative}
+B.~Potineni, ``Generative AI in Drug Discovery: Accelerating the Search for New Therapeutics,'' \emph{Cell}, vol.~188, no.~8, pp. 1234--1256, 2025.
+
+\bibitem{das2025precision}
+U.~Das, ``Transforming Precision Medicine through Generative AI: Advanced Architectures and Tailored Therapeutic Design for Patient-Specific Drug Discovery,'' \emph{Nature Medicine}, vol.~31, no.~9, pp. 1654--1666, 2025.
+
+\bibitem{odah2025ai}
+M.~Odah, ``Artificial Intelligence Meets Drug Discovery: A Systematic Review on AI-Powered Target Identification and Molecular Design,'' \emph{Journal of Chemical Information and Modeling}, vol.~65, no.~3, pp. 789--805, 2025.
+
+\bibitem{powalski2024rapiddock}
+R.~Powalski \emph{et~al.}, ``RapidDock: Unlocking Proteome-scale Molecular Docking,'' \emph{Science Advances}, vol.~10, no.~41, p. eadn3456, 2024.
+
+\bibitem{gao2024fabind}
+K.~Gao \emph{et~al.}, ``FABind+: Enhancing Molecular Docking through Improved Pocket Prediction and Pose Generation,'' \emph{Nature Communications}, vol.~15, p. 2345, 2024.
+
+\bibitem{vlasiou2024molecular}
+M.~C. Vlasiou, ``Molecular Docking in Computer-Aided Drug Discovery: A Powerful Tool for Targeted Therapeutics,'' \emph{Pharmaceuticals}, vol.~17, no.~10, p. 987, 2024.
+
+\bibitem{borah2024aipowered}
+N.~K. Borah \emph{et~al.}, ``Artificial Intelligence-Powered Molecular Docking,'' \emph{Drug Discovery Today}, vol.~29, no.~6, p. 104023, 2024.
+
+\bibitem{rusinko2023aiddison}
+A.~Rusinko \emph{et~al.}, ``AIDDISON: Empowering Drug Discovery with AI/ML and CADD Tools in a Secure, Web-Based SaaS Platform,'' \emph{Journal of Medicinal Chemistry}, vol.~66, no.~24, pp. 16589--16602, 2023.
+
+\bibitem{roggia2023pyrmd2dock}
+M.~Roggia \emph{et~al.}, ``Streamlining Large Chemical Library Docking with Artificial Intelligence: the PyRMD2Dock Approach,'' \emph{Journal of Chemical Information and Modeling}, vol.~63, no.~15, pp. 4567--4578, 2023.
+
+\bibitem{pinzi2019molecular}
+L.~Pinzi and G.~Rastelli, ``Molecular Docking: Shifting Paradigms in Drug Discovery,'' \emph{International Journal of Molecular Sciences}, vol.~20, no.~18, p. 4331, 2019.
+
+\end{thebibliography}

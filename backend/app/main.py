@@ -49,6 +49,11 @@ async def lifespan(app: FastAPI):
     try:
         from app.ai_module.orchestrator import pipeline
         await pipeline.initialize()
+        # Pre-train on minimal data so first simulate is fast
+        if not pipeline._model_trained:
+            logger.info("Pre-training GNN baseline (5 scenarios, 10 epochs)...")
+            await pipeline.train_on_normal_data(num_scenarios=5, epochs=10)
+            logger.info("GNN pre-training complete.")
         logger.info("AI pipeline initialized successfully.")
     except Exception as e:
         logger.warning(f"AI pipeline init skipped: {e}")

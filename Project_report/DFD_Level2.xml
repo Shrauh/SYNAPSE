@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="950" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Data Flow Diagram — Level 2 (Process P3: VAE-GNN Anomaly Detection Exploded)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="50" y="10" width="1300" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- Input -->
+    <mxCell id="inp1" value="Feature Matrix&#xa;[N×5] from P1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="20" y="180" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="inp2" value="Edge Index&#xa;from P2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="20" y="310" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="inp3" value="Model Weights&#xa;(Checkpoint)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="20" y="450" width="130" height="60" as="geometry"/>
+    </mxCell>
+
+    <!-- P3.1: Preprocessing -->
+    <mxCell id="p31" value="P3.1&#xa;Preprocessing&#xa;&amp; Normalisation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="210" y="185" width="160" height="75" as="geometry"/>
+    </mxCell>
+
+    <!-- P3.2: GAT Encoder -->
+    <mxCell id="p32" value="P3.2&#xa;GAT Graph Encoder&#xa;(Attention Layers)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="440" y="130" width="180" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- P3.3: VAE Latent -->
+    <mxCell id="p33" value="P3.3&#xa;VAE Latent Space&#xa;Encoder (μ, σ)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="440" y="265" width="180" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- P3.4: Decoder -->
+    <mxCell id="p34" value="P3.4&#xa;Graph Decoder&#xa;(Reconstruction)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="700" y="190" width="175" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- P3.5: Reconstruction Error -->
+    <mxCell id="p35" value="P3.5&#xa;Reconstruction Error&#xa;Computation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="700" y="330" width="175" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- P3.6: Threshold Classification -->
+    <mxCell id="p36" value="P3.6&#xa;Anomaly Score&#xa;Threshold (0.6)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="960" y="260" width="175" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- P3.7: Uncertainty -->
+    <mxCell id="p37" value="P3.7&#xa;Uncertainty&#xa;Estimation (σ)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="700" y="470" width="175" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- Data Stores -->
+    <mxCell id="ds_norm" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="210" y="320" width="160" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds_norm_l" value="D3.1: Normalized Features" style="text;html=1;fontSize=8;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="212" y="323" width="156" height="34" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds_emb" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="440" y="400" width="180" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds_emb_l" value="D3.2: Node Embeddings (z)" style="text;html=1;fontSize=8;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="442" y="403" width="176" height="34" as="geometry"/>
+    </mxCell>
+
+    <!-- Outputs -->
+    <mxCell id="out1" value="Anomaly Scores&#xa;{svc: score}&#xa;→ P4, P5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1210" y="200" width="140" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="out2" value="Top Anomalous&#xa;Services → P5 DECI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1210" y="330" width="140" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="out3" value="Uncertainty Scores&#xa;→ P4 Confidence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1210" y="480" width="140" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="out4" value="Model Drift Signal&#xa;→ P8 Continual" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="960" y="600" width="140" height="60" as="geometry"/>
+    </mxCell>
+
+    <!-- Arrows -->
+    <mxCell id="a1" value="" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="inp1" target="p31"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a2" value="" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="inp2" target="p31"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a3" value="norm. feature" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p31" target="p32"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a3s" value="" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p31" target="ds_norm"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a4" value="graph embeddings" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p32" target="p33"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a5" value="μ, σ" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p33" target="ds_emb"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a6" value="z ~ N(μ,σ)" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p33" target="p34"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a7" value="z" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ds_emb" target="p34"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a8" value="x̂" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p34" target="p35"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a9" value="x (original)" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ds_norm" target="p35"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a10" value="MSE score" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p35" target="p36"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a10b" value="score" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p36" target="out1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a10c" value="top-k" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p36" target="out2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a11" value="σ" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p33" target="p37"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a12" value="uncertainty" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p37" target="out3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a13" value="drift" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p37" target="out4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a14" value="" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="inp3" target="p32"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

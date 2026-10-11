@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+
+    <mxCell id="title" value="SYNAPSE — System Architecture Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="100" y="10" width="1200" height="35" as="geometry"/>
+    </mxCell>
+
+    <!-- ===== LAYER 1: CLIENT LAYER ===== -->
+    <mxCell id="L1bg" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;opacity=30;" vertex="1" parent="1">
+      <mxGeometry x="20" y="55" width="1360" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="L1lbl" value="CLIENT LAYER" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="25" y="60" width="120" height="20" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="browser" value="SRE / Engineer&#xa;(Web Browser)" style="shape=mxgraph.cisco.computers_and_peripherals.pc;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="100" y="80" width="80" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="admin" value="Admin&#xa;(Browser)" style="shape=mxgraph.cisco.computers_and_peripherals.pc;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="250" y="80" width="80" height="70" as="geometry"/>
+    </mxCell>
+
+    <!-- ===== LAYER 2: FRONTEND LAYER ===== -->
+    <mxCell id="L2bg" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=30;" vertex="1" parent="1">
+      <mxGeometry x="20" y="185" width="1360" height="120" as="geometry"/>
+    </mxCell>
+    <mxCell id="L2lbl" value="FRONTEND LAYER (React 18 + TypeScript + Vite)" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="25" y="190" width="300" height="20" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="dash" value="Main Dashboard&#xa;(Zustand State)" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="215" width="150" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="inclist" value="Incident List /&#xa;Detail View" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="260" y="215" width="150" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="graphview" value="Causal Graph&#xa;(D3 / Cytoscape)" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="440" y="215" width="160" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="simctl" value="Simulation&#xa;Control Panel" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="630" y="215" width="150" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="modelst" value="Model Status&#xa;Panel" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="810" y="215" width="150" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="wsstream" value="WebSocket Live&#xa;Anomaly Stream" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeStyle=dashed;" vertex="1" parent="1">
+      <mxGeometry x="990" y="215" width="160" height="60" as="geometry"/>
+    </mxCell>
+
+    <!-- ===== LAYER 3: API GATEWAY LAYER ===== -->
+    <mxCell id="L3bg" value="" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;opacity=30;" vertex="1" parent="1">
+      <mxGeometry x="20" y="325" width="1360" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="L3lbl" value="API GATEWAY LAYER (FastAPI + Pydantic v2)" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="25" y="330" width="320" height="20" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="rest" value="REST API&#xa;/api/v1/*" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="100" y="355" width="160" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="ws" value="WebSocket&#xa;/api/v1/live" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="300" y="355" width="160" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="auth" value="Auth &amp; CORS&#xa;Middleware" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="500" y="355" width="160" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="swagger" value="Swagger / ReDoc&#xa;API Docs" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="700" y="355" width="160" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- ===== LAYER 4: AI PIPELINE LAYER ===== -->
+    <mxCell id="L4bg" value="" style="rounded=1;fillColor=#9673a6;strokeColor=#9673a6;opacity=20;" vertex="1" parent="1">
+      <mxGeometry x="20" y="445" width="1360" height="180" as="geometry"/>
+    </mxCell>
+    <mxCell id="L4lbl" value="AI PIPELINE LAYER — RCAPipeline Orchestrator (10 stages)" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="25" y="450" width="420" height="20" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="ingest" value="1. Metrics&#xa;Ingestion" style="rounded=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="40" y="480" width="110" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="feat" value="2. Feature&#xa;Extraction" style="rounded=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="165" y="480" width="110" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="gnn" value="3. VAE-GNN&#xa;Anomaly Detect" style="rounded=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="290" y="480" width="120" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="sev" value="4. Severity&#xa;L1–L4" style="rounded=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="425" y="480" width="100" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="deci" value="5. DECI Causal&#xa;Discovery+RAG" style="rounded=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="540" y="480" width="125" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="llm" value="6. LLM&#xa;Reasoning" style="rounded=1;fillColor=#007d7d;strokeColor=#007d7d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="680" y="480" width="100" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="rec" value="7. Recovery&#xa;Engine" style="rounded=1;fillColor=#d73a1a;strokeColor=#d73a1a;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="795" y="480" width="100" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont" value="8. Continual&#xa;Learning (EWC+MAML)" style="rounded=1;fillColor=#d6b656;strokeColor=#d6b656;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="910" y="480" width="130" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="pat" value="9. Pattern&#xa;Analyzer" style="rounded=1;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1055" y="480" width="100" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="persist" value="10. DB&#xa;Persist" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1170" y="480" width="90" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Pipeline arrows -->
+    <mxCell id="pa1" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="ingest" target="feat"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa2" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="feat" target="gnn"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa3" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="gnn" target="sev"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa4" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="sev" target="deci"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa5" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="deci" target="llm"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa6" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="llm" target="rec"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa7" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="rec" target="cont"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa8" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="cont" target="pat"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="pa9" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="pat" target="persist"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+    <!-- GNN sub-label -->
+    <mxCell id="gnnsub" value="PyTorch + PyG&#xa;GAT Autoencoder" style="text;html=1;fontSize=8;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="286" y="540" width="130" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- ===== LAYER 5: DATA LAYER ===== -->
+    <mxCell id="L5bg" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;opacity=30;" vertex="1" parent="1">
+      <mxGeometry x="20" y="645" width="1360" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="L5lbl" value="DATA LAYER" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="25" y="650" width="120" height="20" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="sqlite" value="SQLite / PostgreSQL&#xa;(SQLAlchemy async)" style="shape=mxgraph.er.entity;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="675" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="prom" value="Prometheus&#xa;(Metrics Source)" style="shape=mxgraph.er.entity;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="300" y="675" width="160" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="sim" value="MicroserviceSimulator&#xa;(Synthetic Faults)" style="shape=mxgraph.er.entity;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="500" y="675" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="openai" value="OpenAI API&#xa;GPT-4o-mini" style="shape=mxgraph.er.entity;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="720" y="675" width="150" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="disk" value="Model Checkpoints&#xa;(Disk / S3)" style="shape=mxgraph.er.entity;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="910" y="675" width="160" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Cross-layer connections -->
+    <mxCell id="c1" value="HTTP/REST + WS" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="browser" target="rest"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c2" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="dash" target="rest"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c3" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="rest" target="ingest"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c4" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="persist" target="sqlite"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c5" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="ingest" target="prom"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c6" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="llm" target="openai"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c7" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="cont" target="disk"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

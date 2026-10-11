@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Object Diagram (Runtime Instance — Incident INC-001)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="10" width="1140" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- pipeline1 : RCAPipeline -->
+    <mxCell id="p1" value="pipeline1 : RCAPipeline" style="swimlane;startSize=35;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="440" y="55" width="280" height="140" as="geometry"/>
+    </mxCell>
+    <mxCell id="p1a" value="_initialized = True&#xa;_model_trained = True&#xa;_gnn_type = 'vaegnn'&#xa;incident_id = 'INC-001'" style="text;strokeColor=none;fillColor=#006EAF;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="p1">
+      <mxGeometry x="0" y="35" width="280" height="105" as="geometry"/>
+    </mxCell>
+
+    <!-- gnn1 : GNNAnomalyDetector -->
+    <mxCell id="g1" value="gnn1 : GNNAnomalyDetector" style="swimlane;startSize=35;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="30" y="270" width="260" height="140" as="geometry"/>
+    </mxCell>
+    <mxCell id="g1a" value="model = VAEGNNModel(loaded)&#xa;device = 'cuda'&#xa;threshold = 0.6&#xa;anomaly_scores = {&#xa;  'payment-svc': 0.91,&#xa;  'order-svc': 0.74,&#xa;  'auth-svc': 0.21&#xa;}" style="text;strokeColor=none;fillColor=#9673a6;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=9;html=1;" vertex="1" parent="g1">
+      <mxGeometry x="0" y="35" width="260" height="105" as="geometry"/>
+    </mxCell>
+
+    <!-- deci1 : CausalDiscoveryEngine -->
+    <mxCell id="d1" value="deci1 : CausalDiscoveryEngine" style="swimlane;startSize=35;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="310" y="270" width="280" height="140" as="geometry"/>
+    </mxCell>
+    <mxCell id="d1a" value="alpha = 0.05&#xa;method = 'deci'&#xa;dag = {payment-svc → order-svc&#xa;       order-svc → api-gateway}&#xa;h_score = 0.003&#xa;root_candidates = ['payment-svc']" style="text;strokeColor=none;fillColor=#6d3a6d;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=9;html=1;" vertex="1" parent="d1">
+      <mxGeometry x="0" y="35" width="280" height="105" as="geometry"/>
+    </mxCell>
+
+    <!-- llm1 : LLMReasoner -->
+    <mxCell id="l1" value="llm1 : LLMReasoner" style="swimlane;startSize=35;fillColor=#007d7d;strokeColor=#007d7d;fontColor=#ffffff;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="610" y="270" width="280" height="140" as="geometry"/>
+    </mxCell>
+    <mxCell id="l1a" value="provider = 'openai'&#xa;model = 'gpt-4o-mini'&#xa;mock_mode = False&#xa;explanation = 'payment-svc exceeded&#xa;  latency SLA causing cascading&#xa;  timeout in order-svc'&#xa;fault_type = 'latency_spike'" style="text;strokeColor=none;fillColor=#007d7d;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=9;html=1;" vertex="1" parent="l1">
+      <mxGeometry x="0" y="35" width="280" height="105" as="geometry"/>
+    </mxCell>
+
+    <!-- sc1 : SeverityClassifier -->
+    <mxCell id="s1" value="sc1 : SeverityClassifier" style="swimlane;startSize=35;fillColor=#f0a30a;strokeColor=#BD7000;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="910" y="270" width="260" height="120" as="geometry"/>
+    </mxCell>
+    <mxCell id="s1a" value="severity_level = 'L2_CASCADING'&#xa;strategy = 'immediate_restart'&#xa;recurrence_count = 1&#xa;confidence = 0.87" style="text;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="s1">
+      <mxGeometry x="0" y="35" width="260" height="85" as="geometry"/>
+    </mxCell>
+
+    <!-- re1 : RecoveryEngine -->
+    <mxCell id="r1" value="re1 : RecoveryEngine" style="swimlane;startSize=35;fillColor=#d73a1a;strokeColor=#d73a1a;fontColor=#ffffff;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="30" y="490" width="280" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="r1a" value="action_type = 'restart'&#xa;target_service = 'payment-svc'&#xa;kubectl_command = 'kubectl rollout&#xa;  restart deploy/payment-svc'&#xa;success = True&#xa;simulated = True" style="text;strokeColor=none;fillColor=#d73a1a;fontColor=#ffffff;align=left;verticalAlign=top;spacingLeft=6;fontSize=9;html=1;" vertex="1" parent="r1">
+      <mxGeometry x="0" y="35" width="280" height="95" as="geometry"/>
+    </mxCell>
+
+    <!-- inc1 : Incident -->
+    <mxCell id="inc1" value="inc1 : Incident" style="swimlane;startSize=35;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="330" y="490" width="280" height="160" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc1a" value="id = 'INC-001'&#xa;title = 'payment-svc Latency Spike'&#xa;status = 'detected'&#xa;severity = 'L2_CASCADING'&#xa;root_cause_service = 'payment-svc'&#xa;confidence = 0.87&#xa;fault_type = 'latency_spike'&#xa;affected_services = [order-svc, api-gw]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=9;html=1;" vertex="1" parent="inc1">
+      <mxGeometry x="0" y="35" width="280" height="125" as="geometry"/>
+    </mxCell>
+
+    <!-- rca1 : RCAResult -->
+    <mxCell id="rca1" value="rca1 : RCAResult" style="swimlane;startSize=35;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="640" y="490" width="290" height="165" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca1a" value="id = 1&#xa;incident_id = 'INC-001'&#xa;root_cause_service = 'payment-svc'&#xa;confidence = 0.87&#xa;fault_type = 'latency_spike'&#xa;propagation_chain = 'payment-svc →&#xa;  order-svc → api-gateway'&#xa;recommended_actions = [restart, alert]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;fontSize=9;html=1;" vertex="1" parent="rca1">
+      <mxGeometry x="0" y="35" width="290" height="130" as="geometry"/>
+    </mxCell>
+
+    <!-- cm1 : ContinualManager -->
+    <mxCell id="cm1" value="cm1 : ContinualManager" style="swimlane;startSize=35;fillColor=#d6b656;strokeColor=#d6b656;fontStyle=3+1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="960" y="490" width="260" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="cm1a" value="ewc_lambda = 0.4&#xa;is_drift = False&#xa;drift_score = 0.12&#xa;buffer_size = 200&#xa;replay_count = 47" style="text;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="cm1">
+      <mxGeometry x="0" y="35" width="260" height="95" as="geometry"/>
+    </mxCell>
+
+    <!-- Links -->
+    <mxCell id="lk1" value="runs" style="endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="p1" target="g1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="lk2" value="runs" style="endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="p1" target="d1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="lk3" value="runs" style="endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="p1" target="l1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="lk4" value="creates" style="endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="p1" target="inc1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="lk5" value="has" style="endArrow=open;html=1;" edge="1" parent="1" source="inc1" target="rca1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="lk6" value="" style="endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="p1" target="s1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="lk7" value="" style="endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="p1" target="r1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="lk8" value="" style="endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="p1" target="cm1"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

@@ -191,9 +191,9 @@ class RCAPipeline:
         if not self._initialized:
             await self.initialize()
 
-        # Auto-train if not trained yet
+        # Auto-train if not trained yet (fast minimal training for demo)
         if not self._model_trained:
-            await self.train_on_normal_data(num_scenarios=15, epochs=30)
+            await self.train_on_normal_data(num_scenarios=5, epochs=10)
 
         # ── Stage 1: Generate/Get Data ──
         t0 = time.time()
@@ -496,7 +496,7 @@ class RCAPipeline:
         try:
             from app.api.ws import broadcast_json
             import asyncio
-            asyncio.create_task(broadcast_json({
+            asyncio.get_running_loop().create_task(broadcast_json({
                 "type": "rca_complete",
                 "incident_id": incident.id,
                 "root_cause": root_cause_svc,

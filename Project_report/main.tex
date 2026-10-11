@@ -1,0 +1,342 @@
+\documentclass[12pt,a4]{report}
+\usepackage{textcomp}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{titletoc,tocloft}
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb}
+\usepackage{tabularx}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{ltablex}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{lscape}
+\keepXColumns
+
+\evensidemargin 0.5in
+\oddsidemargin 0.0in
+\topmargin 0.5in
+\textwidth 6.5in
+\headheight 0.3in
+\headsep 0in
+
+\usepackage[]{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,snakes,automata,backgrounds,petri}
+
+\usepackage{tabularx}
+
+\usepackage{pgfgantt}
+\usepackage[margin=1in]{geometry}
+\usepackage{lscape}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage[titletoc]{appendix}
+\renewcommand{\bibname}{References}
+\setcounter{secnumdepth}{5}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{caption}
+\usepackage[ruled,vlined]{algorithm2e}
+\newcommand{\cellpadding}{\renewcommand{\arraystretch}{1.2}}
+\newcommand{\headerpadding}{\renewcommand{\arraystretch}{1.5}}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\textheight 8.5in
+\newcommand{\pa}{\hspace{3ex}}
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\fs}{\hspace{2ex}}
+\newcommand{\no}{\noindent}
+\newcommand{\hs}{\hspace{1ex}}
+\newtheorem{myth}{Theorem}
+\newcommand{\vs}{\vspace{0.2in}}
+\newcommand{\vf}{\vspace{0.50in}}
+\newcommand{\ms}{\;}
+\renewcommand{\appendixname}{Annexure}
+
+% Rename "Contents" to "INDEX"
+\renewcommand{\contentsname}{INDEX}
+
+% Disable header/footer for chapter title pages
+\fancypagestyle{chaptertitle}{
+  \fancyhf{} % clear all
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
+% ==========================================
+%  CUSTOM CHAPTER STYLE – CENTER TITLE PAGE
+% ==========================================
+\makeatletter
+\def\@makechapterhead#1{%
+  \vspace*{\fill}%
+  \begin{center}
+    {\Huge\bfseries CHAPTER \thechapter\\[1.5ex]#1}
+  \end{center}
+  \thispagestyle{chaptertitle}% disable headers/footers
+  \vspace*{\fill}
+  \clearpage
+}
+\def\@makeschapterhead#1{%
+  \vspace*{\fill}%
+  \begin{center}
+    {\Huge\bfseries #1}
+  \end{center}
+  \thispagestyle{chaptertitle}%
+  \vspace*{\fill}
+  \clearpage
+}
+\makeatother
+
+\newcommand{\createGanttChart}{%
+    \begin{table}[htbp]
+    \centering
+    \caption{Project Timeline}
+    \begingroup
+    \renewcommand\sfdefault{phv}
+    \renewcommand\mddefault{mc}
+    \renewcommand\bfdefault{bc}
+    
+    \sffamily
+    \begin{ganttchart}[
+        canvas/.append style={fill=none, draw=black!5, line width=.75pt},
+        hgrid style/.style={draw=black!5, line width=.75pt},
+        vgrid={*1{draw=black!5, line width=.75pt}},
+        title/.style={draw=none, fill=none},
+        title label font=\bfseries\footnotesize,
+        title label node/.append style={below=7pt},
+        include title in canvas=false,
+        bar label font=\mdseries\small\color{black!70},
+        bar label node/.append style={left=2cm},
+        bar/.append style={draw=none, fill=black!63},
+        bar incomplete/.append style={fill=blue!40},
+        bar progress label font=\mdseries\footnotesize\color{black!70},
+        group left shift=0,
+        group right shift=0,
+        group height=.5,
+        group peaks tip position=0,
+        group label node/.append style={left=.6cm},
+        group progress label font=\bfseries\small,
+        x unit=0.7cm,
+        title label node/.append style={xshift=0.1cm}
+    ]{1}{12}
+      % --- Titles ---
+      \gantttitle[
+        title label node/.append style={below left=7pt and -3pt}
+      ]{2025}{12} \\
+      \gantttitlelist[
+        title label node/.append style={below left=7pt and -3pt}
+      ]{{"Jan"}, {"Feb"}, {"Mar"}, {"Apr"}, {"May"}, {"Jun"}, {"Jul"}, {"Aug"}, {"Sep"}, {"Oct"}, {"Nov"}, {"Dec"}}{1} \\
+      % --- Tasks ---
+      \ganttgroup{Project Timeline}{1}{12} \\
+      \ganttbar[name=planning]{\textbf{1.} Requirements and Architecture Design}{1}{2} \\
+      \ganttbar[name=research]{\textbf{2.} Technology Research and Data Pipeline}{3}{4} \\
+      \ganttbar[name=gnn]{\textbf{3.} VAE-GNN and Causal Discovery Development}{5}{6} \\
+      \ganttbar[name=llm]{\textbf{4.} LLM Integration and Recovery Engine}{7}{8} \\
+      \ganttbar[name=frontend]{\textbf{5.} React Dashboard and API Integration}{8}{9} \\
+      \ganttbar[name=testing]{\textbf{6.} Testing, Validation and Deployment}{10}{11}\\
+      \ganttbar[name=documentation]{\textbf{7.} Documentation and Report}{10}{12}
+    \end{ganttchart}
+    \endgroup
+    
+    \label{gantt:project-timeline}
+    \end{table}
+}
+
+\begin{document}
+% ==========================================
+% FIRST 2 PAGES: No headers, footers, or page numbers
+% ==========================================
+\pagenumbering{gobble}
+\pagestyle{empty}
+
+% Page 1: Title page
+\vspace*{\fill}
+\begin{center}
+
+{\large  A  PROJECT REPORT ON}\\
+\vspace{0.5cm}
+\vspace{0.5cm}
+{\bfseries \fontsize{16}{12} \selectfont{SYNAPSE}  \\ \vspace*{1\baselineskip}}
+{\bfseries \fontsize{14}{12} \selectfont{AI-Powered AIOps Platform for Automated Root Cause Analysis of Microservice Failures}  \\ \vspace*{2\baselineskip}}
+{\fontsize{12}{12} \selectfont Submitted towards the
+ \\Partial Fulfilment of the Requirements of} \\
+\vspace{1cm}
+{\bfseries \fontsize{14}{12} \selectfont BACHELOR OF TECHNOLOGY \\
+\vspace*{0.5\baselineskip}
+IN
+\vspace*{0.5\baselineskip}
+\\[DEPARTMENT NAME]\\
+\vspace*{1\baselineskip}}
+\fontsize{14}{12} \selectfont \textbf{By} \\
+{\large \begin{center}
+\begin{tabular}{l l}
+Shravani         & Examination Seat No: [SEAT\_NO\_1]  \\
+[Teammate 2]     & Examination Seat No: [SEAT\_NO\_2]  \\
+[Teammate 3]     & Examination Seat No: [SEAT\_NO\_3]  \\
+[Teammate 4]     & Examination Seat No: [SEAT\_NO\_4]  \\
+\end{tabular}
+\end{center}}
+{\bfseries \large Under the guidance of} \\
+\vspace{0.5cm}
+{\bfseries \large Prof. [Guide Name]} \\ \vspace{0.5cm}
+
+% Uncomment and add your college logo:
+% \begin{figure}[!h]
+% \centering
+%   \includegraphics[width=1.5in]{collegelogo.png}
+% \end{figure}
+
+{\small Department of [Department Name]}\\
+\fontsize{13}{13} \selectfont [COLLEGE SOCIETY NAME]\\
+\fontsize{13}{13} \selectfont [COLLEGE NAME]\\
+[College Address] \\
+(An Autonomous Institute affiliated to [University Name])\\
+A. Y. 2025-2026
+\vspace*{\fill}
+\end{center}
+
+\pagebreak
+
+% Page 2: Certificate
+\input{Certificate.tex}
+\pagebreak
+
+% ==========================================
+% ROMAN NUMBERING SECTION
+% ==========================================
+\pagenumbering{Roman}
+\setcounter{page}{1}
+
+\fancypagestyle{romanpages}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
+% Page I: Abstract
+\pagestyle{romanpages}
+\input{Abstract.tex}
+\pagebreak
+
+% Page II: Acknowledgement
+\input{Ack.tex}
+\newpage
+
+% Page III: INDEX (Table of Contents)
+\pagestyle{romanpages}
+\tableofcontents
+\addtocontents{toc}{\protect\thispagestyle{romanpages}}
+
+\let\origaddvspace\addvspace
+\renewcommand{\addvspace}[1]{}
+
+% Page IV: List of Tables
+\clearpage
+\pagestyle{romanpages}
+\listoftables
+\addtocontents{lot}{\protect\thispagestyle{romanpages}}
+
+% Page V: List of Figures
+\clearpage
+\pagestyle{romanpages}
+\listoffigures
+\addtocontents{lof}{\protect\thispagestyle{romanpages}}
+
+% ==========================================
+% START OF CHAPTERS: Arabic page numbering
+% ==========================================
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\fancyhf{}
+\renewcommand{\footrulewidth}{0.4pt}
+\lfoot{[College Short Name], Department of [Department Name], 2025}
+\rfoot{Page \thepage}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \lfoot{[College Short Name], Department of [Department Name]}
+    \rfoot{Page \thepage}
+    \renewcommand{\headrulewidth}{0.0pt}
+    \renewcommand{\footrulewidth}{0.0pt}
+}
+\pagestyle{fancy}
+
+\setlength{\parindent}{11mm}
+
+% ==========================================
+% CHAPTERS
+% ==========================================
+
+\chapter{INTRODUCTION}
+\input{ch1_intro.tex}
+
+\chapter{LITERATURE SURVEY}
+\input{ch2_literature.tex}
+
+\chapter{PROBLEM DEFINITION \vspace*{0.5\baselineskip} AND SCOPE}
+\input{ch3_problem.tex}
+
+\chapter{PROJECT PLAN}
+\input{ch4_plan.tex}
+
+\chapter{SOFTWARE REQUIREMENT \vspace*{0.5\baselineskip} SPECIFICATION}
+\input{ch5_srs.tex}
+
+\chapter{DETAILED DESIGN}
+\input{ch6_design.tex}
+
+\chapter{RESULTS AND DISCUSSION}
+\input{ch7_results.tex}
+
+\chapter{CONCLUSION AND \vspace*{0.5\baselineskip} FUTURE WORK}
+\input{ch8_conclusion.tex}
+
+% ==========================================
+% ANNEXURES
+% ==========================================
+\clearpage
+\pagenumbering{gobble}
+\pagestyle{empty}
+
+\makeatletter
+\renewcommand{\@chapapp}{Annexure}
+\renewcommand{\thechapter}{\Alph{chapter}}
+\makeatother
+
+\makeatletter
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{\fill}%
+  \begin{center}
+    {\Huge\bfseries Annexure \thechapter\\[1.5ex]#1}
+  \end{center}
+  \thispagestyle{chaptertitle}%
+  \vspace*{\fill}
+  \clearpage
+}
+\makeatother
+
+\begin{appendices}
+\chapter{References}
+\input{References.tex}
+\chapter{Plagiarism Report}
+\chapter{Paper Published (if any)}
+\chapter{Sponsorship Detail (if any)}
+\end{appendices}
+
+\end{document}

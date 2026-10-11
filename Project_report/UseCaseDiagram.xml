@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+
+    <mxCell id="title" value="SYNAPSE — Use Case Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="100" y="10" width="1100" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- System Boundary -->
+    <mxCell id="sys" value="SYNAPSE Platform" style="swimlane;startSize=30;fillColor=none;strokeColor=#006EAF;fontStyle=1;fontSize=13;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="200" y="50" width="900" height="800" as="geometry"/>
+    </mxCell>
+
+    <!-- Use Cases -->
+    <mxCell id="uc1" value="Trigger RCA Pipeline" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="220" y="60" width="180" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc2" value="View Incident List" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="220" y="145" width="180" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc3" value="View RCA Report&#xa;(Causal Graph)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="220" y="230" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc4" value="Simulate Fault Injection" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="220" y="315" width="180" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc5" value="View Service&#xa;Dependency Graph" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="220" y="400" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc6" value="Stream Live&#xa;Anomaly Data" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="470" y="60" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc7" value="Classify Severity&#xa;(L1–L4)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="470" y="145" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc8" value="Execute DECI&#xa;Causal Discovery" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="470" y="230" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc9" value="Generate LLM&#xa;Explanation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="470" y="315" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc10" value="Execute Recovery&#xa;Action (kubectl)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="470" y="400" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc11" value="View Model Status&#xa;&amp; Train Model" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="470" y="490" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc12" value="Manage Users&#xa;&amp; Configuration" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="680" y="60" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc13" value="Configure Continual&#xa;Learning (EWC/MAML)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="680" y="145" width="180" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc14" value="Monitor Recurring&#xa;Pattern History" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="sys">
+      <mxGeometry x="680" y="230" width="180" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- include use cases (dashed ellipses) -->
+    <mxCell id="uc_gnn" value="«include»&#xa;VAE-GNN Anomaly&#xa;Detection" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontStyle=2;" vertex="1" parent="sys">
+      <mxGeometry x="220" y="600" width="160" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc_rag" value="«include»&#xa;SynapseRAG&#xa;W0 Prior" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontStyle=2;" vertex="1" parent="sys">
+      <mxGeometry x="410" y="600" width="160" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="uc_replay" value="«extend»&#xa;Experience Replay&#xa;Buffer Update" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontStyle=2;" vertex="1" parent="sys">
+      <mxGeometry x="610" y="600" width="160" height="60" as="geometry"/>
+    </mxCell>
+
+    <!-- Actors -->
+    <mxCell id="sre" value="SRE / Platform&#xa;Engineer" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="60" y="200" width="60" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="adminact" value="Admin /&#xa;DevOps" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1160" y="100" width="60" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="aiengine" value="AI Pipeline&#xa;Engine" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="530" width="60" height="90" as="geometry"/>
+    </mxCell>
+
+    <!-- Associations -->
+    <mxCell id="a1" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="sre" target="uc1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a2" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="sre" target="uc2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a3" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="sre" target="uc3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a4" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="sre" target="uc4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a5" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="sre" target="uc5"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a6" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="adminact" target="uc12"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a7" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="adminact" target="uc13"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a8" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="adminact" target="uc11"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a9" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="aiengine" target="uc6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a10" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="aiengine" target="uc7"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a11" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="aiengine" target="uc8"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a12" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="aiengine" target="uc9"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a13" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="aiengine" target="uc10"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+    <!-- Include/extend relations (dashed arrows within sys) -->
+    <mxCell id="inc1" value="«include»" style="endArrow=open;dashed=1;html=1;fontSize=9;" edge="1" parent="sys" source="uc1" target="uc_gnn"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="inc2" value="«include»" style="endArrow=open;dashed=1;html=1;fontSize=9;" edge="1" parent="sys" source="uc8" target="uc_rag"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ext1" value="«extend»" style="endArrow=open;dashed=1;html=1;fontSize=9;" edge="1" parent="sys" source="uc11" target="uc_replay"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

@@ -224,11 +224,13 @@ def switch_system(system_name: str, namespace: str = "default") -> Dict:
         from app.api.ws import broadcast_json
         import asyncio
         from app.services.graph_builder import graph_builder
-        asyncio.create_task(broadcast_json({
-            "type": "system_switched",
-            "system": system_name,
-            "services": list(graph_builder.service_names)
-        }))
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(broadcast_json({
+                "type": "system_switched",
+                "system": system_name,
+                "services": list(graph_builder.service_names)
+            }))
     except Exception:
         pass
 

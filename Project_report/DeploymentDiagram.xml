@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Deployment Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="10" width="1240" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- NODE: Developer Machine -->
+    <mxCell id="dev" value="«device»&#xa;Developer Machine" style="swimlane;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="20" y="55" width="300" height="240" as="geometry"/>
+    </mxCell>
+    <mxCell id="dev_b" value="«artifact»&#xa;Backend Source&#xa;(Python 3.10+)" style="shape=mxgraph.uml.artifact;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="dev">
+      <mxGeometry x="20" y="55" width="120" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="dev_f" value="«artifact»&#xa;Frontend Source&#xa;(React + Vite)" style="shape=mxgraph.uml.artifact;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="dev">
+      <mxGeometry x="160" y="55" width="120" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="dev_git" value="«component»&#xa;Git + GitHub&#xa;(Version Control)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="dev">
+      <mxGeometry x="60" y="150" width="180" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- NODE: Docker Build Server / CI-CD -->
+    <mxCell id="ci" value="«device»&#xa;CI/CD Server&#xa;(GitHub Actions)" style="swimlane;startSize=40;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="360" y="55" width="280" height="240" as="geometry"/>
+    </mxCell>
+    <mxCell id="ci_be" value="«artifact»&#xa;Docker Image:&#xa;synapse-backend:latest" style="shape=mxgraph.uml.artifact;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="ci">
+      <mxGeometry x="20" y="55" width="110" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="ci_fe" value="«artifact»&#xa;Docker Image:&#xa;synapse-frontend:latest" style="shape=mxgraph.uml.artifact;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="ci">
+      <mxGeometry x="150" y="55" width="110" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="ci_reg" value="«component»&#xa;Docker Registry&#xa;(DockerHub / GHCR)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="ci">
+      <mxGeometry x="60" y="155" width="160" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- NODE: Kubernetes Cluster -->
+    <mxCell id="k8s" value="«device»&#xa;Kubernetes Cluster" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="680" y="55" width="630" height="460" as="geometry"/>
+    </mxCell>
+
+    <!-- Namespace: synapse-ns -->
+    <mxCell id="ns" value="namespace: synapse-ns" style="swimlane;startSize=30;fillColor=none;strokeColor=#82b366;fontStyle=2;fontSize=10;dashed=1;" vertex="1" parent="k8s">
+      <mxGeometry x="20" y="50" width="590" height="380" as="geometry"/>
+    </mxCell>
+
+    <!-- Backend Pod -->
+    <mxCell id="pod_be" value="«pod»&#xa;synapse-backend" style="swimlane;startSize=30;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="ns">
+      <mxGeometry x="15" y="45" width="270" height="310" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont_fastapi" value="«container»&#xa;FastAPI Server&#xa;:8000&#xa;(uvicorn async)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="pod_be">
+      <mxGeometry x="15" y="40" width="115" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont_rca" value="«container»&#xa;RCAPipeline&#xa;AI Modules&#xa;(PyTorch+PyG)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontSize=9;" vertex="1" parent="pod_be">
+      <mxGeometry x="145" y="40" width="110" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont_cl" value="«container»&#xa;ContinualManager&#xa;(EWC+MAML)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="pod_be">
+      <mxGeometry x="15" y="130" width="115" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont_sim" value="«container»&#xa;MicroserviceSimulator&#xa;(fault injection)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="pod_be">
+      <mxGeometry x="145" y="130" width="110" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="be_svc" value="Service: synapse-backend-svc&#xa;Port: 8000 → ClusterIP" style="text;html=1;fontSize=8;fillColor=none;strokeColor=none;" vertex="1" parent="pod_be">
+      <mxGeometry x="10" y="210" width="250" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="be_hpa" value="HPA: cpu_threshold=70%  max=5 replicas" style="text;html=1;fontSize=8;fillColor=none;strokeColor=none;" vertex="1" parent="pod_be">
+      <mxGeometry x="10" y="245" width="250" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- Frontend Pod -->
+    <mxCell id="pod_fe" value="«pod»&#xa;synapse-frontend" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="ns">
+      <mxGeometry x="305" y="45" width="265" height="210" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont_nginx" value="«container»&#xa;Nginx&#xa;(Reverse Proxy&#xa;+ Static Serve)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="pod_fe">
+      <mxGeometry x="15" y="40" width="115" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont_react" value="«container»&#xa;React 18 SPA&#xa;(Vite build)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="pod_fe">
+      <mxGeometry x="145" y="40" width="105" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe_svc" value="Service: synapse-frontend-svc&#xa;Port: 80 → NodePort:30080" style="text;html=1;fontSize=8;fillColor=none;strokeColor=none;" vertex="1" parent="pod_fe">
+      <mxGeometry x="10" y="125" width="245" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- DB Pod -->
+    <mxCell id="pod_db" value="«pod»&#xa;synapse-db" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=10;" vertex="1" parent="ns">
+      <mxGeometry x="305" y="270" width="265" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="cont_pg" value="«container»&#xa;PostgreSQL 15&#xa;PVC: 10Gi" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="pod_db">
+      <mxGeometry x="15" y="35" width="230" height="45" as="geometry"/>
+    </mxCell>
+
+    <!-- NODE: Browser Client -->
+    <mxCell id="browser" value="«device»&#xa;SRE Browser&#xa;(Chrome/Firefox)" style="swimlane;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="20" y="360" width="200" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="browser_react" value="React SPA&#xa;(downloaded)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="browser">
+      <mxGeometry x="30" y="55" width="140" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- NODE: OpenAI External -->
+    <mxCell id="ext_openai" value="«external service»&#xa;OpenAI API&#xa;api.openai.com" style="swimlane;startSize=40;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="680" y="560" width="260" height="100" as="geometry"/>
+    </mxCell>
+
+    <!-- NODE: Prometheus -->
+    <mxCell id="ext_prom" value="«device»&#xa;Prometheus Server&#xa;:9090" style="swimlane;startSize=40;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="980" y="560" width="220" height="100" as="geometry"/>
+    </mxCell>
+
+    <!-- Connections -->
+    <mxCell id="c1" value="git push → trigger" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="dev" target="ci"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c2" value="kubectl apply / Helm deploy" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ci" target="k8s"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c3" value="HTTPS :30080" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="browser" target="k8s"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c4" value="HTTPS (TLS)" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="k8s" target="ext_openai"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="c5" value="scrape :9090" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ext_prom" target="k8s"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

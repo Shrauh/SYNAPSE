@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="650" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Data Flow Diagram — Level 0 (Context Diagram)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="50" y="10" width="800" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- External Entities -->
+    <mxCell id="sre" value="SRE /&#xa;Platform Engineer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="30" y="250" width="130" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="prom" value="Prometheus&#xa;Metrics Source" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="30" y="90" width="130" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="admin" value="Admin /&#xa;DevOps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="30" y="420" width="130" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="openai" value="OpenAI&#xa;GPT-4o-mini" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="740" y="90" width="130" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="k8s" value="Kubernetes&#xa;Cluster" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="740" y="420" width="130" height="70" as="geometry"/>
+    </mxCell>
+
+    <!-- Central Process -->
+    <mxCell id="sys" value="SYNAPSE&#xa;AI-AIOps Platform" style="ellipse;whiteSpace=wrap;html=1;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="330" y="210" width="240" height="150" as="geometry"/>
+    </mxCell>
+
+    <!-- Data stores -->
+    <mxCell id="ds1_top" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="550" y="120" width="130" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds1_lbl" value="D1: Incident DB" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="553" y="122" width="124" height="46" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds2_top" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="220" y="420" width="130" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds2_lbl" value="D2: RCA Results DB" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="223" y="422" width="124" height="46" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds3_top" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="550" y="420" width="130" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds3_lbl" value="D3: Model Checkpoints" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="553" y="422" width="124" height="46" as="geometry"/>
+    </mxCell>
+
+    <!-- Arrows: external to system -->
+    <mxCell id="f1" value="Service Metrics&#xa;(latency, error_rate, cpu, mem)" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="prom" target="sys"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f2" value="RCA Trigger Request" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="sre" target="sys"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f2r" value="RCA Report + Causal Graph" style="endArrow=open;endFill=0;dashed=1;html=1;fontSize=9;" edge="1" parent="1" source="sys" target="sre"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f3" value="Config / Train Params" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="admin" target="sys"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f3r" value="Model Status / Logs" style="endArrow=open;endFill=0;dashed=1;html=1;fontSize=9;" edge="1" parent="1" source="sys" target="admin"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f4" value="Prompt (causal chain)" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="sys" target="openai"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f4r" value="LLM Explanation + Actions" style="endArrow=open;endFill=0;dashed=1;html=1;fontSize=9;" edge="1" parent="1" source="openai" target="sys"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f5" value="kubectl Recovery Command" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="sys" target="k8s"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f5r" value="Execution Status" style="endArrow=open;endFill=0;dashed=1;html=1;fontSize=9;" edge="1" parent="1" source="k8s" target="sys"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <!-- System to data stores -->
+    <mxCell id="f6" value="" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="sys" target="ds1_top"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f7" value="" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="sys" target="ds2_top"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f8" value="" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="sys" target="ds3_top"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>
