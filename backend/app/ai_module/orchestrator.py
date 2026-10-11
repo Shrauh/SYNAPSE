@@ -197,10 +197,22 @@ class RCAPipeline:
 
         # ── Stage 1: Generate/Get Data ──
         t0 = time.time()
-        if simulation_result is None:
+        # Handle both SimulationResult object (simulate endpoint) and plain dict (alertmanager)
+        if simulation_result is not None and isinstance(simulation_result, dict):
             from data.simulator import MicroserviceSimulator
-            sim = MicroserviceSimulator()
-            simulation_result = sim.simulate_incident(
+            _sim = MicroserviceSimulator()
+            _rc = simulation_result.get("root_cause", "database")
+            _ft = simulation_result.get("fault_type", "latency_spike")
+            simulation_result = _sim.simulate_incident(
+                root_cause=_rc if _rc in _sim.services else _sim.services[3],
+                fault_type=_ft,
+                severity=5.0,
+                num_steps=30,
+            )
+        elif simulation_result is None:
+            from data.simulator import MicroserviceSimulator
+            _sim = MicroserviceSimulator()
+            simulation_result = _sim.simulate_incident(
                 root_cause="database",
                 fault_type="latency_spike",
                 severity=5.0,

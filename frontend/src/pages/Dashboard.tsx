@@ -104,7 +104,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Custom WebSocket handling for specific dashboard events
-    const ws = new WebSocket("ws://localhost:8000/ws");
+    const ws = new WebSocket("ws://localhost:8000/api/v1/live");
     
     ws.onmessage = (event) => {
       try {
@@ -139,7 +139,9 @@ export default function Dashboard() {
     if (sys === activeSystem) return;
     setSwitching(true);
     try {
-      await switchSystem(sys);
+      // Normalize display name → API id: "Online Boutique"→"online-boutique"
+      const sysId = sys.toLowerCase().replace(/ /g, "-");
+      await switchSystem(sysId);
       setActiveSystem(sys);
       const sysKey = sys.toLowerCase();
       const svcs = SERVICES_MAP[sysKey] || SERVICES_MAP["default"];
@@ -159,9 +161,10 @@ export default function Dashboard() {
     setSimResult(null);
     try {
       await simulateFault({
-        system: activeSystem,
-        service: simService,
-        fault_type: simFault
+        fault_type: simFault,
+        root_cause_service: simService,
+        severity: "high",
+        duration_minutes: 3
       });
       showToast(`Fault injected into ${simService}`, 'warning');
       

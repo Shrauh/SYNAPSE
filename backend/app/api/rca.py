@@ -66,12 +66,19 @@ async def _run_pipeline_background(
                 except Exception as notify_err:
                     logger.warning(f"Notification failed (non-critical): {notify_err}")
             except Exception as e:
-                await db.rollback()
-                incident.status = "error"
-                incident.description = (incident.description or "") + f"\nPipeline error: {e}"
-                await db.commit()
                 logger.error(f"Pipeline error for {incident_id}: {e}")
                 traceback.print_exc()
+                # Update status in a fresh session to avoid MissingGreenlet
+                try:
+                    async with async_session() as err_db:
+                        from sqlalchemy import select as sel
+                        r2 = await err_db.execute(sel(Incident).where(Incident.id == incident_id))
+                        inc2 = r2.scalar_one_or_none()
+                        if inc2:
+                            inc2.status = "error"
+                            await err_db.commit()
+                except Exception:
+                    pass
 
 
 @router.post("/trigger", response_model=TriggerRCAResponse)
