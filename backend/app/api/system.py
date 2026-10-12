@@ -32,8 +32,10 @@ class SwitchRequest(BaseModel):
 def get_active() -> Dict[str, Any]:
     """Get currently active monitoring system."""
     topo = get_active_topology()
+    sys_name = get_active_system()
     return {
-        "system": get_active_system(),
+        "system": sys_name,
+        "active_system": sys_name,
         "label": topo["label"] if topo else "Unknown",
         "services": get_service_names(),
         "service_count": len(get_service_names()),

@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Entity Relationship Diagram (ERD)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="10" width="1140" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- INCIDENT TABLE -->
+    <mxCell id="inc" value="Incident" style="swimlane;startSize=35;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="130" y="55" width="300" height="340" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_pk" value="🔑 id : VARCHAR(36) PK" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontStyle=1;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="35" width="300" height="22" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f1" value="title : TEXT NOT NULL" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="57" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f2" value="status : VARCHAR(20) DEFAULT 'detected'" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="77" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f3" value="severity : VARCHAR(20)" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="97" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f4" value="root_cause_service : TEXT" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="117" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f5" value="confidence : FLOAT" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="137" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f6" value="fault_type : TEXT" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="157" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f7" value="affected_services : JSON" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="177" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f8" value="anomaly_scores : JSON" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="197" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f9" value="causal_graph_snapshot : JSON" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="217" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f10" value="detected_at : TIMESTAMP" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="237" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f11" value="resolved_at : TIMESTAMP NULLABLE" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="257" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f12" value="tags : JSON NULLABLE" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="277" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="inc_f13" value="pipeline_duration_ms : INTEGER" style="text;fillColor=#dae8fc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="inc">
+      <mxGeometry x="0" y="297" width="300" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- RCARESULT TABLE -->
+    <mxCell id="rca" value="RCAResult" style="swimlane;startSize=35;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="530" y="55" width="300" height="310" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_pk" value="🔑 id : INTEGER PK AUTOINCREMENT" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontStyle=1;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="35" width="300" height="22" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_fk" value="🔗 incident_id : VARCHAR(36) FK → Incident" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;fontStyle=2;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="57" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f1" value="root_cause_service : TEXT" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="77" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f2" value="confidence : FLOAT" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="97" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f3" value="fault_type : TEXT" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="117" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f4" value="explanation : TEXT" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="137" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f5" value="propagation_chain : TEXT" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="157" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f6" value="causal_graph : JSON" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="177" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f7" value="recommended_actions : JSON" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="197" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f8" value="pipeline_stages : JSON" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize:10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="217" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f9" value="created_at : TIMESTAMP" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="237" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="rca_f10" value="model_version : TEXT" style="text;fillColor=#d5e8d4;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="rca">
+      <mxGeometry x="0" y="257" width="300" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- SERVICEMETRIC TABLE -->
+    <mxCell id="sm" value="ServiceMetric" style="swimlane;startSize=35;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="130" y="450" width="300" height="230" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_pk" value="🔑 id : INTEGER PK AUTOINCREMENT" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontStyle=1;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="35" width="300" height="22" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_fk" value="🔗 incident_id : VARCHAR(36) FK → Incident" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;fontStyle=2;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="57" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_f1" value="service_name : TEXT NOT NULL" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="77" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_f2" value="latency_ms : FLOAT" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="97" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_f3" value="error_rate : FLOAT" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="117" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_f4" value="cpu_usage : FLOAT" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="137" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_f5" value="memory_usage : FLOAT" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="157" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_f6" value="request_rate : FLOAT" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="177" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sm_f7" value="timestamp : TIMESTAMP" style="text;fillColor=#ffe6cc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="sm">
+      <mxGeometry x="0" y="197" width="300" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- RECOVERYACTIONLOG TABLE -->
+    <mxCell id="ral" value="RecoveryActionLog" style="swimlane;startSize=35;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="530" y="430" width="300" height="230" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_pk" value="🔑 id : INTEGER PK AUTOINCREMENT" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontStyle=1;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="35" width="300" height="22" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_fk" value="🔗 incident_id : VARCHAR(36) FK → Incident" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;fontStyle=2;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="57" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_f1" value="action_type : TEXT" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="77" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_f2" value="target_service : TEXT" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="97" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_f3" value="kubectl_command : TEXT" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="117" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_f4" value="success : BOOLEAN DEFAULT TRUE" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="137" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_f5" value="simulated : BOOLEAN DEFAULT TRUE" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="157" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_f6" value="executed_at : TIMESTAMP" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="177" width="300" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ral_f7" value="notes : TEXT NULLABLE" style="text;fillColor=#f8cecc;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ral">
+      <mxGeometry x="0" y="197" width="300" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- PATTERNHISTORY TABLE -->
+    <mxCell id="ph" value="PatternHistory" style="swimlane;startSize=35;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="880" y="55" width="310" height="230" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_pk" value="🔑 id : INTEGER PK AUTOINCREMENT" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontStyle=1;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="35" width="310" height="22" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f1" value="fault_type : TEXT NOT NULL" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="57" width="310" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f2" value="root_cause_service : TEXT" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="77" width="310" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f3" value="recurrence_count : INTEGER DEFAULT 1" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="97" width="310" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f4" value="first_seen : TIMESTAMP" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="117" width="310" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f5" value="last_seen : TIMESTAMP" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="137" width="310" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f6" value="avg_confidence : FLOAT" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="157" width="310" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f7" value="escalated_to_L4 : BOOLEAN DEFAULT FALSE" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="177" width="310" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="ph_f8" value="service_context : JSON" style="text;fillColor=#e1d5e7;strokeColor=none;align=left;spacingLeft=6;fontSize=10;html=1;" vertex="1" parent="ph">
+      <mxGeometry x="0" y="197" width="310" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Relationships -->
+    <!-- Incident 1 → many RCAResult -->
+    <mxCell id="r1" value="1" style="endArrow=none;html=1;fontSize=11;fontStyle=1;" edge="1" parent="1" source="inc" target="rca">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="430" y="160"/><mxPoint x="530" y="160"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="r1lbl" value="1               N" style="text;html=1;fontSize=10;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="440" y="140" width="90" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Incident 1 → many ServiceMetric -->
+    <mxCell id="r2" value="" style="endArrow=ERmany;startArrow=ERone;html=1;fontSize=10;" edge="1" parent="1" source="inc" target="sm">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="r2lbl" value="1 : N" style="text;html=1;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="170" y="400" width="60" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Incident 1 → many RecoveryActionLog -->
+    <mxCell id="r3" value="" style="endArrow=ERmany;startArrow=ERone;html=1;fontSize=10;" edge="1" parent="1" source="inc" target="ral">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="430" y="300"/><mxPoint x="520" y="300"/><mxPoint x="520" y="550"/><mxPoint x="530" y="550"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="r3lbl" value="1 : N" style="text;html=1;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="450" y="380" width="60" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- PatternHistory: standalone, no FK (derived) -->
+    <mxCell id="r4" value="derives from" style="endArrow=open;dashed=1;html=1;fontSize=9;" edge="1" parent="1" source="rca" target="ph">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Cardinality labels inline -->
+    <mxCell id="card1" value="Incident has many RCAResults, ServiceMetrics, RecoveryActionLogs.&#xa;PatternHistory is derived from aggregated RCAResult patterns." style="text;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;align=left;spacingLeft=5;" vertex="1" parent="1">
+      <mxGeometry x="880" y="340" width="410" height="60" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>

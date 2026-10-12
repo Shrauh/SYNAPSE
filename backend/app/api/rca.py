@@ -66,12 +66,19 @@ async def _run_pipeline_background(
                 except Exception as notify_err:
                     logger.warning(f"Notification failed (non-critical): {notify_err}")
             except Exception as e:
-                await db.rollback()
-                incident.status = "error"
-                incident.description = (incident.description or "") + f"\nPipeline error: {e}"
-                await db.commit()
                 logger.error(f"Pipeline error for {incident_id}: {e}")
                 traceback.print_exc()
+                # Update status in a fresh session to avoid MissingGreenlet
+                try:
+                    async with async_session() as err_db:
+                        from sqlalchemy import select as sel
+                        r2 = await err_db.execute(sel(Incident).where(Incident.id == incident_id))
+                        inc2 = r2.scalar_one_or_none()
+                        if inc2:
+                            inc2.status = "error"
+                            await err_db.commit()
+                except Exception:
+                    pass
 
 
 @router.post("/trigger", response_model=TriggerRCAResponse)
@@ -130,14 +137,51 @@ async def simulate_fault(
     await db.refresh(incident)
 
     # Generate simulation data
+    from data.simulator import MicroserviceSimulator, SERVICE_NAMES
     sim = MicroserviceSimulator()
+
+    # Normalize service name: frontend accepts various formats
+    # Map common aliases to simulator service names
+    _ALIAS_MAP = {
+        "paymentservice": "payment-service",
+        "cartservice": "cache-service",
+        "checkoutservice": "order-service",
+        "frontend": "api-gateway",
+        "productcatalogservice": "inventory-service",
+        "recommendationservice": "search-service",
+        "shippingservice": "notification-service",
+        "emailservice": "notification-service",
+        "redis-cart": "cache-service",
+        "currencyservice": "auth-service",
+    }
+    normalized_service = _ALIAS_MAP.get(req.root_cause_service, req.root_cause_service)
+    if normalized_service not in SERVICE_NAMES:
+        # Pick the closest match or first service
+        import difflib
+        matches = difflib.get_close_matches(normalized_service, SERVICE_NAMES, n=1)
+        normalized_service = matches[0] if matches else SERVICE_NAMES[3]  # payment-service default
+
     severity_map = {"low": 2.0, "medium": 4.0, "high": 6.0, "critical": 8.0}
     sim_result = sim.simulate_incident(
-        root_cause=req.root_cause_service,
+        root_cause=normalized_service,
         fault_type=req.fault_type,
         severity=severity_map.get(req.severity, 5.0),
         num_steps=max(30, req.duration_minutes * 2),
     )
+
+    # Notify frontend simulation started
+    try:
+        from app.api.ws import broadcast_json
+        import asyncio
+        asyncio.get_running_loop().create_task(broadcast_json({
+            "type": "simulation_started",
+            "incident_id": incident.id,
+            "fault_type": req.fault_type,
+            "root_cause_service": req.root_cause_service,
+            "status": "analyzing"
+        }))
+    except Exception:
+        pass
 
     # Run pipeline in background with pre-generated data
     background_tasks.add_task(

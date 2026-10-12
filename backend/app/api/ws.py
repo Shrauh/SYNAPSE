@@ -65,3 +65,13 @@ async def websocket_live(websocket: WebSocket):
                 await websocket.send_json({"type": "pong"})
     except (WebSocketDisconnect, ConnectionResetError, Exception):
         manager.disconnect(websocket)
+
+async def broadcast_json(data: dict) -> None:
+    """Broadcast a JSON message to all connected WebSocket clients."""
+    import json
+    message = json.dumps(data)
+    for ws in list(manager.active_connections):
+        try:
+            await ws.send_text(message)
+        except Exception:
+            manager.active_connections.discard(ws)

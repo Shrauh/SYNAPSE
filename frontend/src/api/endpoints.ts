@@ -26,8 +26,17 @@ export const getSeverityStatus = () => api.get('/severity/status');
 export const getRecoveryHistory = () => api.get('/severity/recovery/history');
 export const getPatterns = () => api.get('/severity/patterns');
 
-export const getActiveSystem = () => api.get<{ active_system: string }>("/system/active").then(r => r.data);
-export const switchSystem = (system: string) => api.post<{ message: string }>("/system/switch", { system }).then(r => r.data);
+export interface ActiveSystemResponse {
+  system: string;
+  label: string;
+  services: string[];
+  service_count: number;
+  active_system?: string;
+}
+
+export const getActiveSystem = () => api.get<ActiveSystemResponse>("/system/active").then(r => r.data);
+export const switchSystem = (system: string) => api.post<ActiveSystemResponse>("/system/switch", { system }).then(r => r.data);
+export const getAvailableSystems = () => api.get<{ available: { id: string; label: string; service_count: number; services: string[] }[]; custom?: any }>("/system/available").then(r => r.data);
 export const getBenchmark = () => api.get<any>("/eval/benchmark").then(r => r.data);
 export const getEvalHistory = () => api.get<any>("/eval/history").then(r => r.data);
 export const evaluateManual = (req: { incident_id: string, predicted_ranking: string[], true_root_cause: string }) => api.post<any>("/eval/evaluate", req).then(r => r.data);

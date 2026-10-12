@@ -1,5 +1,7 @@
 # Runtime
 backend/synapse.db
+synapse.db
+*.db
 backend/chroma_data/
 *.pyc
 __pycache__/

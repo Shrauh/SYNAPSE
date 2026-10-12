@@ -1,0 +1,66 @@
+
+\section{Project Timeline}
+
+\hspace*{0.3in} The development of SYNAPSE follows a structured and iterative roadmap carefully divided into distinct phases to ensure systematic progress across all subsystems. The timeline encompasses requirements elicitation, architectural design, incremental module development, integration, rigorous testing, and final deployment. Each phase is time-boxed to allow the team to evaluate deliverables, incorporate feedback, and course-correct where necessary. Early phases focus on establishing the foundational infrastructure — the FastAPI backend, database schema, and React frontend scaffold — while intermediate phases build out the AI pipeline components including the VAE-GNN anomaly detector, DECI causal discovery engine, LLM reasoning layer, and continual learning subsystem. The final phase is dedicated to end-to-end integration testing, performance benchmarking, and deployment hardening. The Gantt chart below illustrates the planned schedule of all major milestones across the project duration.\\\\
+
+\createGanttChart
+
+\section{Team Organization}
+
+\hspace*{0.3in} SYNAPSE is developed by a four-member team, each member assuming ownership of a dedicated functional domain. This division of responsibility is deliberately aligned with the system's architectural boundaries, ensuring that expertise is concentrated where it is most impactful. While each member leads their respective area, the team operates collaboratively — shared design decisions, cross-domain code reviews, and joint debugging sessions are integral to the workflow. Clear ownership coupled with continuous inter-team communication enables parallel development tracks to advance concurrently without introducing integration conflicts.
+
+\subsection{Team Structure}
+
+\begin{enumerate}
+
+    \item \textbf{Shravani -- Backend and AI Module Development Lead}\\
+    \textbf{Primary Responsibilities:}
+    \begin{itemize}
+        \item Design and implementation of the RESTful API layer using \textbf{FastAPI} with asynchronous SQLAlchemy database sessions, Pydantic v2 request/response schemas, and structured exception handling middleware.
+        \item Development of the \textbf{VAE-GNN Anomaly Detection} module, including the Variational Autoencoder for reconstruction-error-based anomaly scoring and the Graph Neural Network for capturing inter-service dependency patterns in the metric feature space.
+        \item Implementation of the \textbf{DECI Causal Discovery} engine with a RAG-constrained structural prior $W_0$, enabling data-driven causal graph inference over the microservice topology.
+        \item Integration of the \textbf{LLM Reasoning} component using GPT-4o-mini via the OpenAI API, constructing structured prompts that encode anomaly context, causal paths, and severity levels to generate human-readable RCA narratives and recovery recommendations.
+        \item Development of the \textbf{EWC + MAML Continual Learning} subsystem that enables the platform to incrementally update its anomaly models on newly observed failure patterns without suffering catastrophic forgetting of prior knowledge.
+        \item Construction of the multi-class \textbf{Severity Classifier} that maps extracted feature vectors to one of four severity tiers — L1\_SIMPLE, L2\_CASCADING, L3\_SYSTEMIC, and L4\_DESIGN\_FLAW — using gradient-boosted decision boundaries.
+        \item Ownership of the ten-stage \textbf{AI orchestrator pipeline} that coordinates data flow from metric ingestion through feature extraction, anomaly detection, causal discovery, LLM reasoning, recovery action selection, and database persistence.
+    \end{itemize}
+
+    \item \textbf{[Teammate 2] -- Frontend and Dashboard Lead}\\
+    \textbf{Primary Responsibilities:}
+    \begin{itemize}
+        \item Architecture and development of the \textbf{React 18} single-page application using TypeScript and Vite, establishing a component hierarchy, routing structure, and a responsive layout suited to operational dashboards.
+        \item Implementation of the interactive \textbf{causal graph visualization} using D3.js and Cytoscape.js, rendering dynamic directed acyclic graphs that represent service dependencies, fault propagation paths, and highlighted root cause nodes.
+        \item Configuration of \textbf{Zustand} global state management to maintain incident data, RCA results, and UI preferences across components without prop-drilling or redundant API calls.
+        \item Integration of a \textbf{WebSocket live anomaly stream} that pushes real-time anomaly alerts and severity updates from the backend to the dashboard, providing operators with immediate situational awareness.
+        \item Design and implementation of the \textbf{Incident List and Incident Detail} views, presenting filtered, sortable incident records alongside full RCA results, causal chain summaries, and recommended recovery actions.
+        \item Development of the \textbf{Simulation Control Panel} that allows operators to inject synthetic failure scenarios into the system for demonstration, testing, and training purposes.
+        \item Integration of \textbf{Axios} HTTP client with interceptor-based authentication and error handling, ensuring seamless communication with all backend REST endpoints.
+    \end{itemize}
+
+    \item \textbf{[Teammate 3] -- Data Engineering and DevOps Lead}\\
+    \textbf{Primary Responsibilities:}
+    \begin{itemize}
+        \item Configuration and management of the \textbf{Prometheus} metrics scraping pipeline, including exporter setup, scrape interval tuning, and ingestion of CPU, memory, latency, and error-rate time-series data for all monitored microservices.
+        \item Development of the \textbf{synthetic failure simulator} that generates realistic multi-service anomaly scenarios — including cascading failures, latency spikes, and resource saturation events — to support AI pipeline training and system validation.
+        \item Design of the \textbf{SQLAlchemy ORM layer}, including table schemas for Incident, RCAResult, ServiceMetric, RecoveryActionLog, and PatternHistory, with async session management and migration scripts.
+        \item Authoring and maintenance of \textbf{Docker} container images and \textbf{Kubernetes} deployment manifests for both the SYNAPSE backend and frontend services, enabling reproducible and scalable deployments.
+        \item Implementation of the \textbf{metrics preprocessing pipeline} responsible for normalization, sliding-window aggregation, and feature vector construction from raw Prometheus time-series data prior to model inference.
+        \item Construction of the dynamic \textbf{service graph builder} that derives inter-service dependency topology from live traffic data and configuration metadata, supplying the structural graph input required by the GNN and DECI modules.
+        \item Ongoing \textbf{database administration}, including query performance optimization, index management, and schema versioning to support evolving data requirements across development iterations.
+    \end{itemize}
+
+    \item \textbf{[Teammate 4] -- Testing, Documentation and Deployment Lead}\\
+    \textbf{Primary Responsibilities:}
+    \begin{itemize}
+        \item Design and execution of a comprehensive \textbf{pytest} test suite covering unit tests for individual pipeline stages, model inference functions, API route handlers, and database access layer operations.
+        \item Development of \textbf{integration test scenarios} that exercise end-to-end flows from metric ingestion through AI analysis to RCA result persistence, validating correctness and consistency across all pipeline boundaries.
+        \item Configuration and maintenance of a \textbf{CI/CD pipeline} using GitHub Actions, automating test execution, code quality checks, and container image builds on every pull request and merge to the main branch.
+        \item Generation and upkeep of interactive \textbf{API documentation} via Swagger UI and ReDoc, ensuring all FastAPI endpoints are fully annotated with request schemas, response models, error codes, and usage examples.
+        \item Execution of \textbf{performance benchmarking} experiments measuring RCA pipeline end-to-end latency, throughput under concurrent incident load, anomaly detection precision/recall, and model inference time across hardware configurations.
+        \item Authoring of \textbf{deployment and operations guides}, including environment setup instructions, configuration reference, secrets management, and runbook documentation for production incident response.
+        \item Maintenance of the \textbf{Software Requirements Specification} and this project report, ensuring that all documented requirements, design decisions, and implementation details remain consistent with the evolving system.
+    \end{itemize}
+
+\end{enumerate}
+
+\hspace*{0.3in} To sustain alignment across all four development tracks, the team holds structured weekly review meetings in which each member presents progress updates, surfaces blockers, and proposes interface changes that may affect peer modules. A shared project board tracks open tasks, in-progress work, and completed deliverables, providing full visibility into project status at all times. Version control discipline — enforced through branch naming conventions, pull request reviews, and commit message standards — ensures that parallel contributions can be integrated cleanly and that the main branch always reflects a stable, tested build of the system.

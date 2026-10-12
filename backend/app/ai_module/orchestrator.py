@@ -191,16 +191,28 @@ class RCAPipeline:
         if not self._initialized:
             await self.initialize()
 
-        # Auto-train if not trained yet
+        # Auto-train if not trained yet (fast minimal training for demo)
         if not self._model_trained:
-            await self.train_on_normal_data(num_scenarios=15, epochs=30)
+            await self.train_on_normal_data(num_scenarios=5, epochs=10)
 
         # ── Stage 1: Generate/Get Data ──
         t0 = time.time()
-        if simulation_result is None:
+        # Handle both SimulationResult object (simulate endpoint) and plain dict (alertmanager)
+        if simulation_result is not None and isinstance(simulation_result, dict):
             from data.simulator import MicroserviceSimulator
-            sim = MicroserviceSimulator()
-            simulation_result = sim.simulate_incident(
+            _sim = MicroserviceSimulator()
+            _rc = simulation_result.get("root_cause", "database")
+            _ft = simulation_result.get("fault_type", "latency_spike")
+            simulation_result = _sim.simulate_incident(
+                root_cause=_rc if _rc in _sim.services else _sim.services[3],
+                fault_type=_ft,
+                severity=5.0,
+                num_steps=30,
+            )
+        elif simulation_result is None:
+            from data.simulator import MicroserviceSimulator
+            _sim = MicroserviceSimulator()
+            simulation_result = _sim.simulate_incident(
                 root_cause="database",
                 fault_type="latency_spike",
                 severity=5.0,
@@ -303,7 +315,7 @@ class RCAPipeline:
         causal_result = reorient_by_topology(causal_result, graph_builder)
 
         # Break cycles if any
-        dag = break_cycles(causal_result["dag"], anomalous_scores)
+        dag = break_cycles(causal_result["dag"], anomalous_scores, edges=causal_result.get("edges", []))
         causal_result["dag"] = dag
 
         # Extract root cause candidates
@@ -335,7 +347,12 @@ class RCAPipeline:
 
         # ── Stage 7: Severity Classification ──
         t0 = time.time()
-        root_cause_svc = explanation_result.get("root_cause", root_candidates[0][0] if root_candidates else "unknown")
+        # LLM can suggest but must match a known service in the graph
+        llm_root = explanation_result.get("root_cause", "")
+        if llm_root and llm_root in anomaly_scores:
+            root_cause_svc = llm_root
+        else:
+            root_cause_svc = root_candidates[0][0] if root_candidates else "unknown"
         try:
             confidence = float(explanation_result.get("confidence", root_candidates[0][1] if root_candidates else 0.0))
         except (TypeError, ValueError):
@@ -361,10 +378,10 @@ class RCAPipeline:
         chain = get_propagation_chain(dag, root_cause_svc)
 
         recovery_action = recovery_engine.select_action(
-            severity_level=severity_result.level.value,
+            severity_level=int(severity_result.level.value),
             root_cause_service=root_cause_svc,
             fault_type=explanation_result.get("fault_type"),
-            causal_confidence=confidence,
+            causal_confidence=float(confidence),
             propagation_chain=chain,
         )
 
@@ -493,6 +510,22 @@ class RCAPipeline:
         await db.commit()
         await db.refresh(incident)
 
+        try:
+            from app.api.ws import broadcast_json
+            import asyncio
+            asyncio.get_running_loop().create_task(broadcast_json({
+                "type": "rca_complete",
+                "incident_id": incident.id,
+                "root_cause": root_cause_svc,
+                "confidence": float(confidence),
+                "anomaly_scores": {k: float(v) for k, v in anomaly_scores.items()},
+                "propagation_chain": propagation_str,
+                "severity": severity_result.level.name if severity_result else "L1_SIMPLE",
+                "recovery_action": action_result.action.action_type.value if action_result and action_result.action else "none",
+            }))
+        except Exception as ws_err:
+            logger.debug(f"WS broadcast failed: {ws_err}")
+
         return {
             "incident_id": incident.id,
             "root_cause": root_cause_svc,
@@ -545,6 +578,16 @@ class RCAPipeline:
                     values = svc_data[col].values[:len(timestamps)]
                     if len(values) == len(timestamps):
                         matrix[:, j] += values / len(FEATURE_COLUMNS)
+
+        # Z-score normalize each metric column independently
+        for col in range(matrix.shape[1]):
+            col_data = matrix[:, col]
+            col_mean = np.mean(col_data)
+            col_std = np.std(col_data)
+            if col_std > 1e-8:  # avoid division by zero
+                matrix[:, col] = (col_data - col_mean) / col_std
+            else:
+                matrix[:, col] = 0.0
 
         # Add small noise to prevent singular matrices
         matrix += np.random.normal(0, 1e-6, matrix.shape)

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="950" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Activity Diagram (End-to-End RCA Pipeline)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="10" width="1240" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- Start -->
+    <mxCell id="start" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="650" y="55" width="30" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 1 -->
+    <mxCell id="a1" value="SRE Triggers RCA&#xa;(POST /api/v1/rca/simulate)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="540" y="105" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 2 -->
+    <mxCell id="a2" value="FastAPI Creates Incident Record&#xa;(status = 'analyzing')" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="540" y="185" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 3 -->
+    <mxCell id="a3" value="Ingest Metrics from Prometheus&#xa;/ MicroserviceSimulator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="540" y="265" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 4 -->
+    <mxCell id="a4" value="Build Service Dependency Graph&#xa;+ Extract Feature Matrix [N×5]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;" vertex="1" parent="1">
+      <mxGeometry x="540" y="345" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 5 -->
+    <mxCell id="a5" value="VAE-GNN Anomaly Scoring&#xa;(compute_scores, threshold=0.6)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="540" y="425" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Decision: anomalies found? -->
+    <mxCell id="d1" value="Anomalies&#xa;Found?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="590" y="500" width="150" height="70" as="geometry"/>
+    </mxCell>
+
+    <!-- No → end -->
+    <mxCell id="a_noincident" value="Log 'No Anomaly Detected'&#xa;Return Status OK" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="820" y="515" width="200" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 6 -->
+    <mxCell id="a6" value="Classify Severity (L1 / L2 / L3 / L4)&#xa;+ Check Recurrence History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="540" y="600" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 7 -->
+    <mxCell id="a7" value="SynapseRAG: Generate W0 Prior&#xa;from Runbooks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="540" y="680" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 8 -->
+    <mxCell id="a8" value="DECI Causal Discovery&#xa;(validate → reorient → break cycles)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="540" y="760" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 9 -->
+    <mxCell id="a9" value="LLM Reasoning&#xa;(Explanation + Fault Type + Actions)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007d7d;strokeColor=#007d7d;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="540" y="840" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Fork bar -->
+    <mxCell id="fork1" value="" style="fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="400" y="905" width="530" height="8" as="geometry"/>
+    </mxCell>
+
+    <!-- Parallel: Recovery + Continual Learning -->
+    <mxCell id="a10a" value="Recovery Engine:&#xa;Select Action → Execute (kubectl)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d73a1a;strokeColor=#d73a1a;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="300" y="935" width="240" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="a10b" value="Drift Detection →&#xa;MAML Adapt + EWC Update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="800" y="935" width="240" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Join bar -->
+    <mxCell id="join1" value="" style="fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="400" y="1005" width="530" height="8" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 11 -->
+    <mxCell id="a11" value="Persist: UPDATE Incident + INSERT&#xa;RCAResult + RecoveryActionLog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="540" y="1030" width="250" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Activity 12 -->
+    <mxCell id="a12" value="Push WebSocket Update&#xa;+ Return RCA Report to UI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="540" y="1110" width="250" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- End -->
+    <mxCell id="end" value="" style="ellipse;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="650" y="1180" width="30" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="endring" value="" style="ellipse;aspect=fixed;fillColor=none;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+      <mxGeometry x="643" y="1173" width="44" height="44" as="geometry"/>
+    </mxCell>
+
+    <!-- Flow arrows -->
+    <mxCell id="f0" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="start" target="a1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f1" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f2" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a2" target="a3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f3" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a3" target="a4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f4" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a4" target="a5"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f5" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a5" target="d1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f5n" value="No" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="d1" target="a_noincident"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f5y" value="Yes" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="d1" target="a6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f6" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a6" target="a7"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f7" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a7" target="a8"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f8" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a8" target="a9"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f9" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a9" target="fork1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f10a" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="fork1" target="a10a"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f10b" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="fork1" target="a10b"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f11a" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a10a" target="join1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f11b" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a10b" target="join1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f12" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="join1" target="a11"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f13" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a11" target="a12"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f14" value="" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a12" target="end"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

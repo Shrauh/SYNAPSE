@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="800" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Component Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="10" width="1140" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- FRONTEND SUBSYSTEM -->
+    <mxCell id="fe_box" value="&lt;b&gt;Frontend Subsystem&lt;/b&gt;&#xa;(React 18 + TypeScript + Vite)" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=0;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="20" y="55" width="360" height="330" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe1" value="«component»&#xa;Dashboard Page&#xa;(Zustand + React Router)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="fe_box">
+      <mxGeometry x="30" y="55" width="140" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe2" value="«component»&#xa;Incident Detail View" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="fe_box">
+      <mxGeometry x="195" y="55" width="140" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe3" value="«component»&#xa;Causal Graph Viewer&#xa;(D3.js / Cytoscape)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="fe_box">
+      <mxGeometry x="30" y="135" width="140" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe4" value="«component»&#xa;Live Anomaly Stream&#xa;(WebSocket Client)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="fe_box">
+      <mxGeometry x="195" y="135" width="140" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe5" value="«component»&#xa;Simulation Control&#xa;Panel" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="fe_box">
+      <mxGeometry x="30" y="215" width="140" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe6" value="«component»&#xa;Model Status Panel" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="fe_box">
+      <mxGeometry x="195" y="215" width="140" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- BACKEND SUBSYSTEM -->
+    <mxCell id="be_box" value="&lt;b&gt;Backend API Subsystem&lt;/b&gt;&#xa;(FastAPI + Pydantic v2)" style="swimlane;startSize=40;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=0;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="410" y="55" width="260" height="330" as="geometry"/>
+    </mxCell>
+    <mxCell id="be1" value="«component»&#xa;Incident Router&#xa;/api/v1/incidents" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="be_box">
+      <mxGeometry x="30" y="55" width="200" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="be2" value="«component»&#xa;RCA Router&#xa;/api/v1/rca" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="be_box">
+      <mxGeometry x="30" y="125" width="200" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="be3" value="«component»&#xa;WebSocket Handler&#xa;/api/v1/live" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="be_box">
+      <mxGeometry x="30" y="195" width="200" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="be4" value="«component»&#xa;Model Router&#xa;/api/v1/model" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="be_box">
+      <mxGeometry x="30" y="265" width="200" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- AI PIPELINE SUBSYSTEM -->
+    <mxCell id="ai_box" value="&lt;b&gt;AI Pipeline Subsystem&lt;/b&gt;&#xa;(Python 3.10+ / PyTorch / PyG)" style="swimlane;startSize=40;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=0;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="700" y="55" width="280" height="450" as="geometry"/>
+    </mxCell>
+    <mxCell id="ai1" value="«component»&#xa;RCAPipeline Orchestrator" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#006EAF;fontColor=#ffffff;strokeColor=#006EAF;fontSize=10;" vertex="1" parent="ai_box">
+      <mxGeometry x="30" y="55" width="220" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ai2" value="«component»&#xa;GNNAnomalyDetector&#xa;(VAE-GNN / GAT)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#9673a6;fontColor=#ffffff;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="ai_box">
+      <mxGeometry x="30" y="120" width="220" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ai3" value="«component»&#xa;CausalDiscoveryEngine&#xa;(DECI + RAG Prior)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#6d3a6d;fontColor=#ffffff;strokeColor=#6d3a6d;fontSize=10;" vertex="1" parent="ai_box">
+      <mxGeometry x="30" y="185" width="220" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ai4" value="«component»&#xa;LLMReasoner&#xa;(GPT-4o-mini)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#007d7d;fontColor=#ffffff;strokeColor=#007d7d;fontSize=10;" vertex="1" parent="ai_box">
+      <mxGeometry x="30" y="250" width="220" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ai5" value="«component»&#xa;SeverityClassifier (L1–L4)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=10;" vertex="1" parent="ai_box">
+      <mxGeometry x="30" y="315" width="220" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ai6" value="«component»&#xa;RecoveryEngine (kubectl)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d73a1a;fontColor=#ffffff;strokeColor=#d73a1a;fontSize=10;" vertex="1" parent="ai_box">
+      <mxGeometry x="30" y="380" width="220" height="45" as="geometry"/>
+    </mxCell>
+
+    <!-- CONTINUAL LEARNING SUBSYSTEM -->
+    <mxCell id="cl_box" value="&lt;b&gt;Continual Learning Subsystem&lt;/b&gt;" style="swimlane;startSize=35;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=0;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="700" y="530" width="280" height="200" as="geometry"/>
+    </mxCell>
+    <mxCell id="cl1" value="«component»&#xa;ContinualManager&#xa;(EWC + Fisher Matrix)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="cl_box">
+      <mxGeometry x="30" y="45" width="220" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="cl2" value="«component»&#xa;MAMLAdapter&#xa;(inner_steps=3)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#82b366;fontColor=#ffffff;strokeColor=#82b366;fontSize=10;" vertex="1" parent="cl_box">
+      <mxGeometry x="30" y="110" width="220" height="45" as="geometry"/>
+    </mxCell>
+
+    <!-- DATA SUBSYSTEM -->
+    <mxCell id="db_box" value="&lt;b&gt;Data Subsystem&lt;/b&gt;" style="swimlane;startSize=35;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=0;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="20" y="420" width="360" height="310" as="geometry"/>
+    </mxCell>
+    <mxCell id="db1" value="«component»&#xa;SQLAlchemy ORM&#xa;(async)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="db_box">
+      <mxGeometry x="20" y="45" width="150" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="db2" value="«component»&#xa;SQLite / PostgreSQL&#xa;Database" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="db_box">
+      <mxGeometry x="190" y="45" width="150" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="db3" value="«component»&#xa;GraphBuilder&#xa;(ServiceGraph)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="db_box">
+      <mxGeometry x="20" y="125" width="150" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="db4" value="«component»&#xa;MicroserviceSimulator&#xa;(Fault Injection)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="db_box">
+      <mxGeometry x="190" y="125" width="150" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="db5" value="«component»&#xa;Prometheus Scraper&#xa;(Metrics Source)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="db_box">
+      <mxGeometry x="20" y="210" width="150" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="db6" value="«component»&#xa;SynapseRAG&#xa;(Runbook RAG)" style="shape=mxgraph.uml.component;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="db_box">
+      <mxGeometry x="190" y="210" width="150" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Connections between subsystems -->
+    <mxCell id="conn1" value="HTTP/REST" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="fe_box" target="be_box"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="conn2" value="calls" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="be_box" target="ai_box"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="conn3" value="async DB" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="be_box" target="db_box"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="conn4" value="triggers" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ai_box" target="cl_box"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="conn5" value="reads/writes" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ai_box" target="db_box"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

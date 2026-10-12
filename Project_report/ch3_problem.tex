@@ -1,0 +1,160 @@
+
+\hspace*{0.3in} Modern cloud-native applications are composed of hundreds of interdependent microservices, each emitting continuous streams of operational telemetry in the form of latency measurements, error rates, resource utilisation counters, and service call traces. When a failure propagates through this mesh, pinpointing the root cause manually is a time-consuming and error-prone process that strains on-call engineers and inflates mean time to recovery. This chapter formally defines the problem that SYNAPSE addresses, delineates the goals, objectives, assumptions, and scope that bound the project, describes the step-by-step methodology employed to build the platform, and identifies the class of outcomes the system is designed to produce.\\
+
+\section{Problem Statement}
+
+\hspace*{0.3in} Contemporary microservice deployments lack an integrated, intelligent mechanism capable of autonomously detecting anomalous behaviour across a service dependency graph, tracing the causal chain of failure propagation, and generating human-readable explanations together with actionable recovery commands — all within a latency envelope that is operationally relevant. Existing monitoring tools such as Prometheus and Grafana surface raw signals but provide no causal reasoning; rule-based alerting systems produce high volumes of false positives and miss novel fault patterns; and large-language-model assistants, while capable of natural-language reasoning, have no grounding in live infrastructure telemetry. SYNAPSE bridges this gap by fusing graph-neural-network anomaly detection, probabilistic causal discovery, retrieval-augmented LLM reasoning, and continual learning into a single, cohesive AIOps platform that transforms raw Prometheus metrics into prioritised, causally justified root cause analyses and kubectl-ready recovery actions in near real time.\\
+
+\subsection{Goals and Objectives}
+
+\begin{itemize}
+
+    \item \textbf{Goals}
+    \begin{enumerate}
+        \item \textbf{Automated Root Cause Analysis:} Provide a fully automated, end-to-end pipeline that ingests live microservice telemetry, identifies the originating fault node within the service dependency graph, and ranks candidate root causes without requiring human intervention during the analysis phase.
+
+        \item \textbf{Causal Discovery and Explainability:} Move beyond correlation-based anomaly detection by employing the DECI (Deep End-to-end Causal Inference) algorithm — guided by a retrieval-augmented, knowledge-grounded prior matrix $W_0$ — to produce a directed acyclic graph that faithfully represents cause-and-effect relationships among microservice metrics.
+
+        \item \textbf{LLM-Powered Reasoning and Communication:} Leverage a large language model (GPT-4o-mini) to synthesise the structured causal graph output, severity classification, historical incident patterns, and service topology into concise, actionable natural-language explanations and recovery recommendations that on-call engineers can act upon immediately.
+
+        \item \textbf{Continual Learning and Adaptability:} Ensure that SYNAPSE improves over time by incorporating Elastic Weight Consolidation (EWC) to mitigate catastrophic forgetting and Model-Agnostic Meta-Learning (MAML) to enable rapid adaptation to previously unseen fault patterns, thereby maintaining detection accuracy as the microservice architecture evolves.
+
+        \item \textbf{Unified, Extensible AIOps Platform:} Deliver an integrated platform with a React-based observability dashboard, a FastAPI backend exposing well-documented REST endpoints, and a modular AI pipeline architecture that can be extended with additional detection algorithms, data sources, or downstream integrations without restructuring the core system.
+    \end{enumerate}
+
+    \item \textbf{Objectives}
+    \begin{enumerate}
+        \item \textbf{Data Ingestion and Storage:} Implement an asynchronous ingestion layer that collects time-series metrics from a Prometheus-compatible endpoint or a built-in fault simulator, persists them to the \texttt{ServiceMetric} table via SQLAlchemy async, and makes them available to downstream pipeline stages through a structured API.
+
+        \item \textbf{Feature Extraction and Normalisation:} Engineer a feature extraction module that computes sliding-window statistical descriptors — including mean, variance, rate of change, and cross-service correlation coefficients — from raw metric streams, applies z-score normalisation, and constructs node-level feature matrices suitable for graph neural network consumption.
+
+        \item \textbf{VAE-GNN Anomaly Detection:} Design and train a Variational Autoencoder augmented with a Graph Neural Network encoder that operates jointly on node-level metric features and the service dependency graph topology, producing per-node anomaly scores and a binary anomaly flag with associated reconstruction-loss thresholds calibrated to L1–L4 severity bands.
+
+        \item \textbf{Severity Classification:} Build a multi-class severity classifier that maps aggregated anomaly signals to one of four operational severity levels — \texttt{L1\_SIMPLE}, \texttt{L2\_CASCADING}, \texttt{L3\_SYSTEMIC}, and \texttt{L4\_DESIGN\_FLAW} — enabling downstream components to tailor the depth of causal analysis and the urgency of recovery recommendations accordingly.
+
+        \item \textbf{DECI Causal Graph Construction:} Integrate the DECI causal discovery algorithm with a RAG-constrained prior matrix $W_0$, where the prior is retrieved dynamically from a vector store containing historical incident summaries and domain knowledge documents, so that the learned causal adjacency matrix is both data-driven and knowledge-grounded.
+
+        \item \textbf{LLM Reasoning and Root Cause Explanation:} Construct a prompt-engineering layer that serialises the causal graph, anomaly scores, severity label, affected service list, and retrieved historical context into a structured prompt for GPT-4o-mini, and parse the model's response into a machine-readable \texttt{RCAResult} record containing root cause identification, propagation path, confidence score, and recommended recovery actions.
+
+        \item \textbf{Recovery Action Generation and Logging:} Generate environment-appropriate kubectl commands (e.g., \texttt{kubectl rollout restart}, pod scaling directives, resource quota adjustments) based on the LLM-recommended recovery strategy, persist each action to the \texttt{RecoveryActionLog} table with execution status tracking, and expose the actions through the frontend dashboard for one-click operator approval.
+    \end{enumerate}
+
+\end{itemize}
+
+\subsection{Assumptions}
+
+\begin{itemize}
+    \item A Prometheus-compatible metrics endpoint is available and consistently reachable from the SYNAPSE backend, or the built-in fault simulator is used to generate representative synthetic telemetry during development and testing.
+
+    \item The microservice deployment exposes standard operational metrics — including CPU utilisation, memory usage, HTTP request latency (p50, p95, p99), request throughput, and error rate — at a scrape interval of no longer than fifteen seconds.
+
+    \item The service dependency graph topology (i.e., which microservice calls which) is pre-configured or discoverable through a provided adjacency specification, and this topology is assumed to remain relatively stable within any single analysis window.
+
+    \item The deployment environment has Python 3.10 or higher installed, along with PyTorch, PyTorch Geometric (PyG), and all other dependencies listed in the project's \texttt{requirements.txt}, with GPU acceleration available for model training but not mandatorily required for inference.
+
+    \item A valid OpenAI API key for GPT-4o-mini is configured in the application's environment variables, and the host system has outbound internet access to the OpenAI API endpoint during RCA reasoning steps.
+
+    \item The vector store used for RAG-based prior construction (e.g., FAISS or ChromaDB) is pre-populated with at least a representative set of historical incident documents and domain knowledge summaries before the first production analysis run.
+
+    \item The target Kubernetes cluster, against which recovery actions are generated, is accessible via \texttt{kubectl} configured with the appropriate kubeconfig, and the executing user or service account has the necessary RBAC permissions to perform rollout restarts, pod scaling, and resource adjustments.
+
+    \item The number of microservices in a single deployment is assumed to be within the range of five to two hundred nodes for the purposes of graph construction and GNN inference latency guarantees; deployments larger than this scale may require distributed graph partitioning not currently implemented.
+
+    \item Historical incident data stored in the \texttt{PatternHistory} table is assumed to be accurate and labelled with correct root cause attributions, as this data directly influences the continual learning updates and RAG retrieval quality.
+
+    \item The system operates under the assumption that failures manifest as detectable deviations in at least one of the observed metric streams within two to three scrape intervals of the fault's occurrence, making sub-second faults that resolve before the next scrape potentially undetectable.
+
+    \item Network latency between the SYNAPSE backend and the Prometheus endpoint, the OpenAI API, and the SQLite or PostgreSQL database is assumed to be low enough that the end-to-end pipeline completes within a latency budget acceptable for near-real-time alerting (nominally under sixty seconds per analysis cycle).
+
+    \item The SQLite backend is assumed to be sufficient for development and single-node deployments; production deployments requiring high concurrency or large incident history volumes are expected to migrate to PostgreSQL via the provided async SQLAlchemy configuration.
+\end{itemize}
+
+\subsection{Scope}
+
+\begin{itemize}
+    \item \textbf{In Scope — Metrics-Based Telemetry:} SYNAPSE processes time-series operational metrics collected from Prometheus or the built-in simulator. Supported signal types include CPU, memory, latency percentiles, throughput, and HTTP error rates.
+
+    \item \textbf{In Scope — Graph-Based Anomaly Detection:} The VAE-GNN module operates on the service dependency graph and detects both node-level (single-service) and graph-level (multi-service cascading) anomalies, assigning per-node anomaly scores.
+
+    \item \textbf{In Scope — Causal Root Cause Identification:} SYNAPSE identifies the most probable root cause node(s) and the causal propagation path through the service graph using the DECI algorithm augmented with a RAG-informed prior.
+
+    \item \textbf{In Scope — Severity Classification:} Each detected incident is classified into one of four severity levels (L1 through L4) to prioritise response and modulate the depth of downstream causal analysis.
+
+    \item \textbf{In Scope — LLM-Generated Explanations:} GPT-4o-mini generates natural-language RCA summaries, identifies affected downstream services, estimates business impact, and proposes recovery actions in both prose and structured command form.
+
+    \item \textbf{In Scope — Recovery Action Suggestions:} The platform generates kubectl-based recovery commands and logs their application status. Recovery actions are surfaced on the frontend dashboard for operator approval; autonomous execution without approval is configurable but disabled by default.
+
+    \item \textbf{In Scope — Continual Learning:} The platform periodically retrains the VAE-GNN using EWC-regularised updates on new confirmed incident data and supports few-shot adaptation via MAML for novel fault categories.
+
+    \item \textbf{In Scope — Observability Dashboard:} A React 18 / TypeScript frontend visualises the service dependency graph (Cytoscape.js), metric time series (D3.js), anomaly heatmaps, RCA summaries, severity badges, and recovery action logs in real time.
+
+    \item \textbf{Out of Scope — Log and Trace Analysis:} SYNAPSE does not currently ingest or analyse distributed traces (e.g., Jaeger, Zipkin) or unstructured application log streams. Future versions may incorporate multi-modal telemetry fusion.
+
+    \item \textbf{Out of Scope — Autonomous Remediation Without Approval:} While recovery commands are generated and displayed, SYNAPSE does not autonomously execute destructive or irreversible infrastructure changes without explicit operator confirmation, except in explicitly configured auto-remediation mode for pre-approved low-risk actions.
+
+    \item \textbf{Out of Scope — Non-Kubernetes Environments:} Recovery action generation is scoped to Kubernetes-managed microservice deployments. Bare-metal, VM-based, or serverless environments are not targeted in this version.
+
+    \item \textbf{Out of Scope — Real-Time Model Training:} Model retraining occurs as a background scheduled job rather than inline with the live analysis pipeline. Real-time online learning within the same inference cycle is not implemented.
+\end{itemize}
+
+\section{Methodology}
+
+\hspace*{0.3in} The SYNAPSE platform is built around a sequential, stage-gated AI pipeline in which the output of each stage is validated before being passed to the next. The following methodology describes the seven principal stages of system construction and operation, from raw data collection through to actionable RCA output and model self-improvement.\\
+
+\begin{enumerate}
+
+    \item \textbf{Metrics Collection and Ingestion (Prometheus / Fault Simulator):}
+    The pipeline begins with the asynchronous collection of operational telemetry from a configured Prometheus scrape endpoint using HTTP polling at a fixed interval (default: fifteen seconds). In environments where a live Kubernetes deployment is unavailable, a built-in fault simulator injects synthetic anomaly patterns — including latency spikes, memory leaks, and cascading error storms — into a controlled metric stream. All collected data points are normalised to a canonical schema and persisted to the \texttt{ServiceMetric} table using SQLAlchemy's async session management, ensuring non-blocking I/O throughout the ingestion path.\\
+
+    \item \textbf{Service Dependency Graph Construction:}
+    A directed service dependency graph $G = (V, E)$ is constructed from a pre-configured adjacency specification or auto-discovered call topology, where each vertex $v_i \in V$ represents a microservice and each directed edge $(v_i, v_j) \in E$ represents a synchronous or asynchronous call dependency. Edge weights are optionally augmented with call-volume statistics to bias the causal discovery algorithm toward high-traffic dependencies. The graph is serialised as a PyTorch Geometric \texttt{Data} object, making it directly consumable by the GNN encoder.\\
+
+    \item \textbf{Feature Extraction and Normalisation:}
+    For each service node, a sliding time window of configurable length (default: ten scrape intervals) is applied to the raw metric stream. Statistical features — including windowed mean, standard deviation, coefficient of variation, inter-service Pearson correlation, and rate-of-change gradient — are computed and assembled into a node feature matrix $X \in \mathbb{R}^{|V| \times d}$, where $d$ is the feature dimension. Z-score normalisation is applied per feature dimension using statistics computed from a rolling baseline period to account for temporal drift in baseline behaviour.\\
+
+    \item \textbf{VAE-GNN Anomaly Detection:}
+    The normalised node feature matrix $X$ and the adjacency matrix $A$ are jointly fed into a Variational Autoencoder whose encoder is implemented as a two-layer Graph Convolutional Network. The encoder maps each node's neighbourhood-aggregated features to a latent mean vector $\mu_i$ and log-variance $\log \sigma_i^2$; the decoder reconstructs the input features from sampled latent codes. Anomaly scores are derived from per-node reconstruction loss, and nodes exceeding a learned threshold — calibrated separately for each severity band (L1–L4) — are flagged as anomalous. The model is pre-trained on historical non-fault metric windows and fine-tuned on labelled anomaly examples.\\
+
+    \item \textbf{DECI Causal Discovery with RAG Prior:}
+    To move from anomaly detection to causal attribution, SYNAPSE applies the DECI algorithm on the anomalous subgraph. A retrieval-augmented generation step first queries the vector store using a semantic embedding of the current anomaly signature to retrieve the top-$k$ most relevant historical incident summaries. These retrieved documents are used to construct a soft prior matrix $W_0$ that biases DECI's structural equation model toward causally plausible edge orientations informed by past incident knowledge. The resulting learned adjacency matrix identifies the most probable root cause node and the directed causal propagation path, which are extracted and serialised for downstream consumption.\\
+
+    \item \textbf{LLM-Powered RCA Explanation and Recovery Action Selection:}
+    A structured prompt is assembled containing the serialised causal graph, anomaly scores, severity classification, list of affected services, propagation path, retrieved historical context, and current timestamp. This prompt is submitted to GPT-4o-mini via the OpenAI API. The model's response is parsed into a structured \texttt{RCAResult} record — capturing the root cause service, causal explanation, confidence score, estimated blast radius, recommended kubectl recovery commands, and preventive recommendations — which is persisted to the database and surfaced on the dashboard. Prompt engineering templates are version-controlled and configurable to support different verbosity and output format requirements.\\
+
+    \item \textbf{Continual Learning and Model Adaptation:}
+    After each confirmed incident (operator-validated RCA outcome), the VAE-GNN model is updated using EWC-regularised gradient descent, which penalises large deviations from the Fisher-information-weighted parameter values of previous task solutions, thereby preventing catastrophic forgetting of earlier fault patterns. In parallel, MAML-based meta-learning updates are applied using small batches of novel fault examples, enabling the model to adapt to previously unseen fault categories with a small number of gradient steps at inference time. All learning events are logged to the \texttt{PatternHistory} table, enabling audit trails and rollback to previous model checkpoints if a retraining step degrades detection performance.\\
+
+\end{enumerate}
+
+\section{Outcome}
+
+\hspace*{0.3in} SYNAPSE is designed to produce a class of outcomes that span three complementary dimensions — practical application, domain specialisation, and research innovation. The following subsection characterises the project's outcome profile across these dimensions.\\
+
+\subsection{Type of Project}
+
+\begin{itemize}
+
+    \item \textbf{Application-Oriented Outcomes:}
+    \begin{itemize}
+        \item A fully operational AIOps platform deployable on any Kubernetes-hosted microservice environment, with a documented REST API and a browser-based observability dashboard accessible to operations teams without specialised AI expertise.
+        \item A configurable fault simulation module that generates realistic anomaly scenarios for training, testing, and demonstration purposes independently of a live production cluster.
+        \item Operator-facing recovery action recommendations presented as formatted kubectl commands, with one-click execution capability from the dashboard pending operator approval, directly reducing mean time to recovery.
+        \item Persistent incident history and RCA audit logs stored in a relational database, enabling retrospective analysis, trend identification, and compliance reporting.
+    \end{itemize}
+
+    \item \textbf{Domain-Specific Outcomes:}
+    \begin{itemize}
+        \item A specialised knowledge base of microservice failure patterns, encoded in a vector store and continuously enriched with confirmed incident outcomes, that serves as both a retrieval source for RAG-augmented causal discovery and a training corpus for continual learning.
+        \item A severity taxonomy (L1–L4) specifically calibrated for microservice failure modes — from simple single-service anomalies to design-level architectural flaws — providing a structured vocabulary for incident triage in cloud-native operations.
+        \item A graph-theoretic representation of service call dependencies that persists across analysis cycles and evolves as new services are added or removed, maintaining an up-to-date model of the operational topology.
+    \end{itemize}
+
+    \item \textbf{Research and Innovation-Oriented Outcomes:}
+    \begin{itemize}
+        \item A novel integration of DECI causal discovery with retrieval-augmented generation for prior matrix construction, demonstrating how domain knowledge stored in unstructured documents can be dynamically incorporated into probabilistic causal models without manual expert elicitation.
+        \item An empirical evaluation of the VAE-GNN architecture for microservice anomaly detection, with ablation studies comparing detection accuracy, false positive rates, and latency against baseline methods (isolation forest, LSTM autoencoder) across synthetic and real-world fault scenarios.
+        \item A demonstration that EWC and MAML can be jointly applied to a GNN-based anomaly detector operating in a non-stationary telemetry environment, providing evidence for the feasibility of continual learning in production AIOps systems.
+        \item A replicable experimental framework and open-source codebase that the research community can extend to evaluate alternative causal discovery algorithms, GNN architectures, or LLM reasoning strategies in the microservice RCA domain.
+    \end{itemize}
+
+\end{itemize}

@@ -220,6 +220,20 @@ def switch_system(system_name: str, namespace: str = "default") -> Dict:
 
     logger.info(f"Switched to system: {_active_system} — {len(_active_topology['services'])} services")
 
+    try:
+        from app.api.ws import broadcast_json
+        import asyncio
+        from app.services.graph_builder import graph_builder
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(broadcast_json({
+                "type": "system_switched",
+                "system": system_name,
+                "services": list(graph_builder.service_names)
+            }))
+    except Exception:
+        pass
+
     return {
         "system": _active_system,
         "label": _active_topology["label"],

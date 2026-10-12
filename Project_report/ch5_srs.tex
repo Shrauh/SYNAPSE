@@ -1,0 +1,157 @@
+
+\hspace*{0.3in} This chapter presents the Software Requirement Specification (SRS) for SYNAPSE — an AI-Powered AIOps Platform for Automated Root Cause Analysis of Microservice Failures. The SRS captures the complete set of expectations that govern what the system must do, how it must perform, and under what constraints it must operate. It serves as a contractual baseline between stakeholders and the development team, ensuring that every functional capability, non-functional quality attribute, interface obligation, and environmental constraint is explicitly documented before implementation begins. The requirements described herein have been derived through iterative analysis of AIOps use-cases, microservice observability challenges, and the operational realities of production-grade distributed systems.\\\\
+
+\section{Functional Requirements}
+
+\hspace*{0.3in} Functional requirements define the specific behaviors and operations that SYNAPSE must support in order to fulfill its purpose as an automated root cause analysis platform. Each requirement listed below corresponds to a concrete capability of the system, spanning the full AI pipeline from raw metric ingestion through causal reasoning, recovery orchestration, and continual self-improvement. Together, these requirements ensure end-to-end coverage of the incident lifecycle in microservice environments.\\\\
+
+\begin{itemize}
+
+    \item \textbf{Metric Ingestion:} The system shall ingest time-series telemetry — including \texttt{latency}, \texttt{error\_rate}, \texttt{cpu\_usage}, \texttt{memory\_usage}, and \texttt{request\_rate} — per individual microservice, sourced either from a live Prometheus scrape endpoint or from a configurable synthetic data simulator for offline testing and development.
+
+    \item \textbf{Service Dependency Graph Construction:} The system shall construct and dynamically maintain a weighted directed service dependency graph, where each node represents an individual microservice and each directed edge encodes an inter-service call relationship weighted by call frequency and latency contribution. The graph shall be updated whenever the topology changes.
+
+    \item \textbf{VAE-GNN Anomaly Detection:} The system shall apply a hybrid Variational Autoencoder combined with a Graph Neural Network (VAE-GNN) to compute a per-service anomaly score and an associated uncertainty estimate, leveraging both the temporal patterns within individual service metrics and the structural relationships encoded in the dependency graph.
+
+    \item \textbf{Severity Classification:} The system shall classify each detected anomaly into one of four severity tiers — \texttt{L1\_SIMPLE}, \texttt{L2\_CASCADING}, \texttt{L3\_SYSTEMIC}, and \texttt{L4\_DESIGN\_FLAW} — and shall associate each tier with an appropriate incident response strategy, escalation priority, and notification policy.
+
+    \item \textbf{Causal Discovery via DECI:} The system shall perform causal structure learning using the DECI (Deep End-to-end Causal Inference) algorithm on the anomalous service subset, guided by a Retrieval-Augmented Generation (RAG) constrained \textit{W\textsubscript{0}} prior derived from historical incident knowledge. The inferred causal graph shall be validated against the known service topology and subject to automatic cycle-breaking post-processing to ensure acyclicity.
+
+    \item \textbf{Root Cause Extraction:} The system shall extract one or more root cause services from the inferred causal graph by identifying source nodes with the highest outgoing causal influence scores, weighted by anomaly magnitude and propagation depth.
+
+    \item \textbf{LLM-Based Reasoning:} The system shall invoke a Large Language Model (GPT-4o-mini) to produce structured reasoning output for each incident, comprising a human-readable natural language explanation of the failure, a classified \texttt{fault\_type} label, and a prioritised list of \texttt{recommended\_actions} for the on-call engineer.
+
+    \item \textbf{Recovery Action Selection and Execution:} The system shall maintain a library of recovery actions mapped to fault types and shall simulate the execution of \texttt{kubectl}-based remediation commands — such as pod restarts, replica scaling, resource limit adjustments, and network policy patches — logging all simulated actions to the \texttt{RecoveryActionLog} table with outcome status.
+
+    \item \textbf{Recurring Pattern Detection and Escalation:} The system shall detect recurring failure patterns by querying the \texttt{PatternHistory} table. When an identical or structurally similar incident pattern is observed three or more times within a configurable time window, the system shall automatically escalate the severity classification to \texttt{L4\_DESIGN\_FLAW} and flag the incident for architectural review.
+
+    \item \textbf{Multi-Root Cause Analysis for Systemic Incidents:} For incidents classified at the \texttt{L3\_SYSTEMIC} severity tier, the system shall perform multi-root cause analysis, identifying and ranking all contributing root cause services rather than reporting a single point of failure, and shall propagate this list to the LLM reasoning stage for composite explanation generation.
+
+    \item \textbf{Continual Learning and Model Adaptation:} The system shall support continual learning through three complementary mechanisms: drift detection to identify distributional shifts in incoming metrics, Model-Agnostic Meta-Learning (MAML) to enable rapid adaptation to new service topologies or unseen failure modes, and Elastic Weight Consolidation (EWC) combined with an experience replay buffer to mitigate catastrophic forgetting when fine-tuning on new incidents.
+
+    \item \textbf{WebSocket Live Anomaly Stream:} The system shall expose a WebSocket endpoint that broadcasts real-time anomaly detection events, severity classifications, and pipeline status updates to all connected frontend clients, enabling live observability of the incident detection process without requiring client-side polling.
+
+    \item \textbf{Incident Management (CRUD):} The system shall provide a complete set of RESTful CRUD endpoints for incident management, allowing clients to create, retrieve, update, and delete incident records stored in the \texttt{Incident} table, including associated RCA results from the \texttt{RCAResult} table.
+
+    \item \textbf{Fault Simulation:} The system shall expose a fault injection API that supports the programmatic introduction of synthetic failure scenarios into the monitored environment, including \texttt{latency\_spike}, \texttt{error\_surge}, \texttt{cpu\_throttle}, \texttt{memory\_leak}, and \texttt{network\_partition} fault types, for use in testing, benchmarking, and model evaluation.
+
+    \item \textbf{Model Training, Status, and Health Endpoints:} The system shall provide dedicated REST API endpoints for triggering on-demand AI model training or retraining cycles, querying the current training status and pipeline health, and exposing a liveness and readiness health check endpoint suitable for integration with container orchestration probes.
+
+\end{itemize}
+
+\section{Non-Functional Requirements}
+
+\hspace*{0.3in} Non-functional requirements specify the quality attributes and operational characteristics that SYNAPSE must satisfy independent of any specific functional behavior. These requirements constrain the design choices for performance, resilience, security, and maintainability, and they collectively determine the suitability of the platform for production AIOps deployment.\\\\
+
+\begin{itemize}
+
+    \item \textbf{Availability:} The SYNAPSE backend API and WebSocket server shall maintain a target availability of 99.5\% or higher during normal operating conditions. The system shall implement graceful degradation such that if the LLM reasoning stage becomes unavailable, the platform continues to deliver anomaly scores, causal graphs, and severity classifications without interruption.
+
+    \item \textbf{Reliability:} The AI pipeline shall produce deterministic, reproducible results for identical input metric windows when operating in inference mode with fixed random seeds. All database writes shall be atomic and transactional to prevent partial-commit states in the \texttt{Incident}, \texttt{RCAResult}, and \texttt{RecoveryActionLog} tables.
+
+    \item \textbf{Performance:} The end-to-end AI pipeline — from metric ingestion through DB persistence — shall complete processing of a standard 20-service topology incident within 10 seconds under nominal GPU-accelerated conditions. The LLM reasoning stage (GPT-4o-mini API call) is acknowledged as the primary latency bottleneck and shall be executed asynchronously to avoid blocking upstream pipeline stages. WebSocket event delivery latency shall not exceed 500 milliseconds from anomaly detection to client notification.
+
+    \item \textbf{Maintainability:} The AI pipeline shall be implemented as a sequence of independently replaceable, loosely coupled modules, each exposing a consistent interface. This modular architecture ensures that individual components — such as the anomaly detector, causal discovery engine, or LLM reasoner — can be upgraded, retrained, or swapped without requiring changes to adjacent modules. All modules shall be accompanied by unit tests and inline documentation.
+
+    \item \textbf{Scalability:} The backend architecture shall support horizontal scaling of stateless API workers behind a load balancer. The database layer shall be designed for migration from SQLite (development) to PostgreSQL (production) without application-layer changes, leveraging SQLAlchemy's database-agnostic ORM abstraction. The WebSocket server shall support concurrent connections from multiple dashboard clients.
+
+    \item \textbf{Security:} All API endpoints shall be protected by token-based authentication. Sensitive configuration values, including the OpenAI API key and database credentials, shall be managed exclusively through environment variables and shall never be hard-coded or committed to version control. Cross-Origin Resource Sharing (CORS) policies shall be explicitly configured to restrict access to trusted frontend origins.
+
+    \item \textbf{Usability:} The React-based dashboard shall provide an intuitive, responsive interface accessible in modern desktop browsers without requiring installation of client-side plugins. All visualisations — including the service dependency graph, anomaly heatmaps, and causal pathway diagrams — shall be interactive and shall include contextual tooltips and legends to support on-call engineers with varying levels of AIOps expertise.
+
+    \item \textbf{Reproducibility:} The system shall log all model hyperparameters, training dataset versions, and random seeds to the database at training time, enabling any historical RCA result to be traced back to the exact model checkpoint and input data snapshot that produced it. The continual learning pipeline shall maintain versioned model checkpoints to support rollback in the event of degraded post-adaptation performance.
+
+\end{itemize}
+
+\section{Constraints}
+
+\hspace*{0.3in} The following constraints define the boundaries within which SYNAPSE must be designed and operated. These are non-negotiable limitations arising from interface standards, hardware availability, software licensing, and operational environment decisions.\\\\
+
+\begin{itemize}
+
+    \item \textbf{User Interface Constraints:} The frontend dashboard must be delivered as a single-page application (SPA) running entirely within a standard web browser. No native desktop or mobile application is within scope. The UI must be compatible with the latest stable releases of Google Chrome and Mozilla Firefox and must render correctly at a minimum viewport width of 1280 pixels.
+
+    \item \textbf{Hardware Constraints:} The GNN-based anomaly detection model requires access to a CUDA-capable GPU for training within acceptable time bounds. While CPU-only inference is supported for small topologies, GPU availability is a hard constraint for production deployment at scale. The development team does not have access to on-premise high-performance computing infrastructure; accordingly, cloud GPU instances or local NVIDIA GPUs are the assumed training environment.
+
+    \item \textbf{Software Constraints:} The backend must be implemented using Python 3.10 or higher to leverage modern type annotation features and async/await syntax. The framework stack is fixed at FastAPI for HTTP and WebSocket serving, PyTorch for deep learning, PyTorch Geometric (PyG) for graph neural network operations, and SQLAlchemy with async support for database access. The LLM integration is constrained to the OpenAI API (GPT-4o-mini), subject to rate limits and token quotas imposed by the API provider.
+
+    \item \textbf{Operating Constraints:} The system must be deployable as a set of Docker containers orchestratable via Docker Compose for local development. The production deployment target is a Kubernetes cluster. All configuration must be externalised through environment variables conforming to the Twelve-Factor App methodology, ensuring portability across development, staging, and production environments.
+
+\end{itemize}
+
+\section{Hardware Requirements}
+
+\hspace*{0.3in} The hardware requirements for SYNAPSE address the computational resources needed to support model training, real-time inference, database persistence, and frontend delivery across the development and production environments.\\\\
+
+\begin{itemize}
+
+    \item \textbf{Server Hardware:} The backend application server requires a minimum of 8 GB RAM and a quad-core CPU for running the FastAPI application, SQLAlchemy ORM, and lightweight inference workloads. For full-scale GNN training and VAE-GNN inference on topologies exceeding 20 services, a CUDA-capable NVIDIA GPU with a minimum of 8 GB VRAM (e.g., NVIDIA RTX 3060 or equivalent cloud GPU instance) is strongly recommended. Training on CPU is technically supported but may result in pipeline latency exceeding the 10-second target.
+
+    \item \textbf{Client Hardware:} End-users accessing the SYNAPSE dashboard require a standard workstation or laptop with a modern web browser. No GPU or specialised hardware is required on the client side. A minimum of 4 GB RAM and a display resolution of 1920×1080 is recommended for optimal rendering of D3.js and Cytoscape.js visualisations.
+
+    \item \textbf{Development and Deployment Infrastructure:} Development environments must support Docker Desktop (Windows/macOS) or Docker Engine (Linux). CI/CD pipelines should be executed on agents with at least 8 GB RAM and 4 CPU cores. Production deployment targets a Kubernetes cluster with at least two worker nodes; GPU nodes should be provisioned using Kubernetes device plugin support for NVIDIA GPUs to enable GPU-aware pod scheduling.
+
+    \item \textbf{Network Infrastructure:} The deployment environment must provide reliable low-latency outbound internet connectivity to access the OpenAI API. Internal network bandwidth between microservices within the Kubernetes cluster should support sustained throughput of at least 1 Gbps to avoid metric ingestion bottlenecks. WebSocket connections from clients require stable TCP connections with minimal packet loss.
+
+\end{itemize}
+
+\section{Software Requirements}
+
+\hspace*{0.3in} The software requirements enumerate the specific technologies, frameworks, libraries, and tools that constitute the SYNAPSE technology stack. Adherence to this stack is required to ensure compatibility, maintainability, and consistent behavior across all deployment environments.\\\\
+
+\begin{itemize}
+
+    \item \textbf{Backend Framework:} The server-side application shall be built using Python 3.10+ with FastAPI as the primary web framework, providing asynchronous HTTP request handling, automatic OpenAPI schema generation, and native WebSocket support. Pydantic v2 shall be used for all request/response data validation and serialisation.
+
+    \item \textbf{Frontend Framework:} The client-side dashboard shall be developed using React 18 with TypeScript and bundled using Vite. Global application state shall be managed with Zustand. Service dependency graphs and causal DAG visualisations shall be rendered using Cytoscape.js, while time-series metric charts and anomaly score plots shall be rendered using D3.js.
+
+    \item \textbf{AI and Machine Learning Frameworks:} The deep learning components — including the VAE, GNN encoder, DECI causal model, and continual learning modules — shall be implemented in PyTorch. Graph operations and message passing layers shall leverage PyTorch Geometric (PyG). NumPy and Pandas shall be used for feature engineering and time-series preprocessing.
+
+    \item \textbf{Database:} SQLite shall serve as the default database for local development and testing, while PostgreSQL shall be the target for production deployments. All database interactions shall be performed through SQLAlchemy's asynchronous ORM layer using \texttt{asyncpg} (PostgreSQL) or \texttt{aiosqlite} (SQLite) as the underlying async driver. Alembic shall be used for schema migration management.
+
+    \item \textbf{Security Software:} Authentication shall be implemented using JSON Web Tokens (JWT). The \texttt{python-jose} library shall handle token encoding and decoding. \texttt{passlib} with the bcrypt hashing algorithm shall be used for password management. Environment secrets shall be loaded using \texttt{python-dotenv}.
+
+    \item \textbf{Deployment and Containerisation:} The application shall be packaged as Docker containers with multi-stage Dockerfiles to minimise image sizes. Docker Compose shall be provided for local multi-container orchestration. Kubernetes manifests (Deployment, Service, ConfigMap, Secret, HorizontalPodAutoscaler) shall be provided for production deployment. A GitHub Actions workflow shall implement CI/CD automation including linting, testing, and container image publishing.
+
+    \item \textbf{Version Control:} The entire codebase, including infrastructure-as-code and documentation, shall be maintained in a Git repository hosted on GitHub. Branching shall follow a trunk-based development model with protected \texttt{main} and \texttt{develop} branches, mandatory pull request reviews, and automated status checks before merging.
+
+\end{itemize}
+
+\section{Interfaces}
+
+\hspace*{0.3in} This section describes the interfaces through which SYNAPSE interacts with its users, with hardware resources, and with external software systems. Well-defined interfaces at these boundaries are essential for ensuring that each subsystem can be developed, tested, and upgraded independently.\\\\
+
+\subsection{User Interface}
+
+\hspace*{0.3in} The primary user interface is the SYNAPSE React dashboard, a browser-based single-page application accessible over HTTP/HTTPS. The dashboard provides the following interaction surfaces:\\\\
+
+\begin{itemize}
+    \item A real-time incident feed panel displaying live anomaly events streamed over WebSocket, with colour-coded severity badges (\texttt{L1} through \texttt{L4}).
+    \item An interactive service dependency graph rendered using Cytoscape.js, where node colour encodes anomaly score and edge weight encodes call volume.
+    \item A causal pathway viewer displaying the DECI-inferred directed acyclic graph overlaid on the service topology, highlighting root cause nodes.
+    \item A per-incident detail view showing the LLM-generated explanation, fault type classification, recommended remediation actions, and the associated recovery action log.
+    \item A fault injection control panel allowing authorised users to trigger synthetic failure scenarios against the monitored environment.
+    \item A model management panel displaying training status, current model version, drift detection alerts, and controls for initiating retraining.
+\end{itemize}
+
+\subsection{Hardware Interface}
+
+\hspace*{0.3in} SYNAPSE interfaces with hardware primarily through the PyTorch CUDA runtime, which abstracts GPU memory allocation and kernel execution for the VAE-GNN and DECI model computations. The system queries GPU availability at startup using \texttt{torch.cuda.is\_available()} and gracefully falls back to CPU execution if no CUDA device is detected. Prometheus metric scraping interfaces with the host network stack via HTTP GET requests to configured scrape targets on standard Prometheus exposition ports (default: 9090). All other hardware interactions are mediated by the operating system and container runtime.\\\\
+
+\subsection{Software Interface}
+
+\hspace*{0.3in} SYNAPSE interacts with external and internal software systems through the following interfaces:\\\\
+
+\begin{itemize}
+
+    \item \textbf{REST API:} The FastAPI backend exposes a versioned RESTful HTTP API (prefix \texttt{/api/v1}) consumed by the React frontend and by external monitoring tools. All request and response payloads are JSON-encoded and validated against Pydantic v2 schemas. The API is fully documented via an auto-generated OpenAPI 3.1 specification accessible at \texttt{/docs}.
+
+    \item \textbf{WebSocket Interface:} A WebSocket endpoint at \texttt{/ws/anomalies} provides a persistent, bidirectional communication channel for streaming real-time anomaly detection events from the backend pipeline to connected dashboard clients. Events are serialised as JSON messages conforming to a defined event schema including timestamp, service name, anomaly score, severity level, and pipeline stage.
+
+    \item \textbf{Database Interface (SQLAlchemy ORM):} All interactions with the underlying relational database (SQLite in development, PostgreSQL in production) are mediated exclusively through SQLAlchemy's asynchronous ORM layer. The five core database entities — \texttt{Incident}, \texttt{RCAResult}, \texttt{ServiceMetric}, \texttt{RecoveryActionLog}, and \texttt{PatternHistory} — are defined as SQLAlchemy declarative model classes with fully typed column definitions.
+
+    \item \textbf{OpenAI API Interface:} The LLM reasoning module interfaces with the OpenAI Chat Completions API using the \texttt{openai} Python client library. Requests are sent to the \texttt{gpt-4o-mini} model endpoint with structured prompt templates encoding the anomaly context, causal graph summary, and historical pattern information. Responses are parsed and validated before being persisted to the \texttt{RCAResult} table.
+
+    \item \textbf{Prometheus Interface:} The metric ingestion module interfaces with a Prometheus HTTP API endpoint to execute range queries and fetch time-series data for each monitored microservice. In environments where a live Prometheus instance is unavailable, the ingestion module falls back to the built-in synthetic metric simulator, which generates statistically realistic metric traces seeded with configurable fault injection parameters.
+
+\end{itemize}

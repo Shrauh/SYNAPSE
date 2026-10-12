@@ -1,0 +1,535 @@
+
+%==========================================================================
+%  CHAPTER 6 — DETAILED DESIGN
+%==========================================================================
+
+\section{Architectural Design}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=\linewidth,keepaspectratio]{architecture.jpg}
+    \caption{High-Level System Architecture of SYNAPSE}
+    \label{fig:architecture}
+\end{figure}
+
+\hspace*{0.3in} Figure \ref{fig:architecture} illustrates the high-level system architecture of SYNAPSE, which is organized into four horizontally stratified layers that collectively enable end-to-end automated root cause analysis of microservice failures. The bottom-most \textbf{Data Acquisition Layer} collects raw time-series telemetry — CPU utilization, memory pressure, request latency, error rates, and network throughput — from either a live Prometheus scraper or a controlled fault simulator that injects realistic anomalies into a synthetic microservice topology. Immediately above sits the \textbf{AI Pipeline Layer}, which houses the sequential ten-stage intelligence engine: raw metrics are ingested and normalized, features are extracted across temporal windows, a VAE-GNN model scores anomalies at the node level, a severity classifier assigns one of four criticality tiers (L1–L4), the DECI causal discovery engine constructs a directed acyclic causal graph constrained by a RAG-retrieved domain prior, an LLM reasoning module synthesizes a natural-language root-cause explanation, and finally a recovery action selector proposes remediation steps via \texttt{kubectl}-compatible commands. A continual learning manager threads across the pipeline to preserve historical knowledge while adapting to distributional shifts.\\\\
+\hspace*{0.3in} The \textbf{Persistence Layer} comprises a relational database (SQLite for development, PostgreSQL for production) backed by five core tables — \textit{Incident}, \textit{RCAResult}, \textit{ServiceMetric}, \textit{RecoveryActionLog}, and \textit{PatternHistory} — accessed asynchronously through SQLAlchemy with Pydantic v2 schemas enforcing strict data contracts. The topmost \textbf{Presentation Layer} exposes a FastAPI REST/WebSocket gateway to a React 18 frontend dashboard that renders interactive service dependency graphs, live anomaly streams, incident timelines, and model health indicators. This layered decomposition ensures a clean separation of concerns: each layer communicates only with its immediate neighbours, making individual components independently testable, replaceable, and scalable.
+
+%--------------------------------------------------------------------------
+\section{Overview of Project Modules}
+%--------------------------------------------------------------------------
+
+\hspace*{0.3in} SYNAPSE is decomposed into nine logically cohesive modules, each encapsulating a distinct responsibility within the overall AIOps pipeline. These modules interact through well-defined asynchronous interfaces and share a common persistence substrate, ensuring loose coupling and high cohesion across the system. The modules are described below.
+
+\begin{itemize}
+
+    \item \textbf{Metrics Ingestion Service (Prometheus / Simulator):}
+    This module is the entry point of the SYNAPSE pipeline. In production mode it connects to a Prometheus HTTP API endpoint, scraping per-service metrics at configurable intervals (default 15 s). In simulation mode it employs a stochastic fault-injection engine capable of generating correlated anomalies, cascading failures, and design-level degradations across a configurable synthetic service topology. All collected metric vectors are normalised, timestamped, and pushed into an in-memory pipeline queue for downstream processing.
+
+    \item \textbf{Graph Builder (Service Dependency Graph):}
+    The Graph Builder constructs and maintains a dynamic directed weighted graph $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ where each vertex $v_i \in \mathcal{V}$ represents a microservice and each edge $(v_i, v_j) \in \mathcal{E}$ represents a call dependency weighted by observed latency and error-rate statistics. The graph is represented as a PyTorch Geometric \texttt{Data} object, updated incrementally as new metrics arrive, and serialised for consumption by both the VAE-GNN and the DECI engine.
+
+    \item \textbf{VAE-GNN Anomaly Detector:}
+    A Variational Autoencoder coupled with a Graph Neural Network processes each observation window over the service graph. The GNN encoder (two-layer GraphSAGE) learns structurally-aware node embeddings that capture neighbourhood propagation of anomalous signals. The VAE decoder reconstructs expected metric distributions; the per-node reconstruction error serves as an anomaly score. Nodes whose scores exceed an adaptive threshold (derived from rolling statistics) are flagged as anomalous, and the score map is forwarded to the severity classifier.
+
+    \item \textbf{Severity Classifier:}
+    A lightweight gradient-boosted classifier ingests the anomaly score distribution, the structural position of flagged nodes within the dependency graph, and temporal pattern features to assign one of four severity tiers: \textbf{L1\_SIMPLE} (isolated leaf-node failure), \textbf{L2\_CASCADING} (failure propagating along a call chain), \textbf{L3\_SYSTEMIC} (cross-cluster degradation affecting multiple subsystems), and \textbf{L4\_DESIGN\_FLAW} (persistent performance anti-pattern requiring architectural intervention). The severity label gates downstream processing priority and recovery strategy selection.
+
+    \item \textbf{DECI Causal Discovery Engine (with RAG Prior):}
+    This module employs the Deep End-to-end Causal Inference (DECI) framework to learn a probabilistic directed acyclic graph (DAG) over the set of flagged metrics. A Retrieval-Augmented Generation (RAG) mechanism queries an indexed knowledge base of historical postmortems and service documentation to synthesise a soft structural prior $W_0$, which biases the ACYCLIC-constrained variational optimisation toward domain-plausible causal directions. The resulting causal DAG identifies the root-cause service node(s) and quantifies the causal strength of each dependency path.
+
+    \item \textbf{LLM Reasoning Module:}
+    A GPT-4o-mini based reasoning chain receives a structured context packet comprising the causal DAG, anomaly scores, severity tier, service metadata, and retrieved runbook snippets. It produces a multi-paragraph natural-language explanation of the incident, including root cause identification, contributing factors, impact assessment, and step-by-step remediation recommendations. The explanation is stored in the \textit{RCAResult} table and rendered in the frontend report view.
+
+    \item \textbf{Recovery Engine (kubectl Simulation):}
+    Given the identified root-cause service and severity tier, the Recovery Engine maps the incident profile to a library of templated remediation actions — pod restarts, horizontal scale-out, circuit-breaker activation, resource quota adjustments, and rolling-restart orchestrations — expressed as \texttt{kubectl} command strings. In simulation mode commands are logged to the \textit{RecoveryActionLog} table with a dry-run flag; in production mode they are dispatched to the Kubernetes API server. Action outcomes are fed back into the continual learning manager as reward signals.
+
+    \item \textbf{Continual Learning Manager (EWC + MAML + Replay):}
+    To prevent catastrophic forgetting as the system encounters new failure patterns, this module combines three complementary strategies. \textbf{Elastic Weight Consolidation (EWC)} penalises changes to parameters deemed important for past tasks, as quantified by the Fisher information matrix. \textbf{Model-Agnostic Meta-Learning (MAML)} maintains a meta-initialisation that enables rapid fine-tuning on novel failure distributions with a small number of gradient steps. An \textbf{Experience Replay Buffer} retains a reservoir of representative historical incidents that are interleaved with new training batches to maintain distributional balance.
+
+    \item \textbf{React Frontend Dashboard + FastAPI Backend:}
+    The user-facing tier consists of a React 18 / TypeScript single-page application bundled with Vite, using Zustand for global state management, Cytoscape.js for interactive service graph visualisation, and D3.js for time-series metric plots. The FastAPI backend exposes a versioned REST API (\texttt{/api/v1/}) for CRUD operations on incidents and RCA results, and a WebSocket endpoint (\texttt{/ws/stream}) for real-time anomaly event streaming. API contracts are validated end-to-end with Pydantic v2 schemas, and all database interactions are executed asynchronously via SQLAlchemy with connection pooling.
+
+\end{itemize}
+
+%--------------------------------------------------------------------------
+\section{User Interface}
+%--------------------------------------------------------------------------
+
+\hspace*{0.3in} The SYNAPSE frontend has been designed with an emphasis on operational clarity and rapid situational awareness. Operators interacting with the dashboard can move fluidly from a high-level system health overview to granular incident forensics without losing contextual continuity. Each screen surface is purpose-built around a specific operational workflow — monitoring, triaging, investigating, and remediating — and all views receive live updates pushed over a WebSocket connection so that no manual page refresh is required. The following figures present the five primary interface screens.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{dashboard.jpg}
+    \caption{SYNAPSE Main Dashboard — Real-Time System Health Overview}
+    \label{fig:ui_dashboard}
+\end{figure}
+
+\hspace*{0.3in} The \textbf{Main Dashboard} (Figure \ref{fig:ui_dashboard}) provides an at-a-glance health summary of the entire monitored microservice environment. Key features include:
+\begin{itemize}
+    \item A top status bar displaying aggregate counts of active incidents grouped by severity tier (L1–L4), updated in real time via the WebSocket stream.
+    \item Sparkline metric tiles for each tracked service showing CPU, memory, latency, and error-rate trends over the most recent 30-minute sliding window.
+    \item A severity distribution donut chart that enables operators to instantly perceive the proportion of simple versus systemic failures currently in the environment.
+    \item A scrollable recent-incidents feed with colour-coded severity badges and one-click navigation to the corresponding incident detail page.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{incident_list.jpg}
+    \caption{SYNAPSE Incident List Page — Sortable and Filterable Incident Registry}
+    \label{fig:ui_incident_list}
+\end{figure}
+
+\hspace*{0.3in} The \textbf{Incident List Page} (Figure \ref{fig:ui_incident_list}) presents a paginated, sortable, and filterable tabular view of all incidents recorded in the system. Notable capabilities include:
+\begin{itemize}
+    \item Column-level filtering by severity tier, affected service name, detection timestamp range, and RCA completion status (pending / complete).
+    \item Inline severity badges rendered with distinct colour coding (green → L1, amber → L2, orange → L3, red → L4) for rapid visual triage.
+    \item A detail-expansion toggle that reveals the top-ranked root-cause service and anomaly score without navigating away from the list view.
+    \item Bulk-selection controls for batch export of incident records in JSON or CSV format for downstream post-mortem workflows.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{rca_report.jpg}
+    \caption{SYNAPSE RCA Report Detail — Full Root Cause Analysis Report View}
+    \label{fig:ui_rca_report}
+\end{figure}
+
+\hspace*{0.3in} The \textbf{RCA Report Detail} view (Figure \ref{fig:ui_rca_report}) renders the full machine-generated root cause analysis for a selected incident. It is structured as a scrollable forensic document containing:
+\begin{itemize}
+    \item An incident summary header showing the affected service, detection timestamp, resolved timestamp, severity tier, and pipeline processing duration.
+    \item The LLM-generated natural-language explanation subdivided into: Root Cause, Contributing Factors, Impact Assessment, and Recommended Remediation Actions.
+    \item An embedded mini-graph visualisation highlighting the causal path identified by the DECI engine, with edge weights indicating causal strength.
+    \item A chronological recovery action log listing each \texttt{kubectl} action dispatched (or simulated), its execution status, and any observed outcome metrics.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{graph_view.jpg}
+    \caption{SYNAPSE Service Dependency Graph — Interactive Causal Topology View}
+    \label{fig:ui_graph_view}
+\end{figure}
+
+\hspace*{0.3in} The \textbf{Service Dependency Graph} screen (Figure \ref{fig:ui_graph_view}) renders the full microservice topology as an interactive force-directed graph using Cytoscape.js. Key interactions include:
+\begin{itemize}
+    \item Node colour encoding that transitions from green (healthy) through amber (degraded) to red (anomalous) based on real-time VAE-GNN anomaly scores, refreshed on each WebSocket push event.
+    \item Edge thickness proportional to call volume, with animated dashed overlays on edges identified as causal paths by the DECI engine during the most recent incident.
+    \item Click-to-inspect node panels surfacing per-service metric sparklines, current anomaly score, and causal in-degree / out-degree statistics.
+    \item Layout-switching controls offering directed-hierarchical, force-directed, and breadth-first arrangement options to suit different topology sizes.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{model_status.jpg}
+    \caption{SYNAPSE Model Status Panel — AI Pipeline Health and Continual Learning Monitor}
+    \label{fig:ui_model_status}
+\end{figure}
+
+\hspace*{0.3in} The \textbf{Model Status Panel} (Figure \ref{fig:ui_model_status}) provides transparency into the operational state of the AI pipeline and continual learning subsystem. It exposes:
+\begin{itemize}
+    \item Per-stage pipeline health indicators (Ingestion, Feature Extraction, VAE-GNN, Classifier, DECI, LLM, Recovery, Continual Learning) with status chips showing \textit{Online}, \textit{Degraded}, or \textit{Offline}.
+    \item A training history chart plotting VAE reconstruction loss and classifier F1 score across the most recent adaptation cycles, enabling operators to spot model drift at a glance.
+    \item EWC Fisher matrix norm and MAML meta-loss trend cards that expose continual learning convergence behaviour.
+    \item Replay buffer statistics including total stored experiences, age distribution of buffered incidents, and last consolidation timestamp.
+\end{itemize}
+
+%--------------------------------------------------------------------------
+\section{Data Design}
+%--------------------------------------------------------------------------
+
+\subsection{Data Structure}
+
+\hspace*{0.3in} The data structures employed by SYNAPSE are organised into three categories based on their scope and lifetime within the system.
+
+\begin{enumerate}[label=\Alph*.]
+
+    \item \textbf{Internal Data Structures:}
+    These structures are created and consumed within a single pipeline stage and are not persisted beyond the processing of a single pipeline invocation.
+    \begin{itemize}
+        \item \textbf{Feature Matrices (PyTorch Tensors):} Each ingestion window produces a float32 tensor of shape $(N \times T \times F)$, where $N$ is the number of services, $T$ is the temporal window length (default 60 time steps), and $F$ is the number of metric features per service (CPU, memory, latency, error rate, throughput — $F = 5$). These tensors are the primary input to the VAE-GNN encoder.
+        \item \textbf{Graph Adjacency Structures:} The service dependency graph is stored as a PyTorch Geometric \texttt{Data} object carrying an edge index tensor of shape $(2 \times |\mathcal{E}|)$, an edge-weight vector, and node feature matrix. A separate sparse adjacency matrix in COO format is maintained for DECI's causal discovery optimisation.
+        \item \textbf{Anomaly Score Maps:} A float32 tensor of shape $(N,)$ produced by the VAE-GNN decoder, representing per-node reconstruction error normalised to $[0, 1]$. A boolean mask derived by thresholding this tensor is passed to the severity classifier along with structural graph features.
+    \end{itemize}
+
+    \item \textbf{Global Data Structures:}
+    These structures persist across pipeline invocations and encapsulate the learned state of the AI subsystems.
+    \begin{itemize}
+        \item \textbf{GNN Model Weights:} The VAE-GNN state dictionary is checkpointed to disk after each adaptation cycle and loaded at service startup. It consists of GraphSAGE encoder weights, VAE mean/log-variance projection layers, and decoder MLP parameters.
+        \item \textbf{EWC Fisher Information Matrix:} A per-parameter diagonal approximation of the Fisher matrix $\mathcal{F}$ is computed after each task and stored as a named-parameter dictionary alongside the reference parameter snapshot $\theta^*$. This pair is used to compute the EWC regularisation penalty during subsequent fine-tuning.
+        \item \textbf{Experience Replay Buffer:} A fixed-capacity (default 10\,000 entries) reservoir-sampled ring buffer storing serialised $(X_t, \mathcal{G}_t, y_t)$ tuples — feature tensor, graph snapshot, and ground-truth label — drawn from historical incidents. The buffer is persisted as a memory-mapped NumPy archive (\texttt{.npy}).
+        \item \textbf{MAML Adapter State:} The MAML meta-initialisation $\theta_{\text{meta}}$ is stored as a separate checkpoint, updated after each outer-loop optimisation episode. Inner-loop task-adapted copies $\phi_i$ are ephemeral and discarded after each episode.
+    \end{itemize}
+
+    \item \textbf{Temporary Data Structures:}
+    These structures exist only during the execution of the real-time processing loop and are discarded or overwritten on each cycle.
+    \begin{itemize}
+        \item \textbf{Pipeline Stage Buffers:} Each of the ten pipeline stages owns an asyncio \texttt{Queue} that decouples producer and consumer throughput. Metric packets, feature tensors, anomaly result objects, and RCA context packets flow through these queues with configurable maximum depths to provide back-pressure.
+        \item \textbf{Batch Queues:} The continual learning manager maintains a short-lived mini-batch queue that accumulates incoming labelled incidents for the next gradient update step, flushed after each training epoch.
+        \item \textbf{Incident Timeline Events:} During a pipeline run, a list of timestamped event records (stage entry, stage exit, anomaly detected, causal DAG converged, LLM response received) is accumulated in memory and written atomically to the \textit{RCAResult} table upon pipeline completion.
+    \end{itemize}
+
+\end{enumerate}
+
+%--------------------------------------------------------------------------
+\subsection{Database Description}
+%--------------------------------------------------------------------------
+
+\hspace*{0.3in} SYNAPSE persists all operational state in a relational schema comprising five tables. The schema is managed through SQLAlchemy declarative models with Alembic-controlled migrations, enabling seamless transition from the SQLite development backend to a PostgreSQL production instance.
+
+\begin{itemize}
+
+    \item \textbf{Incident:} The central entity representing a detected anomaly event. Primary key: \texttt{incident\_id} (UUID). Attributes: \texttt{title} (VARCHAR), \texttt{affected\_service} (VARCHAR), \texttt{severity} (ENUM: L1–L4), \texttt{status} (ENUM: OPEN / RESOLVED / IN\_PROGRESS), \texttt{detected\_at} (TIMESTAMPTZ), \texttt{resolved\_at} (TIMESTAMPTZ, nullable), \texttt{anomaly\_score} (FLOAT), \texttt{raw\_metrics\_snapshot} (JSONB). Relationships: one-to-one with \textit{RCAResult}; one-to-many with \textit{RecoveryActionLog}; one-to-many with \textit{ServiceMetric} (via time range join).
+
+    \item \textbf{RCAResult:} Stores the full analytical output of the pipeline for a given incident. Primary key: \texttt{rca\_id} (UUID). Foreign key: \texttt{incident\_id} → \textit{Incident}. Attributes: \texttt{root\_cause\_service} (VARCHAR), \texttt{causal\_path} (JSONB — serialised DAG edge list), \texttt{confidence\_score} (FLOAT), \texttt{llm\_explanation} (TEXT), \texttt{severity\_rationale} (TEXT), \texttt{processing\_duration\_ms} (INTEGER), \texttt{pipeline\_stage\_log} (JSONB — stage timestamps), \texttt{created\_at} (TIMESTAMPTZ).
+
+    \item \textbf{ServiceMetric:} A time-series table storing raw metric snapshots for each monitored service. Primary key: \texttt{metric\_id} (UUID). Attributes: \texttt{service\_name} (VARCHAR), \texttt{timestamp} (TIMESTAMPTZ), \texttt{cpu\_usage} (FLOAT), \texttt{memory\_usage} (FLOAT), \texttt{request\_latency\_ms} (FLOAT), \texttt{error\_rate} (FLOAT), \texttt{throughput\_rps} (FLOAT). Indexed on \texttt{(service\_name, timestamp)} for efficient range queries. Partitioned by day in PostgreSQL deployments.
+
+    \item \textbf{RecoveryActionLog:} Records every remediation action proposed or executed for an incident. Primary key: \texttt{action\_id} (UUID). Foreign key: \texttt{incident\_id} → \textit{Incident}. Attributes: \texttt{action\_type} (ENUM: RESTART\_POD / SCALE\_OUT / CIRCUIT\_BREAK / ADJUST\_QUOTA / ROLLING\_RESTART), \texttt{target\_service} (VARCHAR), \texttt{kubectl\_command} (TEXT), \texttt{is\_dry\_run} (BOOLEAN), \texttt{execution\_status} (ENUM: PENDING / SUCCESS / FAILED), \texttt{executed\_at} (TIMESTAMPTZ), \texttt{outcome\_notes} (TEXT).
+
+    \item \textbf{PatternHistory:} Maintains a library of recurring failure pattern templates used to accelerate causal discovery and seed the RAG knowledge base. Primary key: \texttt{pattern\_id} (UUID). Attributes: \texttt{pattern\_name} (VARCHAR), \texttt{description} (TEXT), \texttt{trigger\_features} (JSONB), \texttt{canonical\_root\_cause} (VARCHAR), \texttt{recommended\_action\_type} (VARCHAR), \texttt{occurrence\_count} (INTEGER), \texttt{last\_seen\_at} (TIMESTAMPTZ), \texttt{embedding\_vector} (FLOAT ARRAY — pgvector in PostgreSQL, JSON in SQLite). Relationships: referenced by \textit{RCAResult} to indicate matched pattern.
+
+\end{itemize}
+
+%--------------------------------------------------------------------------
+\section{UML Diagrams}
+%--------------------------------------------------------------------------
+
+\hspace*{0.3in} The following UML and data-flow diagrams provide a comprehensive multi-perspective specification of the SYNAPSE system. Together they capture behavioural, structural, and architectural characteristics of the platform at varying levels of abstraction.
+
+\begin{itemize}
+
+    \item \textbf{Use Case Diagram:} Depicts the interactions between system actors and the functional capabilities of SYNAPSE.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=12cm,width=0.9\textwidth]{use_case_diagram.jpg}
+        \caption{Use Case Diagram — SYNAPSE System Actors and Use Cases}
+        \label{fig:use_case_diagram}
+    \end{figure}
+
+    \item \textbf{Use Case Scenarios:} The following table details the eight primary use cases identified for SYNAPSE, specifying actors, pre-conditions, main flow, and post-conditions for each scenario.
+
+\end{itemize}
+
+\begin{center}
+\begin{longtable}{|p{4cm}|p{9.8cm}|}
+\caption{Use Case Scenarios for SYNAPSE} \label{tab:use_cases} \\
+\hline
+\textbf{Use Case} & \textbf{Description} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Use Case} & \textbf{Description} \\
+\hline
+\endhead
+\hline
+\endfoot
+
+\textbf{UC1: Trigger RCA Pipeline} &
+\textbf{Actor:} Operator / Scheduler. \newline
+\textbf{Pre-condition:} At least one service metric stream is active. \newline
+\textbf{Main Flow:} The operator initiates a manual pipeline run via the dashboard, or the scheduler fires automatically on a new metric ingestion batch. The Ingestion Service collects the latest metric window, the Graph Builder updates the dependency graph, the VAE-GNN scores anomalies, the Severity Classifier assigns a tier, the DECI engine discovers causal relationships, the LLM Reasoning Module generates the explanation, and the Recovery Engine selects remediation actions. Results are persisted to the database. \newline
+\textbf{Post-condition:} A new \textit{Incident} and associated \textit{RCAResult} record are created and visible in the incident list. \\
+\hline
+
+\textbf{UC2: View Incident List} &
+\textbf{Actor:} Operator. \newline
+\textbf{Pre-condition:} The user is authenticated and at least one incident exists in the system. \newline
+\textbf{Main Flow:} The operator navigates to the Incident List page. The frontend issues a \texttt{GET /api/v1/incidents} request with optional query parameters for severity, status, and date range. The backend returns a paginated JSON response; the frontend renders the sortable, filterable incident table. \newline
+\textbf{Post-condition:} The operator can see all matching incidents and navigate to any individual report. \\
+\hline
+
+\textbf{UC3: View RCA Report} &
+\textbf{Actor:} Operator / On-Call Engineer. \newline
+\textbf{Pre-condition:} The selected incident has a completed \textit{RCAResult} record. \newline
+\textbf{Main Flow:} The operator clicks on an incident in the list. The frontend issues a \texttt{GET /api/v1/incidents/\{id\}/rca} request. The backend joins the \textit{Incident} and \textit{RCAResult} tables, serialises the response, and returns it. The frontend renders the full RCA report including the LLM explanation, causal path mini-graph, and recovery action log. \newline
+\textbf{Post-condition:} The operator has a complete, actionable understanding of the incident's root cause and recommended remediation. \\
+\hline
+
+\textbf{UC4: Simulate Fault} &
+\textbf{Actor:} Developer / QA Engineer. \newline
+\textbf{Pre-condition:} The system is running in simulation mode with the fault-injection engine active. \newline
+\textbf{Main Flow:} The developer selects a fault type (CPU spike, network partition, memory leak, database timeout) and a target service from the simulation control panel and submits the request via \texttt{POST /api/v1/simulate/fault}. The fault injector applies the anomaly pattern to the synthetic metric stream. The pipeline automatically triggers and processes the injected fault. \newline
+\textbf{Post-condition:} A new incident is created in the database corresponding to the injected fault, and the RCA pipeline result can be compared against the known ground truth. \\
+\hline
+
+\textbf{UC5: View Service Graph} &
+\textbf{Actor:} Operator / Architect. \newline
+\textbf{Pre-condition:} The Graph Builder has produced at least one dependency graph snapshot. \newline
+\textbf{Main Flow:} The operator navigates to the Service Dependency Graph screen. The frontend fetches graph topology data via \texttt{GET /api/v1/graph} and anomaly scores via the active WebSocket connection. Cytoscape.js renders the force-directed graph. The operator can inspect individual node metrics and zoom into causal sub-graphs. \newline
+\textbf{Post-condition:} The operator has an interactive visual representation of the microservice topology with real-time anomaly state overlaid. \\
+\hline
+
+\textbf{UC6: Stream Live Anomalies} &
+\textbf{Actor:} Operator. \newline
+\textbf{Pre-condition:} A WebSocket connection is established between the frontend client and the \texttt{/ws/stream} endpoint. \newline
+\textbf{Main Flow:} The backend anomaly detector publishes new anomaly score events to the WebSocket broadcast channel on each pipeline cycle. The frontend receives these events and updates the dashboard sparklines, service graph node colours, and the recent-incidents feed without requiring a page reload. \newline
+\textbf{Post-condition:} The operator receives sub-second updates on changing system health state across all monitored services. \\
+\hline
+
+\textbf{UC7: View Model Status} &
+\textbf{Actor:} ML Engineer / Operator. \newline
+\textbf{Pre-condition:} The AI pipeline is initialised and the model checkpoint files are loaded. \newline
+\textbf{Main Flow:} The user navigates to the Model Status panel. The frontend issues a \texttt{GET /api/v1/model/status} request. The backend interrogates the continual learning manager for EWC Fisher norms, MAML meta-loss history, replay buffer statistics, and per-stage health flags. The frontend renders status chips, training charts, and buffer statistics cards. \newline
+\textbf{Post-condition:} The engineer has full observability into AI model health and can identify drift or degradation trends proactively. \\
+\hline
+
+\textbf{UC8: Manage System (Admin)} &
+\textbf{Actor:} System Administrator. \newline
+\textbf{Pre-condition:} The user is authenticated with administrator privileges. \newline
+\textbf{Main Flow:} The administrator accesses the admin panel to adjust pipeline configuration parameters (ingestion interval, anomaly threshold, severity thresholds), trigger manual model retraining, clear the replay buffer, export the pattern history library, or purge incident records older than a configurable retention period via the \texttt{/api/v1/admin/} endpoint group. \newline
+\textbf{Post-condition:} System configuration changes are applied immediately; any triggered retraining jobs are queued and executed asynchronously. \\
+\hline
+
+\end{longtable}
+\end{center}
+
+\begin{itemize}
+
+    \item \textbf{Class Diagram:} Depicts the static structure of SYNAPSE's core domain model, showing classes, attributes, methods, and inter-class relationships including associations, dependencies, and inheritance hierarchies.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=14cm,width=0.9\textwidth]{class_diagram.jpg}
+        \caption{Class Diagram — SYNAPSE Core Domain Model}
+        \label{fig:class_diagram}
+    \end{figure}
+
+    \item \textbf{Object Diagram:} Illustrates a representative snapshot of SYNAPSE object instances at runtime during the processing of an L2\_CASCADING severity incident, showing concrete attribute values and live associations.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=10cm,width=0.9\textwidth]{object_diagram.jpg}
+        \caption{Object Diagram — Runtime Instance Snapshot During Incident Processing}
+        \label{fig:object_diagram}
+    \end{figure}
+
+    \item \textbf{Sequence Diagram:} Captures the chronological message flow among system components during a complete end-to-end pipeline execution, from metric ingestion through RCA result persistence and WebSocket notification to the frontend.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=13cm,width=0.9\textwidth]{sequence_diagram.jpg}
+        \caption{Sequence Diagram — End-to-End Pipeline Execution Flow}
+        \label{fig:sequence_diagram}
+    \end{figure}
+
+    \item \textbf{Activity Diagram:} Models the control flow of the SYNAPSE pipeline as a UML activity graph, depicting decision nodes (anomaly detected?, severity $\geq$ L3?), fork/join synchronisation bars for concurrent processing stages, and exception flows for pipeline error recovery.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=14cm,width=0.9\textwidth]{activity_diagram.jpg}
+        \caption{Activity Diagram — SYNAPSE Pipeline Control Flow}
+        \label{fig:activity_diagram}
+    \end{figure}
+
+    \item \textbf{Component Diagram:} Illustrates the physical component organisation of SYNAPSE, showing the FastAPI application server, React SPA, AI pipeline worker process, database layer, and their provided/required interface connectors.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=11cm,width=0.9\textwidth]{component_diagram.jpg}
+        \caption{Component Diagram — SYNAPSE System Component Organisation}
+        \label{fig:component_diagram}
+    \end{figure}
+
+    \item \textbf{Data Flow Diagram (Level 0 — Context Diagram):} The context DFD places SYNAPSE as a single process bubble interacting with three external entities: the \textit{Monitoring Infrastructure} (source of raw metrics), the \textit{Operator / On-Call Engineer} (consumer of RCA reports and alerts), and the \textit{Kubernetes Control Plane} (recipient of recovery commands).
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=8cm,width=0.9\textwidth]{dfd_level0.jpg}
+        \caption{Data Flow Diagram — Level 0 (Context Diagram)}
+        \label{fig:dfd_l0}
+    \end{figure}
+
+    \item \textbf{Data Flow Diagram (Level 1):} The Level 1 DFD decomposes SYNAPSE into its major functional processes: (1) Metric Ingestion \& Preprocessing, (2) Anomaly Detection \& Severity Classification, (3) Causal Discovery \& RCA Generation, (4) Recovery Action Dispatch, and (5) Data Persistence \& Dashboard Serving, with data stores representing the five database tables.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=11cm,width=0.9\textwidth]{dfd_level1.jpg}
+        \caption{Data Flow Diagram — Level 1 (System Decomposition)}
+        \label{fig:dfd_l1}
+    \end{figure}
+
+    \item \textbf{Data Flow Diagram (Level 2):} The Level 2 DFD further decomposes Process 2 (Anomaly Detection \& Severity Classification) into its internal sub-processes: Graph Construction, GNN Embedding, VAE Reconstruction, Threshold Comparison, Anomaly Score Aggregation, and Gradient-Boosted Classification, revealing the internal data flows between these sub-processes.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=12cm,width=0.9\textwidth]{dfd_level2.jpg}
+        \caption{Data Flow Diagram — Level 2 (Anomaly Detection Sub-Process Detail)}
+        \label{fig:dfd_l2}
+    \end{figure}
+
+    \item \textbf{Deployment Diagram:} Shows the physical deployment topology of SYNAPSE across execution nodes, including the Kubernetes cluster (AI pipeline worker pod, FastAPI server pod, PostgreSQL StatefulSet), the developer workstation (SQLite + Vite dev server), and the operator browser client connected via HTTPS/WSS.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=11cm,width=0.9\textwidth]{deployment_diagram.jpg}
+        \caption{Deployment Diagram — SYNAPSE Physical Deployment Topology}
+        \label{fig:deployment_diagram}
+    \end{figure}
+
+\end{itemize}
+
+%--------------------------------------------------------------------------
+\section{Tools and Technology Used}
+%--------------------------------------------------------------------------
+
+\hspace*{0.3in} The SYNAPSE platform is constructed upon a carefully selected stack of open-source and cloud-native technologies. The choices are governed by three criteria: maturity and community support, suitability for asynchronous high-throughput data processing, and alignment with modern MLOps best practices.
+
+\begin{itemize}
+
+    \item \textbf{Development Tools:}
+    \begin{itemize}
+        \item \textbf{Python 3.10+} — Primary backend and AI implementation language, chosen for its rich scientific ecosystem and native \texttt{asyncio} support.
+        \item \textbf{FastAPI} — High-performance ASGI web framework for building the REST and WebSocket API layer with automatic OpenAPI documentation generation.
+        \item \textbf{SQLAlchemy 2.x (Async)} — ORM and database toolkit providing database-agnostic async query execution and declarative schema management.
+        \item \textbf{Pydantic v2} — Data validation and serialisation library used for all API request/response schemas and internal configuration models.
+        \item \textbf{React 18 + TypeScript} — Component-based frontend framework providing type-safe UI development with concurrent rendering capabilities.
+        \item \textbf{Vite} — Next-generation frontend build tool offering hot module replacement and optimised production bundling.
+        \item \textbf{Zustand} — Lightweight global state management library for the React SPA, replacing Redux boilerplate with a minimal hook-based API.
+        \item \textbf{Visual Studio Code} — Primary IDE with Pylance, ESLint, and Prettier extensions for unified code quality enforcement.
+        \item \textbf{Git + GitHub} — Version control and collaborative development platform with branch-protection policies and pull-request-based code review.
+    \end{itemize}
+
+    \item \textbf{AI and Machine Learning Frameworks:}
+    \begin{itemize}
+        \item \textbf{PyTorch 2.x} — Deep learning framework for implementing the VAE-GNN model, MAML meta-learner, and EWC regularisation.
+        \item \textbf{PyTorch Geometric (PyG)} — Graph neural network extension for PyTorch, providing GraphSAGE convolution, mini-batch graph loaders, and neighbourhood sampling utilities.
+        \item \textbf{DECI (Causica)} — Microsoft Research's causal discovery framework implementing the Deep End-to-end Causal Inference model used for DAG learning.
+        \item \textbf{LangChain + OpenAI GPT-4o-mini} — LLM orchestration framework and model API used for the natural-language reasoning module and RAG retrieval chain.
+        \item \textbf{FAISS} — Facebook AI Similarity Search library used as the vector store backend for the RAG knowledge base, enabling fast approximate nearest-neighbour retrieval of historical postmortems.
+        \item \textbf{scikit-learn} — Machine learning utilities for gradient-boosted severity classification, feature preprocessing, and cross-validation.
+        \item \textbf{NumPy / Pandas} — Foundational numerical computation and tabular data manipulation libraries used throughout the pipeline.
+    \end{itemize}
+
+    \item \textbf{Deployment Tools:}
+    \begin{itemize}
+        \item \textbf{Docker} — Containerisation platform used to package the FastAPI backend and AI pipeline worker into reproducible images.
+        \item \textbf{Kubernetes (kubectl)} — Container orchestration system targeted by the Recovery Engine for simulated and real remediation action dispatch.
+        \item \textbf{Prometheus} — Open-source metrics collection and alerting toolkit providing the live telemetry data source in production deployments.
+        \item \textbf{Alembic} — Database migration framework for managing SQLAlchemy schema evolution across development and production environments.
+        \item \textbf{Uvicorn} — ASGI server used to run the FastAPI application in both development and production modes.
+    \end{itemize}
+
+    \item \textbf{Visualisation Libraries:}
+    \begin{itemize}
+        \item \textbf{Cytoscape.js} — Network graph visualisation library used for rendering the interactive service dependency and causal topology graphs.
+        \item \textbf{D3.js} — Data-driven document manipulation library used for time-series sparklines, severity distribution charts, and training history plots.
+        \item \textbf{Recharts} — React-native charting component library providing the dashboard metric tiles and model status trend cards.
+    \end{itemize}
+
+\end{itemize}
+
+\hspace*{0.3in} The following techniques underpin the intelligent and operational behaviour of SYNAPSE.
+
+\begin{itemize}
+
+    \item \textbf{Machine Learning Techniques:}
+    \begin{itemize}
+        \item \textbf{Variational Autoencoder (VAE):} A probabilistic generative model trained to reconstruct normal metric distributions; deviations from reconstruction indicate anomalies.
+        \item \textbf{Graph Neural Network — GraphSAGE:} An inductive message-passing GNN that aggregates neighbourhood metric information to produce structurally-informed node embeddings.
+        \item \textbf{Gradient Boosting (XGBoost):} An ensemble tree classifier trained on extracted graph and anomaly features to predict incident severity tier with high precision.
+        \item \textbf{Variational Bayes Causal Discovery (DECI):} A continuous optimisation approach to learning DAG structure from observational data with domain-knowledge priors.
+        \item \textbf{Elastic Weight Consolidation (EWC):} A continual learning regulariser that selectively preserves important weights using the Fisher information matrix to prevent catastrophic forgetting.
+        \item \textbf{Model-Agnostic Meta-Learning (MAML):} A bi-level optimisation framework that trains a meta-initialisation enabling fast adaptation to novel failure patterns with minimal gradient steps.
+        \item \textbf{Retrieval-Augmented Generation (RAG):} A hybrid retrieval-generation approach that augments LLM prompts with semantically relevant historical context retrieved from a vector-indexed knowledge base.
+    \end{itemize}
+
+    \item \textbf{System Engineering Techniques:}
+    \begin{itemize}
+        \item \textbf{Asynchronous Pipeline Architecture:} All inter-stage communication is mediated by \texttt{asyncio} queues, enabling non-blocking, back-pressure-regulated data flow throughout the ten-stage AI pipeline.
+        \item \textbf{Event-Driven WebSocket Streaming:} Anomaly events and incident state changes are broadcast to connected frontend clients over persistent WebSocket connections using a publish-subscribe pattern.
+        \item \textbf{Reservoir Sampling for Experience Replay:} Incoming incidents are sampled into the replay buffer using Vitter's reservoir algorithm, ensuring uniform representation of historical experiences regardless of arrival order.
+        \item \textbf{Adaptive Anomaly Thresholding:} Detection thresholds are computed dynamically as $\mu + k\sigma$ over a rolling window of recent reconstruction errors, automatically adjusting to evolving baseline behaviour.
+    \end{itemize}
+
+    \item \textbf{Deployment Techniques:}
+    \begin{itemize}
+        \item \textbf{Containerised Microservice Deployment:} The backend API and AI pipeline worker are packaged as separate Docker images and orchestrated as independent Kubernetes deployments, allowing independent scaling of the API and compute tiers.
+        \item \textbf{Blue-Green Model Serving:} Updated VAE-GNN checkpoints are staged behind a feature flag and promoted to production only after passing automated regression tests, ensuring zero-downtime model updates.
+        \item \textbf{Infrastructure as Code (IaC):} Kubernetes manifests and service configurations are version-controlled as YAML specifications alongside the application codebase.
+    \end{itemize}
+
+\end{itemize}
+
+%--------------------------------------------------------------------------
+\section{Algorithm}
+%--------------------------------------------------------------------------
+
+\noindent\textbf{\large $\bullet$ VAE-GNN Based Anomaly Detection for Microservice Root Cause Analysis}\\\\
+
+\hspace*{0.3in} The core anomaly detection capability of SYNAPSE is realised through a hybrid architecture that unifies the representational power of Graph Neural Networks with the generative density-estimation properties of Variational Autoencoders. Traditional threshold-based or univariate statistical approaches to microservice anomaly detection are inherently blind to the structural dependencies that govern how faults propagate across service boundaries. The VAE-GNN algorithm addresses this limitation by jointly modelling both the temporal metric signals at each service node and the topological propagation structure of the dependency graph, enabling it to distinguish genuine upstream root causes from symptomatic downstream effects that merely inherit their anomalous state from a propagating fault wave.\\\\
+
+\hspace*{0.3in} \textbf{Working of the VAE-GNN Anomaly Detection Algorithm:}
+
+\begin{itemize}
+    \item \textbf{Graph-Structured Input Representation:} At each time step, the monitored microservice environment is represented as a directed weighted graph $\mathcal{G} = (\mathcal{V}, \mathcal{E}, \mathbf{X})$, where $\mathbf{X} \in \mathbb{R}^{N \times F}$ is the node feature matrix (metric snapshot for all $N$ services across $F$ metric dimensions). The adjacency matrix $\mathbf{A} \in \mathbb{R}^{N \times N}$ encodes call dependencies weighted by observed inter-service latency.
+
+    \item \textbf{GNN Encoder — Neighbourhood-Aware Embedding:} Two stacked GraphSAGE convolutional layers transform the raw node features into a latent space embedding $\mathbf{H} \in \mathbb{R}^{N \times d}$ by iteratively aggregating and transforming features from multi-hop neighbourhoods. This aggregation operation ensures that each node's embedding captures not only its own metric state but also the anomalous signatures of its upstream and downstream service neighbours.
+
+    \item \textbf{VAE Latent Space and Reconstruction:} The graph-level embedding $\mathbf{H}$ is projected through mean ($\boldsymbol{\mu}$) and log-variance ($\log\boldsymbol{\sigma}^2$) projection heads to parameterise a multivariate Gaussian prior $q(\mathbf{z} | \mathbf{X}, \mathcal{G})$. A latent code $\mathbf{z}$ is sampled via the reparameterisation trick and decoded by an MLP decoder to reconstruct the expected metric feature matrix $\hat{\mathbf{X}}$. The model is trained end-to-end to minimise a loss combining reconstruction fidelity and KL divergence regularisation.
+
+    \item \textbf{Anomaly Score Computation and Thresholding:} At inference time, the per-node reconstruction error $s_i = \|\mathbf{x}_i - \hat{\mathbf{x}}_i\|_2^2$ is computed for each service node $i$. An adaptive threshold $\tau = \mu_s + k \cdot \sigma_s$ (computed over a rolling window of recent scores) is applied; nodes with $s_i > \tau$ are flagged as anomalous. The ranked anomaly score vector $\mathbf{s}$ is subsequently consumed by the severity classifier and DECI causal discovery engine.
+\end{itemize}
+
+\noindent\textbf{Algorithm — VAE-GNN Anomaly Detection:}
+
+\begin{enumerate}
+    \item \textbf{Input:} Service dependency graph $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ with adjacency matrix $\mathbf{A}$; current metric window tensor $\mathbf{X}^{(t)} \in \mathbb{R}^{N \times T \times F}$; trained VAE-GNN parameters $\theta$; rolling baseline statistics $(\mu_s, \sigma_s)$; threshold coefficient $k$.
+
+    \item \textbf{Feature Aggregation via GraphSAGE:} Compute per-node embeddings by applying two rounds of neighbourhood aggregation:
+    \[
+        \mathbf{h}_i^{(\ell+1)} = \sigma\!\left(\mathbf{W}^{(\ell)} \cdot \text{CONCAT}\!\left(\mathbf{h}_i^{(\ell)},\; \text{MEAN}_{j \in \mathcal{N}(i)}\!\left[\mathbf{h}_j^{(\ell)}\right]\right)\right)
+    \]
+    where $\mathcal{N}(i)$ is the set of neighbours of node $i$, $\mathbf{W}^{(\ell)}$ are learnable weight matrices, and $\sigma$ is a non-linear activation (LeakyReLU).
+
+    \item \textbf{Latent Code Sampling:} Project the final embedding $\mathbf{H} = \{\mathbf{h}_i^{(L)}\}$ through the mean and log-variance heads: $\boldsymbol{\mu}_z = f_\mu(\mathbf{H})$, $\log \boldsymbol{\sigma}_z^2 = f_{\log\sigma}(\mathbf{H})$. Sample $\mathbf{z} = \boldsymbol{\mu}_z + \boldsymbol{\epsilon} \odot \boldsymbol{\sigma}_z$ where $\boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$.
+
+    \item \textbf{Reconstruction:} Decode the latent code to obtain the reconstructed feature matrix:
+    \[
+        \hat{\mathbf{X}} = g_\theta(\mathbf{z}) \in \mathbb{R}^{N \times F}
+    \]
+
+    \item \textbf{Anomaly Score Computation:} For each service node $i \in \{1, \ldots, N\}$, compute the reconstruction error:
+    \[
+        s_i = \left\|\mathbf{x}_i - \hat{\mathbf{x}}_i\right\|_2^2
+    \]
+    Update rolling baseline statistics: $\mu_s \leftarrow (1-\alpha)\mu_s + \alpha \bar{s}$,\; $\sigma_s^2 \leftarrow (1-\alpha)\sigma_s^2 + \alpha(\bar{s} - \mu_s)^2$.
+
+    \item \textbf{Thresholding and Output:} Compute adaptive threshold $\tau = \mu_s + k \cdot \sigma_s$. Set anomaly mask $\mathcal{A} = \{i : s_i > \tau\}$. \textbf{Output:} anomaly score vector $\mathbf{s} \in \mathbb{R}^N$, anomaly set $\mathcal{A}$, and reconstructed metric matrix $\hat{\mathbf{X}}$, forwarded to the Severity Classifier and DECI engine.
+\end{enumerate}
+
+\noindent\textbf{Pseudocode:}
+
+\begin{verbatim}
+function VAE_GNN_DETECT(G, X, theta, mu_s, sigma_s, k):
+    # Step 1: GNN Encoding (2-layer GraphSAGE)
+    H0 = X                               # Initial node features
+    H1 = LeakyReLU(W1 * CONCAT(H0, MEAN_AGG(H0, G.adj)))
+    H  = LeakyReLU(W2 * CONCAT(H1, MEAN_AGG(H1, G.adj)))
+
+    # Step 2: VAE Latent Space
+    mu_z     = Linear_mu(H)
+    logvar_z = Linear_logvar(H)
+    eps      = sample_standard_normal(shape=mu_z.shape)
+    z        = mu_z + exp(0.5 * logvar_z) * eps
+
+    # Step 3: Decoding
+    X_hat = MLP_decoder(z)               # Shape: (N, F)
+
+    # Step 4: Anomaly Score Computation
+    for i in range(N):
+        s[i] = L2_norm_squared(X[i] - X_hat[i])
+
+    # Step 5: Adaptive Threshold Update
+    s_bar   = mean(s)
+    mu_s    = (1 - alpha) * mu_s  + alpha * s_bar
+    sigma_s = sqrt((1 - alpha) * sigma_s^2
+                   + alpha * (s_bar - mu_s)^2)
+    tau     = mu_s + k * sigma_s
+
+    # Step 6: Output
+    anomaly_mask = [i for i in range(N) if s[i] > tau]
+    return s, anomaly_mask, X_hat
+\end{verbatim}
+
+\hspace*{0.3in} The VAE-GNN anomaly detector achieves several desirable properties not available in classical approaches. By coupling the GNN encoder with the VAE's probabilistic latent space, the model learns a principled generative model of \textit{normal} multi-service metric co-variation rather than fitting rigid thresholds to individual time series. The reconstruction error therefore reflects genuine deviation from the system's learned normal operating manifold. Furthermore, the GraphSAGE inductive aggregation scheme means that the model generalises naturally to new services added to the topology without requiring full retraining, a critical property in dynamically scaling microservice environments. The rolling adaptive threshold mechanism further ensures that seasonal and load-driven baseline shifts are continuously tracked, minimising false positive rates during predictable high-traffic periods.

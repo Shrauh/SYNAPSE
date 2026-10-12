@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="title" value="SYNAPSE — Data Flow Diagram — Level 1 (Sub-Processes)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="60" y="10" width="1180" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- External Entities -->
+    <mxCell id="ext1" value="Prometheus /&#xa;Simulator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="20" y="100" width="110" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="ext2" value="SRE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="20" y="250" width="110" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="ext3" value="OpenAI API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1160" y="350" width="110" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="ext4" value="Kubernetes&#xa;Cluster" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1160" y="550" width="110" height="60" as="geometry"/>
+    </mxCell>
+
+    <!-- Process 1: Ingest & Feature Extract -->
+    <mxCell id="p1" value="P1&#xa;Metrics Ingestion&#xa;&amp; Feature Extraction" style="ellipse;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="185" y="80" width="160" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 2: Graph Construction -->
+    <mxCell id="p2" value="P2&#xa;Service Graph&#xa;Builder" style="ellipse;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#9673a6;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="185" y="210" width="160" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 3: GNN -->
+    <mxCell id="p3" value="P3&#xa;VAE-GNN&#xa;Anomaly Detection" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="420" y="130" width="170" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 4: Severity -->
+    <mxCell id="p4" value="P4&#xa;Severity&#xa;Classification" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="420" y="260" width="170" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 5: DECI -->
+    <mxCell id="p5" value="P5&#xa;DECI Causal&#xa;Discovery" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6d3a6d;strokeColor=#6d3a6d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="660" y="130" width="170" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 6: LLM -->
+    <mxCell id="p6" value="P6&#xa;LLM Reasoning" style="ellipse;whiteSpace=wrap;html=1;fillColor=#007d7d;strokeColor=#007d7d;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="920" y="310" width="170" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 7: Recovery -->
+    <mxCell id="p7" value="P7&#xa;Recovery Engine&#xa;&amp; Execution" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d73a1a;strokeColor=#d73a1a;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="920" y="500" width="170" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 8: Continual -->
+    <mxCell id="p8" value="P8&#xa;Continual Learning&#xa;(EWC + MAML)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d6b656;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="660" y="500" width="180" height="80" as="geometry"/>
+    </mxCell>
+    <!-- Process 9: Persist -->
+    <mxCell id="p9" value="P9&#xa;DB Persist&#xa;&amp; WS Push" style="ellipse;whiteSpace=wrap;html=1;fillColor=#006EAF;strokeColor=#006EAF;fontColor=#ffffff;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="420" y="500" width="160" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- Data Stores -->
+    <mxCell id="ds1" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="420" y="425" width="160" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds1l" value="D1: Incident DB" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="423" y="428" width="154" height="39" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds2" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="660" y="425" width="180" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds2l" value="D2: RCA Results" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="663" y="428" width="174" height="39" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds3" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="185" y="350" width="160" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds3l" value="D3: Service Graph Topology" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="188" y="353" width="154" height="39" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds4" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="920" y="700" width="170" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds4l" value="D4: RecoveryActionLog" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="923" y="703" width="164" height="39" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds5" value="" style="shape=mxgraph.dfd.dataStore;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="660" y="650" width="180" height="45" as="geometry"/>
+    </mxCell>
+    <mxCell id="ds5l" value="D5: Model Checkpoints" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;align=center;" vertex="1" parent="1">
+      <mxGeometry x="663" y="653" width="174" height="39" as="geometry"/>
+    </mxCell>
+
+    <!-- Arrows -->
+    <mxCell id="a1" value="raw metrics" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ext1" target="p1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a2" value="feature matrix [N×5]" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p1" target="p3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a3" value="edge index" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p2" target="p3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a3b" value="topology config" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ds3" target="p2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a4" value="anomaly scores" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p3" target="p4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a4b" value="anomaly scores" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p3" target="p5"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a5" value="severity level" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p4" target="p9"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a6" value="causal DAG" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p5" target="p6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a7" value="LLM prompt" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p6" target="ext3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a7r" value="explanation" style="endArrow=open;dashed=1;html=1;fontSize=9;" edge="1" parent="1" source="ext3" target="p6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a8" value="rca result" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p6" target="p7"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a9" value="kubectl cmd" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p7" target="ext4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a10" value="store action" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p7" target="ds4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a11" value="new incident" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="ext2" target="p9"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a12" value="persist" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p9" target="ds1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a13" value="persist" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p9" target="ds2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a14" value="drift check" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p3" target="p8"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="a15" value="save checkpoint" style="endArrow=block;endFill=1;html=1;fontSize=9;" edge="1" parent="1" source="p8" target="ds5"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>
