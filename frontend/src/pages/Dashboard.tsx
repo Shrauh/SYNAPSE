@@ -1,22 +1,34 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { 
-  AlertTriangle, Activity, Clock, Server, ArrowRight, Zap, Target
+  AlertTriangle, Activity, Clock, ArrowRight, Zap, Target
 } from "lucide-react";
-import { fetchHealth, fetchMetrics, fetchIncidents, getActiveSystem, switchSystem, simulateFault } from "../api/endpoints";
+import { 
+  fetchHealth, fetchMetrics, fetchIncidents, 
+  getActiveSystem, switchSystem, simulateFault, getAvailableSystems 
+} from "../api/endpoints";
 import type { HealthResponse, MetricsResponse, IncidentSummary } from "../types/api";
 import { Spinner } from "../components/UI";
 import { useStore } from "../store";
 
-const SYSTEMS = ["Online Boutique", "FinTech", "HealthCare", "Default"];
+interface SystemOption {
+  id: string;
+  label: string;
+}
 
-const SERVICES_MAP: Record<string, string[]> = {
-  "default": ["frontend", "cartservice", "checkoutservice", "paymentservice", "productcatalogservice", "recommendationservice", "shippingservice", "currencyservice", "emailservice", "redis-cart"],
-  "online boutique": ["frontend", "cartservice", "checkoutservice", "paymentservice", "productcatalogservice", "recommendationservice", "shippingservice", "currencyservice", "emailservice", "redis-cart"],
-  "fintech": ["api-gateway", "transaction-service", "fraud-detection", "account-service", "notification-service"],
-  "healthcare": ["patient-gateway", "appointment-service", "records-service", "notification-service"]
-};
+const DEFAULT_SYSTEMS: SystemOption[] = [
+  { id: "online-boutique", label: "Online Boutique" },
+  { id: "fintech", label: "FinTech" },
+  { id: "healthcare", label: "HealthCare" },
+  { id: "default", label: "Default" },
+];
+
+const FALLBACK_SERVICES = [
+  "frontend", "cartservice", "checkoutservice", "paymentservice",
+  "productcatalogservice", "recommendationservice", "shippingservice",
+  "currencyservice", "emailservice", "redis-cart"
+];
 
 const FAULT_TYPES = [
   "latency_spike", "error_spike", "cpu_overload", "memory_leak", "connection_timeout"
@@ -40,6 +52,8 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [incidents, setIncidents] = useState<IncidentSummary[]>([]);
   const [activeSystem, setActiveSystem] = useState<string>("Default");
+  const [currentServices, setCurrentServices] = useState<string[]>([]);
+  const [availableSystems, setAvailableSystems] = useState<SystemOption[]>(DEFAULT_SYSTEMS);
   const [switching, setSwitching] = useState(false);
   const [toast, setToast] = useState<{message: string, type: string} | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +67,6 @@ export default function Dashboard() {
   const [simResult, setSimResult] = useState<{service: string, confidence: number} | null>(null);
 
   const anomalyScores = useStore(s => s.anomalyScores || {});
-  const wsConnected = useStore(s => s.wsConnected);
 
   const showToast = (msg: string, type: string = "info") => {
     setToast({message: msg, type});
@@ -71,19 +84,35 @@ export default function Dashboard() {
         fetchHealth().catch(() => null),
         fetchMetrics().catch(() => null),
         fetchIncidents(1).catch(() => ({ incidents: [] })),
-        getActiveSystem().catch(() => ({ active_system: "Default" }))
+        getActiveSystem().catch(() => null)
       ]);
       if (h) setHealth(h);
       if (m) setMetrics(m);
       if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
-      if (sys && sys.active_system) {
-        setActiveSystem(sys.active_system);
-        if (!simService) {
-          const sysKey = sys.active_system.toLowerCase();
-          const svcs = SERVICES_MAP[sysKey] || SERVICES_MAP["default"];
-          if (svcs.length > 0) setSimService(svcs[0]);
+      if (sys && sys.system) {
+        setActiveSystem(sys.system);
+        if (sys.services && sys.services.length > 0) {
+          setCurrentServices(sys.services);
+          if (!simService) setSimService(sys.services[0]);
         }
+      } else {
+        setCurrentServices(prev => (prev.length > 0 ? prev : FALLBACK_SERVICES));
+        if (!simService) setSimService(FALLBACK_SERVICES[0]);
       }
+
+      getAvailableSystems().then(res => {
+        if (res && res.available && res.available.length > 0) {
+          const sysList: SystemOption[] = res.available.map(a => ({
+            id: a.id,
+            label: a.id === "online-boutique" ? "Online Boutique" :
+                   a.id === "fintech" ? "FinTech" :
+                   a.id === "healthcare" ? "HealthCare" :
+                   a.id === "default" ? "Default" :
+                   a.label || a.id
+          }));
+          setAvailableSystems(sysList);
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error(err);
     } finally {
@@ -122,10 +151,11 @@ export default function Dashboard() {
           }
         } else if (data.type === "system_switched") {
           setActiveSystem(data.system);
+          if (data.services && data.services.length > 0) {
+            setCurrentServices(data.services);
+            setSimService(data.services[0]);
+          }
           showToast(`System switched to ${data.system}`, 'info');
-          const sysKey = data.system.toLowerCase();
-          const svcs = SERVICES_MAP[sysKey] || SERVICES_MAP["default"];
-          if (svcs.length > 0) setSimService(svcs[0]);
         }
       } catch (e) {}
     };
@@ -136,17 +166,20 @@ export default function Dashboard() {
   }, []);
 
   const handleSystemSwitch = async (sys: string) => {
-    if (sys === activeSystem) return;
+    const sysId = sys.toLowerCase().replace(/ /g, "-");
+    const currentId = activeSystem.toLowerCase().replace(/ /g, "-");
+    if (sysId === currentId) return;
     setSwitching(true);
     try {
-      // Normalize display name → API id: "Online Boutique"→"online-boutique"
-      const sysId = sys.toLowerCase().replace(/ /g, "-");
       await switchSystem(sysId);
       setActiveSystem(sys);
-      const sysKey = sys.toLowerCase();
-      const svcs = SERVICES_MAP[sysKey] || SERVICES_MAP["default"];
-      if (svcs.length > 0) setSimService(svcs[0]);
-      showToast(`System switching to ${sys}...`, 'info');
+      // Refresh services from backend
+      const updated = await getActiveSystem();
+      if (updated && updated.services) {
+        setCurrentServices(updated.services);
+        if (updated.services.length > 0) setSimService(updated.services[0]);
+      }
+      showToast(`System switched to ${sys}`, 'info');
     } catch (err) {
       showToast(`Failed to switch to ${sys}`, 'error');
     } finally {
@@ -183,8 +216,6 @@ export default function Dashboard() {
     }
   };
 
-  const currentServices = SERVICES_MAP[activeSystem.toLowerCase()] || SERVICES_MAP["default"];
-
   return (
     <div style={{ padding: "84px 2rem 2rem", position: "relative" }}>
       {toast && (
@@ -214,21 +245,26 @@ export default function Dashboard() {
           <div className="neon-card" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>System</span>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {SYSTEMS.map(sys => (
-                <button
-                  key={sys}
-                  onClick={() => handleSystemSwitch(sys)}
-                  disabled={switching}
-                  className="btn-neon"
-                  style={{
-                    padding: '0.25rem 0.75rem',
-                    background: activeSystem === sys ? 'var(--primary-glow)' : 'transparent',
-                    boxShadow: activeSystem === sys ? '0 0 10px var(--primary-glow)' : 'none'
-                  }}
-                >
-                  {sys}
-                </button>
-              ))}
+              {availableSystems.map(sys => {
+                const isSelected = activeSystem.toLowerCase() === sys.id.toLowerCase() ||
+                  activeSystem.toLowerCase() === sys.label.toLowerCase() ||
+                  activeSystem.toLowerCase().replace(/ /g, "-") === sys.id.toLowerCase();
+                return (
+                  <button
+                    key={sys.id}
+                    onClick={() => handleSystemSwitch(sys.label)}
+                    disabled={switching}
+                    className="btn-neon"
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      background: isSelected ? 'var(--primary-glow)' : 'transparent',
+                      boxShadow: isSelected ? '0 0 10px var(--primary-glow)' : 'none'
+                    }}
+                  >
+                    {sys.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

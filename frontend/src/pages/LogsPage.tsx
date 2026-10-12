@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Search, Upload, Server } from "lucide-react";
+import { Search, Upload, Server } from "lucide-react";
 import { analyzeLog, pushLogs, getPushStatus } from "../api/endpoints";
 import { Spinner, StatusBadge } from "../components/UI";
 

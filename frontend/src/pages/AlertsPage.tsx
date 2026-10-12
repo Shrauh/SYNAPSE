@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Bell, Copy, CheckCircle, AlertTriangle, Send } from "lucide-react";
+import { Bell, Copy, CheckCircle, Send } from "lucide-react";
 import { getAlertStatus, testAlert, fetchIncidents } from "../api/endpoints";
 import { Spinner, StatusBadge } from "../components/UI";
 import type { IncidentSummary } from "../types/api";

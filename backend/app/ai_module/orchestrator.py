@@ -315,7 +315,7 @@ class RCAPipeline:
         causal_result = reorient_by_topology(causal_result, graph_builder)
 
         # Break cycles if any
-        dag = break_cycles(causal_result["dag"], anomalous_scores)
+        dag = break_cycles(causal_result["dag"], anomalous_scores, edges=causal_result.get("edges", []))
         causal_result["dag"] = dag
 
         # Extract root cause candidates
@@ -347,7 +347,12 @@ class RCAPipeline:
 
         # ── Stage 7: Severity Classification ──
         t0 = time.time()
-        root_cause_svc = explanation_result.get("root_cause", root_candidates[0][0] if root_candidates else "unknown")
+        # LLM can suggest but must match a known service in the graph
+        llm_root = explanation_result.get("root_cause", "")
+        if llm_root and llm_root in anomaly_scores:
+            root_cause_svc = llm_root
+        else:
+            root_cause_svc = root_candidates[0][0] if root_candidates else "unknown"
         try:
             confidence = float(explanation_result.get("confidence", root_candidates[0][1] if root_candidates else 0.0))
         except (TypeError, ValueError):
@@ -573,6 +578,16 @@ class RCAPipeline:
                     values = svc_data[col].values[:len(timestamps)]
                     if len(values) == len(timestamps):
                         matrix[:, j] += values / len(FEATURE_COLUMNS)
+
+        # Z-score normalize each metric column independently
+        for col in range(matrix.shape[1]):
+            col_data = matrix[:, col]
+            col_mean = np.mean(col_data)
+            col_std = np.std(col_data)
+            if col_std > 1e-8:  # avoid division by zero
+                matrix[:, col] = (col_data - col_mean) / col_std
+            else:
+                matrix[:, col] = 0.0
 
         # Add small noise to prevent singular matrices
         matrix += np.random.normal(0, 1e-6, matrix.shape)

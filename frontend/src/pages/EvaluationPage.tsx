@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Activity, CheckCircle, Search, Target, Award, List } from "lucide-react";
+import { Trophy, Activity, Target, Award, List } from "lucide-react";
 import { getBenchmark, getEvalHistory, evaluateManual } from "../api/endpoints";
 import { StatCard, Spinner, StatusBadge } from "../components/UI";
-import { format } from "date-fns";
 
 export default function EvaluationPage() {
   const [benchmark, setBenchmark] = useState<any>(null);

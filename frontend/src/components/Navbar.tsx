@@ -1,11 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, GitBranch, AlertTriangle, Cpu, Zap, Activity, Trophy,
+  LayoutDashboard, GitBranch, AlertTriangle, Cpu, Zap, Trophy,
   Bell, FileText, MessageSquare
 } from "lucide-react";
 import { useStore } from "../store";
 import { useEffect, useState } from "react";
-import { getActiveSystem } from "../api/endpoints";
+import { getActiveSystem, type ActiveSystemResponse } from "../api/endpoints";
 
 const NAV = [
   { to: "/",         icon: LayoutDashboard, label: "Dashboard" },
@@ -27,8 +27,8 @@ export function Navbar() {
 
   useEffect(() => {
     const fetchSys = () => {
-      getActiveSystem().then(r => {
-        setActiveSystem(r.active_system);
+      getActiveSystem().then((r: ActiveSystemResponse) => {
+        setActiveSystem(r.system);
         setSysStatus("running");
       }).catch(() => {
         setSysStatus("switching");

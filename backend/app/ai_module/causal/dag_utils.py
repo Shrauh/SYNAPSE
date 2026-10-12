@@ -7,7 +7,7 @@ check for cycles, and compute propagation chains.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 def get_root_nodes(
@@ -35,12 +35,13 @@ def get_root_nodes(
             if t in all_nodes:
                 has_incoming.add(t)
 
-    # Root nodes = nodes with no incoming edges
-    roots = all_nodes - has_incoming
-
-    # If no clear roots (fully connected), fall back to highest anomaly score
+    # Filter: root must have out-degree > 0 (it causes downstream effects)
+    roots = {n for n in (all_nodes - has_incoming) if dag.get(n)}
+    # Fallback: if no valid roots, use all non-isolated nodes
     if not roots:
-        roots = all_nodes
+        roots = {n for n in all_nodes if dag.get(n) or n in has_incoming}
+    if not roots:
+        roots = all_nodes  # absolute fallback
 
     # Sort by anomaly score
     root_list = [
@@ -118,41 +119,64 @@ def detect_cycles(dag: Dict[str, List[str]]) -> List[List[str]]:
 
 def break_cycles(
     dag: Dict[str, List[str]],
-    anomaly_scores: Dict[str, float],
+    anomaly_scores: Optional[Dict[str, float]] = None,
+    edges: Optional[List[Any]] = None,
 ) -> Dict[str, List[str]]:
     """Break cycles in the DAG by removing the weakest edges.
 
-    Weakest = edge from the node with lower anomaly score.
+    Weakest = edge with lowest causal strength (lowest edge weight).
 
     Args:
         dag: Potentially cyclic adjacency dict.
-        anomaly_scores: {service: score} for prioritization.
+        anomaly_scores: Optional {service: score} for fallback prioritization.
+        edges: Optional list of edges (dicts or tuples) with causal strength weights.
 
     Returns:
         Acyclic DAG.
     """
-    dag = {k: list(v) for k, v in dag.items()}  # Deep copy
-    cycles = detect_cycles(dag)
+    if isinstance(anomaly_scores, list) and edges is None:
+        edges = anomaly_scores
+        anomaly_scores = None
+
+    valid_dag = {k: list(v) for k, v in dag.items()}  # Deep copy
+    cycles = detect_cycles(valid_dag)
 
     for cycle in cycles:
         if len(cycle) < 2:
             continue
-        # Find the edge with the lowest-scoring source
-        min_score = float("inf")
+        cycle_nodes = cycle[:-1] if (len(cycle) > 1 and cycle[0] == cycle[-1]) else cycle
+        # Find the weakest edge in the cycle to break
+        min_weight = float("inf")
         min_edge = None
-        for i in range(len(cycle) - 1):
-            src, tgt = cycle[i], cycle[i + 1]
-            score = anomaly_scores.get(src, 0.0)
-            if score < min_score:
-                min_score = score
+        for i in range(len(cycle_nodes)):
+            src = cycle_nodes[i]
+            tgt = cycle_nodes[(i + 1) % len(cycle_nodes)]
+            # Get edge weight from the edges list
+            edge_weight = 1.0
+            if edges:
+                for e in edges:
+                    if isinstance(e, dict):
+                        if (e.get("source") == src and e.get("target") == tgt) or \
+                           (len(e) >= 2 and e.get(0) == src and e.get(1) == tgt):
+                            edge_weight = e.get("weight", e.get("strength", 1.0))
+                            break
+                    elif isinstance(e, (list, tuple)) and len(e) >= 2:
+                        if e[0] == src and e[1] == tgt:
+                            edge_weight = e[2] if len(e) > 2 else 1.0
+                            break
+            elif anomaly_scores:
+                edge_weight = anomaly_scores.get(src, 1.0)
+
+            if edge_weight < min_weight:
+                min_weight = edge_weight
                 min_edge = (src, tgt)
 
         if min_edge:
             src, tgt = min_edge
-            if tgt in dag.get(src, []):
-                dag[src].remove(tgt)
+            if src in valid_dag and tgt in valid_dag[src]:
+                valid_dag[src].remove(tgt)
 
-    return dag
+    return valid_dag
 
 
 def to_causal_graph_json(

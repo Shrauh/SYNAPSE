@@ -143,3 +143,47 @@ def test_causal_graph_json():
     assert "nodes" in result
     assert "edges" in result
     assert any(n["is_root"] for n in result["nodes"])
+
+
+def test_root_extraction_filters_isolated_nodes():
+    """Isolated nodes with no outgoing edges should not be picked as root cause."""
+    dag = {
+        "isolated-service": [],  # in-degree 0, out-degree 0
+        "database": ["backend"],  # in-degree 0, out-degree 1
+        "backend": [],
+    }
+    scores = {
+        "isolated-service": 0.99,  # Higher score but isolated
+        "database": 0.80,
+        "backend": 0.70,
+    }
+
+    roots = get_root_nodes(dag, scores)
+    # database should be the primary root cause because it has outgoing edges
+    root_names = [r[0] for r in roots]
+    assert "database" in root_names
+    assert "isolated-service" not in root_names
+
+
+def test_cycle_breaking_weakest_edge():
+    """Cycle breaking should remove the edge with lowest causal strength."""
+    dag = {
+        "a": ["b"],
+        "b": ["c"],
+        "c": ["a"],
+    }
+    # Edge c -> a has the lowest weight (0.15)
+    edges = [
+        {"source": "a", "target": "b", "weight": 0.85},
+        {"source": "b", "target": "c", "weight": 0.75},
+        {"source": "c", "target": "a", "weight": 0.15},
+    ]
+    scores = {"a": 0.1, "b": 0.9, "c": 0.9}
+
+    clean_dag = break_cycles(dag, anomaly_scores=scores, edges=edges)
+    assert len(detect_cycles(clean_dag)) == 0
+    # c -> a should be removed, while a -> b and b -> c should remain
+    assert "b" in clean_dag["a"]
+    assert "c" in clean_dag["b"]
+    assert "a" not in clean_dag["c"]
+
