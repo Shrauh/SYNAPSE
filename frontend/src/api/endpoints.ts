@@ -49,3 +49,11 @@ export const pushLogs = (req: { service: string; logs: string[] }) => api.post("
 export const getPushStatus = () => api.get("/logs/push/status").then(r => r.data);
 export const getNotifyStatus = () => api.get("/notify/status").then(r => r.data);
 export const testNotification = (channel: string) => api.post(`/notify/test?channel=${channel}`).then(r => r.data);
+
+// Connect Your System
+export const testConnection = (req: { name: string; type: string; url: string; api_key?: string; namespace?: string }) =>
+  api.post<{ name: string; type: string; url: string; status: string; latency_ms: number; message: string; timestamp: string }>("/connect/test", req).then(r => r.data);
+export const listConnections = () =>
+  api.get<{ name: string; type: string; url: string; status: string; latency_ms: number; last_checked: string }[]>("/connect/list").then(r => r.data);
+export const removeConnection = (name: string) =>
+  api.delete(`/connect/${name}`).then(r => r.data);

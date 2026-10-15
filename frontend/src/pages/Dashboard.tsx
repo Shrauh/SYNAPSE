@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import { 
   fetchHealth, fetchMetrics, fetchIncidents, fetchIncident, fetchReport,
-  getActiveSystem, switchSystem, simulateFault, getAvailableSystems 
+  getActiveSystem, switchSystem, simulateFault, getAvailableSystems,
+  testConnection, listConnections
 } from "../api/endpoints";
 import type { HealthResponse, MetricsResponse, IncidentSummary } from "../types/api";
 import { Spinner } from "../components/UI";
@@ -227,12 +228,51 @@ export default function Dashboard() {
   // Connect Your System modal
   const [connectModalOpen, setConnectModalOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [connName, setConnName] = useState("my-prometheus");
+  const [connType, setConnType] = useState("prometheus");
+  const [connUrl, setConnUrl] = useState("http://localhost:9090");
+  const [connApiKey, setConnApiKey] = useState("");
+  const [connNamespace, setConnNamespace] = useState("default");
+  const [connTesting, setConnTesting] = useState(false);
+  const [connResult, setConnResult] = useState<{ status: string; message: string; latency_ms: number } | null>(null);
+  const [savedConnections, setSavedConnections] = useState<{ name: string; type: string; url: string; status: string; latency_ms: number; last_checked: string }[]>([]);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
   };
+
+  const handleTestConnection = async () => {
+    setConnTesting(true);
+    setConnResult(null);
+    try {
+      const res = await testConnection({
+        name: connName,
+        type: connType,
+        url: connUrl,
+        api_key: connApiKey || undefined,
+        namespace: connNamespace || undefined,
+      });
+      setConnResult({ status: res.status, message: res.message, latency_ms: res.latency_ms });
+      // Refresh saved connections
+      const conns = await listConnections();
+      if (Array.isArray(conns)) setSavedConnections(conns);
+    } catch {
+      setConnResult({ status: "failed", message: "Could not reach SYNAPSE backend", latency_ms: 0 });
+    } finally {
+      setConnTesting(false);
+    }
+  };
+
+  // Load saved connections when modal opens
+  useEffect(() => {
+    if (connectModalOpen) {
+      listConnections().then(conns => {
+        if (Array.isArray(conns)) setSavedConnections(conns);
+      }).catch(() => {});
+    }
+  }, [connectModalOpen]);
 
   const showToast = (msg: string, type: string = "info") => {
     setToast({message: msg, type});
@@ -519,13 +559,13 @@ export default function Dashboard() {
               border: '1px solid rgba(0, 255, 136, 0.25)',
               borderRadius: '16px',
               padding: '2rem',
-              width: '680px',
+              width: '600px',
               maxHeight: '85vh',
               overflowY: 'auto',
               boxShadow: '0 0 60px rgba(0, 255, 136, 0.1), 0 25px 50px rgba(0, 0, 0, 0.5)',
             }}
           >
-            {/* Modal Header */}
+            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{
@@ -538,7 +578,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>Connect Your System</h2>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Integrate SYNAPSE with your infrastructure</p>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Link Prometheus, Kubernetes, or any webhook</p>
                 </div>
               </div>
               <button onClick={() => setConnectModalOpen(false)} style={{
@@ -547,140 +587,181 @@ export default function Dashboard() {
               }}><X size={18} /></button>
             </div>
 
-            {/* Step 1: Prometheus */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{
-                  width: '24px', height: '24px', borderRadius: '50%',
-                  background: 'rgba(0, 255, 136, 0.2)', border: '1px solid rgba(0, 255, 136, 0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.75rem', fontWeight: 700, color: '#00ff88',
-                }}>1</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>Prometheus / Alertmanager Webhook</span>
+            {/* Connection Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+              {/* Row 1: Name + Type */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Connection Name</label>
+                  <input
+                    value={connName} onChange={e => setConnName(e.target.value)}
+                    placeholder="my-prometheus"
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>System Type</label>
+                  <select
+                    value={connType} onChange={e => {
+                      setConnType(e.target.value);
+                      if (e.target.value === 'prometheus') setConnUrl('http://localhost:9090');
+                      else if (e.target.value === 'alertmanager') setConnUrl('http://localhost:9093');
+                      else if (e.target.value === 'kubernetes') setConnUrl('https://kubernetes.default.svc');
+                      else setConnUrl('http://');
+                    }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                  >
+                    <option value="prometheus">Prometheus</option>
+                    <option value="alertmanager">Alertmanager</option>
+                    <option value="kubernetes">Kubernetes API</option>
+                    <option value="webhook">Custom Webhook</option>
+                  </select>
+                </div>
               </div>
-              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Point your Alertmanager webhook receiver to SYNAPSE's ingestion endpoint:
-              </p>
-              <div style={{
-                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
-                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
-                border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <code style={{ color: '#00ff88' }}>POST http://localhost:8000/api/v1/webhooks/alertmanager</code>
-                <button onClick={() => copyToClipboard('http://localhost:8000/api/v1/webhooks/alertmanager', 'prometheus')} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
-                }}>
-                  {copiedField === 'prometheus' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
-                </button>
+
+              {/* Row 2: URL */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Endpoint URL</label>
+                <input
+                  value={connUrl} onChange={e => setConnUrl(e.target.value)}
+                  placeholder="http://localhost:9090"
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: '#00ff88', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Row 3: API Key + Namespace */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>API Key / Token <span style={{ opacity: 0.5 }}>(optional)</span></label>
+                  <input
+                    type="password"
+                    value={connApiKey} onChange={e => setConnApiKey(e.target.value)}
+                    placeholder="Bearer token..."
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Namespace <span style={{ opacity: 0.5 }}>(K8s)</span></label>
+                  <input
+                    value={connNamespace} onChange={e => setConnNamespace(e.target.value)}
+                    placeholder="default"
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Step 2: Kubernetes */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{
-                  width: '24px', height: '24px', borderRadius: '50%',
-                  background: 'rgba(0, 200, 255, 0.2)', border: '1px solid rgba(0, 200, 255, 0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.75rem', fontWeight: 700, color: '#00c8ff',
-                }}>2</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>Kubernetes Cluster</span>
-              </div>
-              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Deploy the SYNAPSE agent in your cluster to auto-discover services:
-              </p>
-              <div style={{
-                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
-                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
-                border: '1px solid var(--border)', position: 'relative',
-                lineHeight: 1.6, color: 'var(--text-muted)', whiteSpace: 'pre',
-              }}>
-                <button onClick={() => copyToClipboard(
-                  'kubectl apply -f https://synapse.dev/agent.yaml\nkubectl set env deploy/synapse-agent SYNAPSE_URL=http://localhost:8000',
-                  'k8s'
-                )} style={{
-                  position: 'absolute', top: '8px', right: '8px',
-                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
-                }}>
-                  {copiedField === 'k8s' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
-                </button>
-{`kubectl apply -f https://synapse.dev/agent.yaml
-kubectl set env deploy/synapse-agent \\
-  SYNAPSE_URL=http://localhost:8000`}
-              </div>
-            </div>
+            {/* Test Connection Button */}
+            <button
+              onClick={handleTestConnection}
+              disabled={connTesting || !connUrl}
+              className="btn-neon"
+              style={{
+                width: '100%', padding: '0.75rem', marginBottom: '1rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                background: connTesting ? 'rgba(0,255,136,0.05)' : 'linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 255, 0.15))',
+                border: '1px solid rgba(0, 255, 136, 0.4)',
+                color: '#00ff88', fontWeight: 700, fontSize: '0.9rem',
+              }}
+            >
+              {connTesting ? (
+                <><div className="spinner" style={{ width: '14px', height: '14px', borderColor: '#00ff88', borderTopColor: 'transparent' }} /> Testing Connection...</>
+              ) : (
+                <><Zap size={16} /> Test Connection</>
+              )}
+            </button>
 
-            {/* Step 3: WebSocket Live Feed */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{
-                  width: '24px', height: '24px', borderRadius: '50%',
-                  background: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.75rem', fontWeight: 700, color: '#a855f7',
-                }}>3</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>WebSocket Live Feed</span>
-              </div>
-              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Subscribe to real-time anomaly events and RCA results:
-              </p>
+            {/* Connection Result */}
+            {connResult && (
               <div style={{
-                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
-                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
-                border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1rem',
+                background: connResult.status === 'connected'
+                  ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                border: `1px solid ${connResult.status === 'connected'
+                  ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
               }}>
-                <code style={{ color: '#a855f7' }}>ws://localhost:8000/api/v1/live</code>
-                <button onClick={() => copyToClipboard('ws://localhost:8000/api/v1/live', 'ws')} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
-                }}>
-                  {copiedField === 'ws' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Step 4: REST API */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{
-                  width: '24px', height: '24px', borderRadius: '50%',
-                  background: 'rgba(245, 158, 11, 0.2)', border: '1px solid rgba(245, 158, 11, 0.4)',
+                <div style={{
+                  width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                  background: connResult.status === 'connected'
+                    ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b',
-                }}>4</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>REST API &amp; OpenAPI Docs</span>
-              </div>
-              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Explore the full API with interactive Swagger docs:
-              </p>
-              <div style={{
-                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
-                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
-                border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer" style={{ color: '#f59e0b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  http://localhost:8000/docs <ExternalLink size={12} />
-                </a>
-                <button onClick={() => copyToClipboard('http://localhost:8000/docs', 'api')} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
+                  marginTop: '2px',
                 }}>
-                  {copiedField === 'api' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
-                </button>
+                  {connResult.status === 'connected'
+                    ? <Check size={14} color="#10b981" />
+                    : <X size={14} color="#ef4444" />
+                  }
+                </div>
+                <div>
+                  <div style={{
+                    fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.25rem',
+                    color: connResult.status === 'connected' ? '#10b981' : '#ef4444',
+                  }}>
+                    {connResult.status === 'connected' ? '✓ Connected Successfully' : '✗ Connection Failed'}
+                    {connResult.latency_ms > 0 && (
+                      <span style={{ fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                        {connResult.latency_ms}ms
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    {connResult.message}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Footer */}
+            {/* Saved Connections */}
+            {savedConnections.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                  Saved Connections
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {savedConnections.map(c => (
+                    <div key={c.name} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0.5rem 0.75rem', borderRadius: '8px',
+                      background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div className={`status-dot ${c.status === 'connected' ? 'green' : 'red'}`} />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600 }}>{c.name}</span>
+                        <span style={{
+                          fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px',
+                          background: 'rgba(0,200,255,0.1)', border: '1px solid rgba(0,200,255,0.3)',
+                          color: '#00c8ff', textTransform: 'uppercase',
+                        }}>{c.type}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          {c.latency_ms}ms
+                        </span>
+                        <span style={{
+                          fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px',
+                          background: c.status === 'connected' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                          color: c.status === 'connected' ? '#10b981' : '#ef4444',
+                          fontWeight: 600,
+                        }}>
+                          {c.status === 'connected' ? 'LIVE' : 'OFFLINE'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer Tip */}
             <div style={{
-              padding: '1rem', borderRadius: '10px',
+              padding: '0.75rem 1rem', borderRadius: '10px',
               background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 200, 255, 0.05))',
               border: '1px solid rgba(0, 255, 136, 0.15)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5,
             }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                <span style={{ color: '#00ff88', fontWeight: 600 }}>Tip:</span> Use the simulator above to test without a live cluster.
-              </div>
-              <button onClick={() => setConnectModalOpen(false)} className="btn-neon" style={{ padding: '0.4rem 1.2rem', fontSize: '0.8rem' }}>
-                Got it
-              </button>
+              <span style={{ color: '#00ff88', fontWeight: 600 }}>No live cluster?</span>{' '}
+              Use the <strong style={{ color: 'var(--text-primary)' }}>Simulate Fault</strong> panel to inject synthetic faults — the AI pipeline runs the same GNN + Causal + LLM analysis on simulated data.
             </div>
           </div>
         </div>
