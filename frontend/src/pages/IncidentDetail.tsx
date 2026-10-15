@@ -1,12 +1,36 @@
 import { useEffect, useState, Fragment } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Target, GitBranch, Wrench, BarChart2, Loader, AlertTriangle, Terminal, ArrowRight, Clock } from "lucide-react";
+import {
+  ArrowLeft,
+  Target,
+  GitBranch,
+  Wrench,
+  BarChart2,
+  Loader,
+  AlertTriangle,
+  Terminal,
+  ArrowRight,
+  Clock,
+  Activity,
+  Cpu,
+  Sparkles,
+  CheckCircle2,
+  Check,
+} from "lucide-react";
 import { fetchIncident, fetchCausalGraph } from "../api/endpoints";
 import type { IncidentDetail, CausalGraph } from "../types/api";
 import { StatusBadge, ScoreBar, Spinner } from "../components/UI";
 import { CausalGraphViz } from "../components/CausalGraph";
 import { usePollReport } from "../hooks/usePollReport";
+
+const PIPELINE_STAGES = [
+  { id: 1, label: "Data Ingestion", desc: "Telemetry & metrics ingestion", icon: Activity },
+  { id: 2, label: "GNN Detection", desc: "Spatio-temporal graph topology", icon: Cpu },
+  { id: 3, label: "Causal Inference", desc: "PCMCI+ directed graph discovery", icon: GitBranch },
+  { id: 4, label: "LLM Reasoning", desc: "Deep multi-agent RCA synthesis", icon: Sparkles },
+  { id: 5, label: "Complete", desc: "Root cause & remediation ready", icon: CheckCircle2 },
+];
 
 export default function IncidentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +51,17 @@ export default function IncidentDetailPage() {
 
   const isAnalyzing = incident?.status === "analyzing";
   const { report } = usePollReport(id!, !!isAnalyzing);
+  const [pipelineStep, setPipelineStep] = useState(1);
+
+  useEffect(() => {
+    if (!isAnalyzing) return;
+    const interval = setInterval(() => {
+      setPipelineStep(prev => (prev >= 4 ? 1 : prev + 1));
+    }, 2400);
+    return () => clearInterval(interval);
+  }, [isAnalyzing]);
+
+  const currentStep = report ? 5 : (isAnalyzing ? pipelineStep : 5);
 
   if (loading) return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
@@ -68,6 +103,153 @@ export default function IncidentDetailPage() {
         )}
       </div>
 
+      {/* Animated Multi-Step Pipeline Progress Indicator (Task 1) */}
+      {isAnalyzing && (
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="card"
+          style={{
+            marginBottom: 24,
+            background: "linear-gradient(135deg, rgba(12, 18, 34, 0.95) 0%, rgba(17, 29, 48, 0.92) 100%)",
+            border: "1px solid rgba(59, 130, 246, 0.35)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.15)",
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          {/* Ambient background glow */}
+          <div style={{
+            position: "absolute",
+            top: -40,
+            left: "25%",
+            width: 320,
+            height: 100,
+            background: "rgba(59, 130, 246, 0.15)",
+            filter: "blur(48px)",
+            pointerEvents: "none",
+            borderRadius: "50%",
+          }} />
+
+          {/* Top Status */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="status-dot blue" />
+              <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent-blue)" }}>
+                AIOps Analysis Pipeline
+              </span>
+              <span className="badge badge-analyzing" style={{ fontSize: "0.68rem" }}>
+                Active Inference
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.75rem", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+              <Loader size={13} style={{ animation: "spin 1s linear infinite" }} />
+              <span>Stage <strong style={{ color: "var(--accent-blue)" }}>{currentStep}</strong> of 5 ({Math.round((currentStep / 5) * 100)}%)</span>
+            </div>
+          </div>
+
+          {/* Stages visual tracker */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", marginBottom: 18 }}>
+            {PIPELINE_STAGES.map((stg, idx) => {
+              const isDone = stg.id < currentStep;
+              const isActive = stg.id === currentStep;
+              const Icon = stg.icon;
+
+              return (
+                <div key={stg.id} style={{ display: "flex", flex: 1, alignItems: "center", position: "relative" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", zIndex: 3, minWidth: 96 }}>
+                    <div
+                      className={isActive ? "pipeline-step-active" : ""}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: isDone
+                          ? "linear-gradient(135deg, #10b981, #059669)"
+                          : isActive
+                          ? "linear-gradient(135deg, #3b82f6, #1d4ed8)"
+                          : "var(--bg-elevated)",
+                        border: isDone
+                          ? "2px solid #10b981"
+                          : isActive
+                          ? "2px solid #60a5fa"
+                          : "2px solid var(--border)",
+                        color: isDone || isActive ? "#fff" : "var(--text-muted)",
+                        boxShadow: isDone
+                          ? "0 0 12px rgba(16, 185, 129, 0.45)"
+                          : isActive
+                          ? "0 0 20px rgba(59, 130, 246, 0.7)"
+                          : "none",
+                        transition: "all 0.35s ease",
+                      }}
+                    >
+                      {isDone ? <Check size={18} strokeWidth={2.5} /> : <Icon size={18} />}
+                    </div>
+                    <div style={{
+                      fontSize: "0.78rem",
+                      fontWeight: isActive ? 700 : 600,
+                      color: isDone ? "var(--status-healthy)" : isActive ? "var(--text-primary)" : "var(--text-muted)",
+                      marginTop: 8,
+                      whiteSpace: "nowrap"
+                    }}>
+                      {stg.label}
+                    </div>
+                    <div style={{
+                      fontSize: "0.68rem",
+                      color: isActive ? "var(--accent-blue)" : "var(--text-muted)",
+                      marginTop: 2,
+                      maxWidth: 100,
+                      lineHeight: 1.2
+                    }}>
+                      {stg.desc}
+                    </div>
+                  </div>
+
+                  {idx < PIPELINE_STAGES.length - 1 && (
+                    <div style={{
+                      flex: 1,
+                      height: 3,
+                      background: isDone ? "#10b981" : "rgba(255, 255, 255, 0.08)",
+                      position: "relative",
+                      top: -16,
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      boxShadow: isDone ? "0 0 8px rgba(16, 185, 129, 0.4)" : "none",
+                      transition: "background 0.4s ease"
+                    }}>
+                      {isActive && <div className="pipeline-beam" />}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Progress Bar */}
+          <div style={{
+            height: 4,
+            borderRadius: 99,
+            background: "rgba(255, 255, 255, 0.06)",
+            overflow: "hidden",
+            position: "relative"
+          }}>
+            <div
+              className="pipeline-progress-bar-animated"
+              style={{
+                height: "100%",
+                width: `${(currentStep / 5) * 100}%`,
+                transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: "0 0 10px rgba(59, 130, 246, 0.6)"
+              }}
+            />
+          </div>
+        </motion.div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
         {/* Root Cause Card */}
         <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)" }}>
@@ -76,9 +258,14 @@ export default function IncidentDetailPage() {
             <span className="section-title" style={{ marginBottom: 0 }}>Root Cause</span>
           </div>
           {isAnalyzing && !report ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              <Loader size={16} style={{ animation: "spin 1s linear infinite" }} />
-              AI pipeline analyzing...
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--accent-blue)", fontSize: "0.9rem", fontWeight: 600 }}>
+                <Loader size={16} style={{ animation: "spin 1s linear infinite" }} />
+                <span>AI Pipeline: {PIPELINE_STAGES[currentStep - 1]?.label}</span>
+              </div>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: 8, lineHeight: 1.5 }}>
+                Autonomous correlation & diagnostic models are actively processing telemetry...
+              </p>
             </div>
           ) : report ? (
             <>
@@ -284,35 +471,76 @@ export default function IncidentDetailPage() {
             <span className="section-title" style={{ marginBottom: 0 }}>Incident Timeline</span>
           </div>
           <div style={{ position: 'relative', paddingLeft: 28 }}>
-            {/* Timeline vertical bar */}
+            {/* Timeline vertical bar background track */}
             <div style={{
               position: 'absolute',
-              top: 8,
-              bottom: 8,
+              top: 10,
+              bottom: 10,
               left: 8,
               width: 2,
-              background: 'var(--border)'
+              background: 'rgba(255, 255, 255, 0.06)',
+              borderRadius: 2
             }} />
+
+            {/* Animated connecting line drawing itself on page load */}
+            <motion.div
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                position: 'absolute',
+                top: 10,
+                bottom: 10,
+                left: 8,
+                width: 2,
+                background: 'linear-gradient(180deg, var(--accent-blue) 0%, #8b5cf6 50%, var(--status-critical) 100%)',
+                transformOrigin: 'top',
+                borderRadius: 2,
+                boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)',
+              }}
+            />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {incident.timeline.map((item, idx) => {
                 const isLast = idx === incident.timeline.length - 1;
                 return (
-                  <div key={idx} style={{ position: 'relative' }}>
-                    {/* Dot */}
-                    <div style={{
-                      position: 'absolute',
-                      left: -28,
-                      top: 3,
-                      width: 16,
-                      height: 16,
-                      borderRadius: '50%',
-                      background: isLast ? 'var(--status-critical)' : 'var(--accent-blue)',
-                      border: '3px solid var(--bg-card)',
-                      boxShadow: isLast 
-                        ? '0 0 10px rgba(239,68,68,0.7)' 
-                        : '0 0 8px rgba(59,130,246,0.5)',
-                    }} />
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -18, y: 8 }}
+                    animate={{ opacity: 1, x: 0, y: 0 }}
+                    transition={{
+                      duration: 0.45,
+                      delay: 0.15 + idx * 0.12,
+                      ease: "easeOut"
+                    }}
+                    style={{ position: 'relative' }}
+                  >
+                    {/* Dot with spring scale-in */}
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{
+                        delay: 0.15 + idx * 0.12 + 0.1,
+                        type: "spring",
+                        stiffness: 350,
+                        damping: 20
+                      }}
+                      style={{
+                        position: 'absolute',
+                        left: -28,
+                        top: 3,
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: isLast ? 'var(--status-critical)' : 'var(--accent-blue)',
+                        border: '3px solid var(--bg-card)',
+                        boxShadow: isLast 
+                          ? '0 0 12px rgba(239,68,68,0.85), 0 0 4px #ef4444' 
+                          : '0 0 8px rgba(59,130,246,0.6)',
+                        zIndex: 2,
+                      }}
+                      className={isLast ? "pulse-critical" : ""}
+                    />
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                       <div>
@@ -338,7 +566,7 @@ export default function IncidentDetailPage() {
                         {item.time}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

@@ -3,10 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { fetchIncidents } from "../api/endpoints";
 import type { IncidentSummary } from "../types/api";
-import { StatusBadge, Spinner } from "../components/UI";
+import { Spinner } from "../components/UI";
 import { SimulateModal } from "../components/SimulateModal";
 import { Zap, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
+
+function getSeverityRowClass(sev: string) {
+  const s = (sev || "").toLowerCase();
+  if (s === "critical" || s === "l4" || s === "l3") return "incident-row-critical";
+  if (s === "high" || s === "l2") return "incident-row-high";
+  if (s === "medium" || s === "l1") return "incident-row-medium";
+  return "incident-row-low";
+}
 
 export default function IncidentList() {
   const nav = useNavigate();
@@ -56,9 +64,13 @@ export default function IncidentList() {
                       No incidents found. Simulate a fault to create one!
                     </td></tr>
                   ) : incidents.map((inc, i) => (
-                    <motion.tr key={inc.id}
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
+                    <motion.tr
+                      key={inc.id}
+                      className={`incident-row ${getSeverityRowClass(inc.severity)}`}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      whileHover={{ scale: 1.008 }}
+                      transition={{ delay: i * 0.04, duration: 0.2 }}
                       onClick={() => nav(`/incidents/${inc.id}`)}
                       style={{
                         background: i % 2 === 1 ? "rgba(255, 255, 255, 0.02)" : "transparent",

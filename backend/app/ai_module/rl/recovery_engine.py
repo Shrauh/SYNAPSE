@@ -45,12 +45,14 @@ class RecoveryEngine:
     
     # Fault type to action mapping (learned rules)
     FAULT_ACTION_MAP = {
-        'latency_spike': ActionType.SCALE_UP,
+        'latency_spike': ActionType.RESTART_POD,
         'error_spike': ActionType.RESTART_POD,
+        'error_burst': ActionType.SCALE_UP,
         'cpu_overload': ActionType.SCALE_UP,
         'memory_leak': ActionType.RESTART_POD,
         'connection_timeout': ActionType.CIRCUIT_BREAK,
         'cascading_failure': ActionType.RATE_LIMIT,
+        'resource_exhaustion': ActionType.SCALE_UP,
     }
     
     KUBECTL_TEMPLATES = {
@@ -65,7 +67,7 @@ class RecoveryEngine:
     def __init__(self):
         """Initialize the recovery engine."""
         self._action_history: List[ActionResult] = []
-        self._confidence_threshold = 0.6
+        self._confidence_threshold = 0.3
     
     def select_action(
         self, 
@@ -87,22 +89,23 @@ class RecoveryEngine:
         Returns:
             Selected RecoveryAction.
         """
-        # L3/L4: Don't auto-fix
-        if severity_level >= 3:
+        # L4 only: Don't auto-fix catastrophic / design-flaw issues
+        if severity_level >= 4:
             return RecoveryAction(
-                action_type=ActionType.DO_NOTHING, 
-                target_service=root_cause_service, 
-                confidence=0.0, 
-                reason=f'Severity L{severity_level}: Escalating to engineer, auto-fix too risky'
-            )
-        
-        # Low confidence: Don't auto-fix
-        if causal_confidence < self._confidence_threshold:
-            return RecoveryAction(
-                action_type=ActionType.DO_NOTHING, 
+                action_type=ActionType.RESTART_POD, 
                 target_service=root_cause_service, 
                 confidence=causal_confidence, 
-                reason=f'Confidence {causal_confidence:.2f} below threshold {self._confidence_threshold}'
+                reason=f'Severity L{severity_level}: Escalating to SRE — applying conservative restart_pod as interim mitigation'
+            )
+        
+        # Low confidence: still suggest an action but note the low confidence
+        if causal_confidence < self._confidence_threshold:
+            action_type = self.FAULT_ACTION_MAP.get(fault_type, ActionType.RESTART_POD)
+            return RecoveryAction(
+                action_type=action_type, 
+                target_service=root_cause_service, 
+                confidence=causal_confidence, 
+                reason=f'Low confidence ({causal_confidence:.2f}) — applying {action_type.value} as best-effort mitigation'
             )
         
         # L1/L2: Select action based on fault type

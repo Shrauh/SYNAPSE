@@ -44,6 +44,147 @@ const FAULT_TYPES = [
   "latency_spike", "error_spike", "cpu_overload", "memory_leak", "connection_timeout"
 ];
 
+function AnimatedNumber({ value }: { value: string | number }) {
+  const [displayValue, setDisplayValue] = useState<number>(() => (typeof value === "number" ? value : 0));
+  const [fadeKey, setFadeKey] = useState<number>(0);
+  const prevValueRef = useRef<number>(typeof value === "number" ? value : 0);
+  const animFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (typeof value === "number") {
+      const start = prevValueRef.current;
+      const end = value;
+      const duration = 750;
+      const startTime = performance.now();
+
+      const updateCount = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + (end - start) * ease);
+        setDisplayValue(current);
+
+        if (progress < 1) {
+          animFrameRef.current = requestAnimationFrame(updateCount);
+        } else {
+          prevValueRef.current = end;
+        }
+      };
+
+      animFrameRef.current = requestAnimationFrame(updateCount);
+      return () => {
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      };
+    } else {
+      setFadeKey(prev => prev + 1);
+    }
+  }, [value]);
+
+  if (typeof value === "number") {
+    return <span>{displayValue.toLocaleString()}</span>;
+  }
+
+  return (
+    <span key={fadeKey} className="fade-in" style={{ display: "inline-block" }}>
+      {value}
+    </span>
+  );
+}
+
+function TypewriterText({ text, speed = 18 }: { text: string; speed?: number }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    setDisplayedText("");
+    setIsTyping(true);
+    let index = 0;
+    const interval = setInterval(() => {
+      index++;
+      setDisplayedText(text.slice(0, index));
+      if (index >= text.length) {
+        clearInterval(interval);
+        setIsTyping(false);
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return (
+    <span>
+      {displayedText}
+      {isTyping && <span className="typewriter-cursor" />}
+    </span>
+  );
+}
+
+function PropagationFlow({ chain }: { chain: string }) {
+  const nodes = chain
+    .split(/\s*(?:→|->)\s*/)
+    .map(n => n.trim())
+    .filter(Boolean);
+
+  if (nodes.length <= 1) {
+    return (
+      <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+        {chain}
+      </div>
+    );
+  }
+
+  return (
+    <div className="propagation-flow-container">
+      {nodes.map((node, index) => {
+        const isRoot = index === 0;
+        const isLeaf = index === nodes.length - 1;
+        return (
+          <div key={`${node}-${index}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <span className={`propagation-node ${isRoot ? 'root' : isLeaf ? 'leaf' : ''}`}>
+              {isRoot && <span style={{ fontSize: '0.65rem', color: '#ef4444' }}>●</span>}
+              {node}
+            </span>
+            {index < nodes.length - 1 && (
+              <span className="propagation-arrow" title="Flow direction">
+                →
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function getSeverityDetails(severity?: string) {
+  const s = (severity || 'HIGH').toUpperCase();
+  if (s.includes('L1') || s.includes('LOW')) {
+    return {
+      cardClass: 'severity-green',
+      badgeBg: 'rgba(16, 185, 129, 0.2)',
+      badgeColor: '#10b981',
+      badgeBorder: 'rgba(16, 185, 129, 0.5)',
+      glowColor: '#10b981'
+    };
+  }
+  if (s.includes('L2') || s.includes('MED') || s.includes('WARN')) {
+    return {
+      cardClass: 'severity-orange',
+      badgeBg: 'rgba(245, 158, 11, 0.2)',
+      badgeColor: '#f59e0b',
+      badgeBorder: 'rgba(245, 158, 11, 0.5)',
+      glowColor: '#f59e0b'
+    };
+  }
+  return {
+    cardClass: 'severity-red',
+    badgeBg: 'rgba(239, 68, 68, 0.2)',
+    badgeColor: '#ef4444',
+    badgeBorder: 'rgba(239, 68, 68, 0.5)',
+    glowColor: '#ef4444'
+  };
+}
+
 function StatCard({ title, value, icon, sub }: { title: string, value: string|number, icon: React.ReactNode, sub?: string }) {
   return (
     <div className="neon-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -51,7 +192,9 @@ function StatCard({ title, value, icon, sub }: { title: string, value: string|nu
         <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase' }}>{title}</span>
         <div style={{ color: 'var(--primary)' }}>{icon}</div>
       </div>
-      <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
+      <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+        <AnimatedNumber value={value} />
+      </div>
       {sub && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sub}</div>}
     </div>
   );
@@ -339,7 +482,7 @@ export default function Dashboard() {
   })();
 
   return (
-    <div style={{ padding: "84px 2rem 2rem", position: "relative" }}>
+    <div className="dashboard-bg" style={{ padding: "84px 2rem 2rem", position: "relative", minHeight: "100vh" }}>
       {toast && (
         <div className="toast-container">
           <div className={`toast ${toast.type}`}>
@@ -464,7 +607,7 @@ export default function Dashboard() {
                   }
 
                   return (
-                    <div key={svc} className={`neon-card ${isTarget ? 'processing-overlay' : ''}`} style={cardStyle}>
+                    <div key={svc} className={`neon-card ${isTarget ? 'processing-overlay fault-ripple' : ''}`} style={cardStyle}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.95rem' }}>{svc}</span>
                         <div className={`status-dot ${dotClass}`} />
@@ -533,133 +676,132 @@ export default function Dashboard() {
                 </div>
 
                 <button 
-                  className={`btn-neon ${simulationActive ? '' : 'danger'}`} 
-                  style={{ width: '100%', padding: '0.75rem' }}
+                  className={`btn-neon ${simulationActive ? 'fault-ripple' : 'danger'}`} 
+                  style={{ width: '100%', padding: '0.75rem', position: 'relative' }}
                   onClick={handleSimulate}
                   disabled={simulationActive}
                 >
-                  {simulationActive ? 'INJECTING...' : 'INJECT FAULT'}
+                  {simulationActive ? 'INJECTING FAULT...' : 'INJECT FAULT'}
                 </button>
 
                 {simulationActive && (
-                  <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: 'var(--warning)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="fault-ripple" style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: 'var(--warning)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }}>
                     <div className="spinner" style={{ width: '14px', height: '14px', borderColor: 'var(--warning)', borderTopColor: 'transparent' }} />
-                    Analyzing telemetry...
+                    Injecting telemetry fault into <strong style={{ color: 'var(--text-primary)' }}>{simTarget || simService}</strong>...
                   </div>
                 )}
                 
-                {simResult && !simulationActive && (
-                  <div className="neon-card" style={{
-                    marginTop: '1.25rem',
-                    padding: '1.25rem',
-                    background: 'linear-gradient(180deg, rgba(239,68,68,0.12) 0%, rgba(20,20,30,0.6) 100%)',
-                    border: '1px solid rgba(239,68,68,0.4)',
-                    borderRadius: '10px',
-                    boxShadow: '0 0 20px rgba(239,68,68,0.15)'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--danger)' }}>
-                        ROOT CAUSE ANALYSIS COMPLETE
-                      </span>
-                      {simResult.severity && (
-                        <span style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          background: 'rgba(239,68,68,0.2)',
-                          color: '#ef4444',
-                          border: '1px solid rgba(239,68,68,0.5)',
-                          textTransform: 'uppercase'
-                        }}>
-                          {simResult.severity}
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{
-                      fontSize: '1.4rem',
-                      fontWeight: 800,
-                      fontFamily: 'var(--font-mono)',
-                      color: '#ef4444',
-                      textShadow: '0 0 12px rgba(239,68,68,0.4)',
-                      marginBottom: '0.75rem',
-                      wordBreak: 'break-all'
+                {simResult && !simulationActive && (() => {
+                  const sevInfo = getSeverityDetails(simResult.severity);
+                  return (
+                    <div className={`neon-card rca-severity-card ${sevInfo.cardClass}`} style={{
+                      marginTop: '1.25rem',
+                      padding: '1.25rem',
+                      boxShadow: '0 0 25px rgba(0,0,0,0.4)'
                     }}>
-                      {simResult.service}
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        background: simResult.confidence > 0.8 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
-                        border: `1px solid ${simResult.confidence > 0.8 ? '#ef4444' : '#f59e0b'}`,
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        color: simResult.confidence > 0.8 ? '#f87171' : '#fbbf24'
-                      }}>
-                        <span>Confidence:</span>
-                        <span style={{ fontFamily: 'var(--font-mono)' }}>{(simResult.confidence * 100).toFixed(0)}%</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: sevInfo.badgeColor }}>
+                          ROOT CAUSE ANALYSIS COMPLETE
+                        </span>
+                        {simResult.severity && (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            background: sevInfo.badgeBg,
+                            color: sevInfo.badgeColor,
+                            border: `1px solid ${sevInfo.badgeBorder}`,
+                            textTransform: 'uppercase'
+                          }}>
+                            {simResult.severity}
+                          </span>
+                        )}
                       </div>
 
-                      {simResult.faultType && (
+                      <div style={{
+                        fontSize: '1.4rem',
+                        fontWeight: 800,
+                        fontFamily: 'var(--font-mono)',
+                        color: sevInfo.badgeColor,
+                        textShadow: `0 0 14px ${sevInfo.glowColor}66`,
+                        marginBottom: '0.75rem',
+                        wordBreak: 'break-all'
+                      }}>
+                        {simResult.service}
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
                         <div style={{
                           display: 'inline-flex',
                           alignItems: 'center',
+                          gap: '0.35rem',
                           padding: '3px 8px',
                           borderRadius: '6px',
-                          background: 'rgba(99,102,241,0.15)',
-                          border: '1px solid rgba(99,102,241,0.4)',
+                          background: simResult.confidence > 0.8 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+                          border: `1px solid ${simResult.confidence > 0.8 ? '#ef4444' : '#f59e0b'}`,
                           fontSize: '0.75rem',
                           fontWeight: 600,
-                          color: '#818cf8',
-                          textTransform: 'capitalize'
+                          color: simResult.confidence > 0.8 ? '#f87171' : '#fbbf24'
                         }}>
-                          {simResult.faultType.replace(/_/g, ' ')}
+                          <span>Confidence:</span>
+                          <span style={{ fontFamily: 'var(--font-mono)' }}>{(simResult.confidence * 100).toFixed(0)}%</span>
+                        </div>
+
+                        {simResult.faultType && (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: 'rgba(99,102,241,0.15)',
+                            border: '1px solid rgba(99,102,241,0.4)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: '#818cf8',
+                            textTransform: 'capitalize'
+                          }}>
+                            {simResult.faultType.replace(/_/g, ' ')}
+                          </div>
+                        )}
+                      </div>
+
+                      {simResult.propagationChain && (
+                        <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem', fontWeight: 600 }}>
+                            Propagation Chain
+                          </div>
+                          <PropagationFlow chain={simResult.propagationChain} />
                         </div>
                       )}
+
+                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Zap size={12} /> AI Diagnosis
+                        </div>
+                        <TypewriterText text={simResult.explanation || `Algorithmic analysis confirmed root cause anomaly in ${simResult.service}. Degradation profile matches ${simResult.faultType?.replace(/_/g, ' ') || 'injected fault'} with ${(simResult.confidence * 100).toFixed(0)}% model certainty.`} />
+                      </div>
+
+                      {simResult.incidentId && (
+                        <Link
+                          to={`/incidents/${simResult.incidentId}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            color: 'var(--primary)',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            marginTop: '0.25rem'
+                          }}
+                        >
+                          View Full Report <ArrowRight size={14} />
+                        </Link>
+                      )}
                     </div>
-
-                    {simResult.propagationChain && (
-                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem', fontWeight: 600 }}>
-                          Propagation Chain
-                        </div>
-                        <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
-                          {simResult.propagationChain}
-                        </div>
-                      </div>
-                    )}
-
-                    {simResult.explanation && (
-                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                        {simResult.explanation}
-                      </div>
-                    )}
-
-                    {simResult.incidentId && (
-                      <Link
-                        to={`/incidents/${simResult.incidentId}`}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          color: 'var(--primary)',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          textDecoration: 'none',
-                          marginTop: '0.25rem'
-                        }}
-                      >
-                        View Full Report <ArrowRight size={14} />
-                      </Link>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* Recent Incidents */}

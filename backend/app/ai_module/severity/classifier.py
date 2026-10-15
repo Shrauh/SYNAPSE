@@ -54,28 +54,40 @@ class SeverityClassifier:
             SeverityResult containing the classification details.
         """
         # Count anomalous services
+        total_services = len(anomaly_scores)
         num_anomalous = sum(1 for s in anomaly_scores.values() if s > threshold)
+        anomalous_ratio = num_anomalous / max(total_services, 1)
         
         # Check if this root cause is recurring
         is_recurring, recurring_count = self._check_recurring(root_cause_service)
         
-        # L4: Recurring design flaw (same root cause > 3 times)
-        if is_recurring and recurring_count > 3:
+        # L4: Catastrophic — >80% of services down OR recurring design flaw (>3 times)
+        if anomalous_ratio > 0.8 or (is_recurring and recurring_count > 3):
+            reason = (
+                f'CATASTROPHIC: {num_anomalous}/{total_services} services affected '
+                f'({anomalous_ratio:.0%} blast radius)'
+            ) if anomalous_ratio > 0.8 else (
+                f'DESIGN FLAW: {root_cause_service} has triggered {recurring_count} incidents — '
+                f'indicates systemic architectural vulnerability'
+            )
             return SeverityResult(
                 level=SeverityLevel.L4_DESIGN_FLAW, 
-                reason=f'Root cause {root_cause_service} has recurred {recurring_count} times', 
+                reason=reason, 
                 num_anomalous=num_anomalous, 
                 causal_confidence=causal_confidence, 
-                is_recurring=True, 
+                is_recurring=is_recurring, 
                 recurring_count=recurring_count, 
                 response_strategy='recommend'
             )
         
-        # L3: Systemic (4+ services OR low confidence)
-        if num_anomalous >= 4 or causal_confidence < 0.5:
+        # L3: Systemic — >50% services anomalous OR confidence too low to isolate
+        if anomalous_ratio > 0.5 or (num_anomalous >= 4 and causal_confidence < 0.6):
             return SeverityResult(
                 level=SeverityLevel.L3_SYSTEMIC, 
-                reason=f'{num_anomalous} services anomalous, confidence={causal_confidence:.2f}', 
+                reason=(
+                    f'SYSTEMIC: {num_anomalous} services degraded across the mesh '
+                    f'(confidence={causal_confidence:.2f}) — cross-service cascading failure detected'
+                ), 
                 num_anomalous=num_anomalous, 
                 causal_confidence=causal_confidence, 
                 is_recurring=is_recurring, 
@@ -83,11 +95,18 @@ class SeverityClassifier:
                 response_strategy='escalate'
             )
         
-        # L2: Cascading (2-3 services)
+        # L2: Cascading — 2-3 services affected with reasonable confidence
         if num_anomalous >= 2:
+            # Find the max anomaly score for context
+            max_score_svc = max(anomaly_scores, key=anomaly_scores.get)
+            max_score = anomaly_scores[max_score_svc]
             return SeverityResult(
                 level=SeverityLevel.L2_CASCADING, 
-                reason=f'{num_anomalous} services in cascade, confidence={causal_confidence:.2f}', 
+                reason=(
+                    f'CASCADING: {num_anomalous} services in failure chain — '
+                    f'peak anomaly {max_score:.2f} on {max_score_svc} '
+                    f'(confidence={causal_confidence:.2f})'
+                ), 
                 num_anomalous=num_anomalous, 
                 causal_confidence=causal_confidence, 
                 is_recurring=is_recurring, 
@@ -95,10 +114,13 @@ class SeverityClassifier:
                 response_strategy='root_first'
             )
         
-        # L1: Simple (1 service, high confidence)
+        # L1: Simple — single service issue with high confidence
         return SeverityResult(
             level=SeverityLevel.L1_SIMPLE, 
-            reason=f'Single service fault, confidence={causal_confidence:.2f}', 
+            reason=(
+                f'ISOLATED: Single-service fault on {root_cause_service or "unknown"} '
+                f'(confidence={causal_confidence:.2f}) — auto-remediation eligible'
+            ), 
             num_anomalous=num_anomalous, 
             causal_confidence=causal_confidence, 
             is_recurring=is_recurring, 

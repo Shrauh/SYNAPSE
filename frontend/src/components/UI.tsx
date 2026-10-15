@@ -93,29 +93,88 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function ScoreBar({ score }: { score: number }) {
-  const color = score > 0.8 ? "var(--status-critical)"
-    : score > 0.6 ? "var(--status-warning)"
-    : score > 0.4 ? "var(--status-degraded)"
-    : "var(--status-healthy)";
+function getScoreColor(score: number): string {
+  const clamped = Math.max(0, Math.min(1, score));
+  // Smooth continuous transition: green (142) -> yellow (45) -> red (0)
+  const hue = clamped < 0.5
+    ? 142 - (clamped / 0.5) * (142 - 45)
+    : 45 - ((clamped - 0.5) / 0.5) * 45;
+  return `hsl(${Math.round(hue)}, 90%, 50%)`;
+}
 
+export function ScoreBar({ score }: { score: number }) {
+  const color = getScoreColor(score);
   const pct = Math.min(100, Math.max(0, Math.round(score * 100)));
 
+  // Dynamic gradient spanning from green through yellow to current score color
+  const gradientFill = score > 0.4
+    ? `linear-gradient(90deg, #10b981 0%, #f59e0b 60%, ${color} 100%)`
+    : `linear-gradient(90deg, #10b981 0%, ${color} 100%)`;
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
-      <div className="score-bar" style={{ flex: 1, height: 6, borderRadius: 99, background: "rgba(255,255,255,0.06)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
+      <div
+        className="score-bar"
+        style={{
+          flex: 1,
+          height: 16,
+          borderRadius: 99,
+          background: "rgba(255,255,255,0.06)",
+          position: "relative",
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "inset 0 1px 3px rgba(0,0,0,0.4)"
+        }}
+      >
         <div
           className="score-bar-fill"
           style={{
             width: `${pct}%`,
-            background: color,
+            background: gradientFill,
             borderRadius: 99,
-            boxShadow: score > 0.6 ? `0 0 8px ${color}` : "none",
-            transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)"
+            height: "100%",
+            boxShadow: score > 0.4 ? `0 0 10px ${color}` : "none",
+            transition: "width 0.7s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease",
+            position: "relative",
+            overflow: "hidden"
           }}
-        />
+        >
+          {/* Shimmer / shine reflection animation */}
+          <div className="score-bar-shimmer" />
+        </div>
+
+        {/* Overlaid percentage text */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "0.68rem",
+            fontFamily: "var(--font-mono)",
+            fontWeight: 700,
+            letterSpacing: "0.03em",
+            color: "#ffffff",
+            textShadow: "0 1px 3px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.85)",
+            pointerEvents: "none",
+            zIndex: 2,
+          }}
+        >
+          {pct}%
+        </div>
       </div>
-      <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", fontWeight: 600, color, minWidth: 36, textAlign: "right" }}>
+      <span
+        style={{
+          fontSize: "0.75rem",
+          fontFamily: "var(--font-mono)",
+          fontWeight: 700,
+          color,
+          minWidth: 36,
+          textAlign: "right",
+          textShadow: score > 0.6 ? `0 0 8px ${color}` : "none"
+        }}
+      >
         {score.toFixed(2)}
       </span>
     </div>
