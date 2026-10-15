@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { 
-  AlertTriangle, Activity, Clock, ArrowRight, Zap, Target
+  AlertTriangle, Activity, Clock, ArrowRight, Zap, Target,
+  Plug, X, Copy, Check, ExternalLink
 } from "lucide-react";
 import { 
   fetchHealth, fetchMetrics, fetchIncidents, fetchIncident, fetchReport,
@@ -222,6 +223,16 @@ export default function Dashboard() {
   const simIncidentIdRef = useRef<string | null>(null);
 
   const anomalyScores = useStore(s => s.anomalyScores || {});
+
+  // Connect Your System modal
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const showToast = (msg: string, type: string = "info") => {
     setToast({message: msg, type});
@@ -494,6 +505,187 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Connect Your System Modal */}
+      {connectModalOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setConnectModalOpen(false)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(10, 15, 30, 0.98))',
+              border: '1px solid rgba(0, 255, 136, 0.25)',
+              borderRadius: '16px',
+              padding: '2rem',
+              width: '680px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              boxShadow: '0 0 60px rgba(0, 255, 136, 0.1), 0 25px 50px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 255, 0.2))',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1px solid rgba(0, 255, 136, 0.3)',
+                }}>
+                  <Plug size={20} color="#00ff88" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>Connect Your System</h2>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Integrate SYNAPSE with your infrastructure</p>
+                </div>
+              </div>
+              <button onClick={() => setConnectModalOpen(false)} style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '0.4rem', cursor: 'pointer', color: 'var(--text-muted)',
+              }}><X size={18} /></button>
+            </div>
+
+            {/* Step 1: Prometheus */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <span style={{
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  background: 'rgba(0, 255, 136, 0.2)', border: '1px solid rgba(0, 255, 136, 0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.75rem', fontWeight: 700, color: '#00ff88',
+                }}>1</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>Prometheus / Alertmanager Webhook</span>
+              </div>
+              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Point your Alertmanager webhook receiver to SYNAPSE's ingestion endpoint:
+              </p>
+              <div style={{
+                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
+                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
+                border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <code style={{ color: '#00ff88' }}>POST http://localhost:8000/api/v1/webhooks/alertmanager</code>
+                <button onClick={() => copyToClipboard('http://localhost:8000/api/v1/webhooks/alertmanager', 'prometheus')} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
+                }}>
+                  {copiedField === 'prometheus' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Step 2: Kubernetes */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <span style={{
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  background: 'rgba(0, 200, 255, 0.2)', border: '1px solid rgba(0, 200, 255, 0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.75rem', fontWeight: 700, color: '#00c8ff',
+                }}>2</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>Kubernetes Cluster</span>
+              </div>
+              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Deploy the SYNAPSE agent in your cluster to auto-discover services:
+              </p>
+              <div style={{
+                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
+                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
+                border: '1px solid var(--border)', position: 'relative',
+                lineHeight: 1.6, color: 'var(--text-muted)', whiteSpace: 'pre',
+              }}>
+                <button onClick={() => copyToClipboard(
+                  'kubectl apply -f https://synapse.dev/agent.yaml\nkubectl set env deploy/synapse-agent SYNAPSE_URL=http://localhost:8000',
+                  'k8s'
+                )} style={{
+                  position: 'absolute', top: '8px', right: '8px',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
+                }}>
+                  {copiedField === 'k8s' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
+                </button>
+{`kubectl apply -f https://synapse.dev/agent.yaml
+kubectl set env deploy/synapse-agent \\
+  SYNAPSE_URL=http://localhost:8000`}
+              </div>
+            </div>
+
+            {/* Step 3: WebSocket Live Feed */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <span style={{
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  background: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.75rem', fontWeight: 700, color: '#a855f7',
+                }}>3</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>WebSocket Live Feed</span>
+              </div>
+              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Subscribe to real-time anomaly events and RCA results:
+              </p>
+              <div style={{
+                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
+                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
+                border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <code style={{ color: '#a855f7' }}>ws://localhost:8000/api/v1/live</code>
+                <button onClick={() => copyToClipboard('ws://localhost:8000/api/v1/live', 'ws')} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
+                }}>
+                  {copiedField === 'ws' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Step 4: REST API */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <span style={{
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  background: 'rgba(245, 158, 11, 0.2)', border: '1px solid rgba(245, 158, 11, 0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b',
+                }}>4</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>REST API &amp; OpenAPI Docs</span>
+              </div>
+              <p style={{ margin: '0 0 0.5rem 2rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Explore the full API with interactive Swagger docs:
+              </p>
+              <div style={{
+                margin: '0 0 0 2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px',
+                padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
+                border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer" style={{ color: '#f59e0b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  http://localhost:8000/docs <ExternalLink size={12} />
+                </a>
+                <button onClick={() => copyToClipboard('http://localhost:8000/docs', 'api')} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px',
+                }}>
+                  {copiedField === 'api' ? <Check size={14} color="#00ff88" /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '1rem', borderRadius: '10px',
+              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 200, 255, 0.05))',
+              border: '1px solid rgba(0, 255, 136, 0.15)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <span style={{ color: '#00ff88', fontWeight: 600 }}>Tip:</span> Use the simulator above to test without a live cluster.
+              </div>
+              <button onClick={() => setConnectModalOpen(false)} className="btn-neon" style={{ padding: '0.4rem 1.2rem', fontSize: '0.8rem' }}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
@@ -540,6 +732,24 @@ export default function Dashboard() {
               })}
             </div>
           </div>
+          <button
+            onClick={() => setConnectModalOpen(true)}
+            className="btn-neon"
+            style={{
+              padding: '0.4rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 255, 0.15))',
+              border: '1px solid rgba(0, 255, 136, 0.4)',
+              color: '#00ff88',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Plug size={14} /> Connect Your System
+          </button>
         </div>
       </div>
 
