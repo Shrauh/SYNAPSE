@@ -219,6 +219,17 @@ class RCAPipeline:
             )
 
         metrics_df = simulation_result.metrics_df
+
+        # Remap simulator service names to active-system names so
+        # the pipeline uses names consistent with graph_builder's topology.
+        try:
+            from app.services.system_switcher import map_from_simulator
+            if "service" in metrics_df.columns:
+                metrics_df = metrics_df.copy()
+                metrics_df["service"] = metrics_df["service"].apply(map_from_simulator)
+        except Exception:
+            pass
+
         timeline.append({
             "time": datetime.now(timezone.utc).isoformat(),
             "event": "Data ingestion complete",
@@ -507,22 +518,50 @@ class RCAPipeline:
         incident.anomaly_scores = anomaly_scores
         incident.timeline = timeline
 
+        # Remap simulator service names to active-system names before persisting
+        try:
+            from app.services.system_switcher import map_from_simulator, remap_rca_result
+            incident.root_cause_service = map_from_simulator(root_cause_svc)
+            if incident.anomaly_scores:
+                incident.anomaly_scores = {
+                    map_from_simulator(k): float(v)
+                    for k, v in incident.anomaly_scores.items()
+                }
+            if incident.affected_services:
+                incident.affected_services = [
+                    map_from_simulator(s) for s in incident.affected_services
+                ]
+        except Exception as remap_err:
+            logger.debug(f"Service name remap failed (non-critical): {remap_err}")
+
         await db.commit()
         await db.refresh(incident)
 
         try:
             from app.api.ws import broadcast_json
+            from app.services.system_switcher import remap_rca_result as _remap
             import asyncio
-            asyncio.get_running_loop().create_task(broadcast_json({
+            ws_payload = {
                 "type": "rca_complete",
                 "incident_id": incident.id,
                 "root_cause": root_cause_svc,
-                "confidence": float(confidence),
-                "anomaly_scores": {k: float(v) for k, v in anomaly_scores.items()},
+                "confidence": round(float(confidence), 4),
+                "fault_type": explanation_result.get("fault_type", "unknown"),
+                "explanation": (explanation_result.get("explanation", "") or "")[:500],
                 "propagation_chain": propagation_str,
+                "anomaly_scores": {k: round(float(v), 4) for k, v in anomaly_scores.items()},
                 "severity": severity_result.level.name if severity_result else "L1_SIMPLE",
+                "severity_reason": severity_result.reason if severity_result else "",
                 "recovery_action": action_result.action.action_type.value if action_result and action_result.action else "none",
-            }))
+                "recovery_command": action_result.kubectl_command if action_result else "",
+                "execution_time_ms": round(total_time_ms, 1),
+                "recommended_actions": (explanation_result.get("recommended_actions", []) or [])[:3],
+                "affected_services": explanation_result.get("affected_services", []) or [],
+            }
+            # Remap simulator names to active system names in the broadcast
+            ws_payload = _remap(ws_payload)
+            ws_payload["type"] = "rca_complete"  # ensure type not remapped
+            asyncio.get_running_loop().create_task(broadcast_json(ws_payload))
         except Exception as ws_err:
             logger.debug(f"WS broadcast failed: {ws_err}")
 

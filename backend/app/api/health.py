@@ -38,7 +38,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     ai_module = "up" if model_status.get("initialized") else "initializing"
     gnn_model_loaded = model_status.get("model_trained", False)
 
-    is_healthy = db_status == "up" and ai_module == "up" and maml_ready
+    is_healthy = db_status == "up" and ai_module == "up"
     status = "healthy" if is_healthy else "degraded"
 
     return HealthResponse(

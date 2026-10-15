@@ -51,3 +51,6 @@ api_router.include_router(notify.router)
 
 from app.api import alerts
 api_router.include_router(alerts.router)
+
+from app.api import connect
+api_router.include_router(connect.router)

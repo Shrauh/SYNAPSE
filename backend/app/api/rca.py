@@ -124,6 +124,7 @@ async def simulate_fault(
 ):
     """Generate a synthetic fault scenario and run the RCA pipeline on it."""
     from data.simulator import MicroserviceSimulator
+    sim = MicroserviceSimulator()
 
     sim_id = f"sim_{uuid.uuid4().hex[:6]}"
     incident = Incident(
@@ -136,30 +137,9 @@ async def simulate_fault(
     await db.commit()
     await db.refresh(incident)
 
-    # Generate simulation data
-    from data.simulator import MicroserviceSimulator, SERVICE_NAMES
-    sim = MicroserviceSimulator()
-
-    # Normalize service name: frontend accepts various formats
-    # Map common aliases to simulator service names
-    _ALIAS_MAP = {
-        "paymentservice": "payment-service",
-        "cartservice": "cache-service",
-        "checkoutservice": "order-service",
-        "frontend": "api-gateway",
-        "productcatalogservice": "inventory-service",
-        "recommendationservice": "search-service",
-        "shippingservice": "notification-service",
-        "emailservice": "notification-service",
-        "redis-cart": "cache-service",
-        "currencyservice": "auth-service",
-    }
-    normalized_service = _ALIAS_MAP.get(req.root_cause_service, req.root_cause_service)
-    if normalized_service not in SERVICE_NAMES:
-        # Pick the closest match or first service
-        import difflib
-        matches = difflib.get_close_matches(normalized_service, SERVICE_NAMES, n=1)
-        normalized_service = matches[0] if matches else SERVICE_NAMES[3]  # payment-service default
+    # Normalize service name via system switcher's bidirectional mapping
+    from app.services.system_switcher import map_to_simulator
+    normalized_service = map_to_simulator(req.root_cause_service)
 
     severity_map = {"low": 2.0, "medium": 4.0, "high": 6.0, "critical": 8.0}
     sim_result = sim.simulate_incident(
@@ -176,6 +156,7 @@ async def simulate_fault(
         asyncio.get_running_loop().create_task(broadcast_json({
             "type": "simulation_started",
             "incident_id": incident.id,
+            "service": req.root_cause_service,
             "fault_type": req.fault_type,
             "root_cause_service": req.root_cause_service,
             "status": "analyzing"

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, CheckCircle, Loader } from "lucide-react";
-import { simulateFault } from "../api/endpoints";
+import { simulateFault, getActiveSystem } from "../api/endpoints";
 import { useNavigate } from "react-router-dom";
 
-const SERVICES = [
+const FALLBACK_SERVICES = [
   "api-gateway","auth-service","user-service","payment-service",
   "order-service","inventory-service","notification-service",
   "search-service","cache-service","database",
@@ -24,8 +24,9 @@ interface Props { onClose: () => void; }
 
 export function SimulateModal({ onClose }: Props) {
   const nav = useNavigate();
+  const [services, setServices] = useState<string[]>(FALLBACK_SERVICES);
   const [form, setForm] = useState({
-    root_cause_service: "database",
+    root_cause_service: "",
     fault_type: "latency_spike",
     severity: "critical",
     duration_minutes: 5,
@@ -33,6 +34,22 @@ export function SimulateModal({ onClose }: Props) {
   const [running, setRunning] = useState(false);
   const [step, setStep] = useState(-1);
   const [incidentId, setIncidentId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getActiveSystem().then(sys => {
+      if (sys?.services?.length) {
+        setServices(sys.services);
+        setForm(f => ({ ...f, root_cause_service: f.root_cause_service || sys.services[0] }));
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!form.root_cause_service && services.length > 0) {
+      setForm(f => ({ ...f, root_cause_service: services[0] }));
+    }
+  }, [services]);
 
   const run = async () => {
     setRunning(true);
@@ -49,6 +66,7 @@ export function SimulateModal({ onClose }: Props) {
       nav(`/incidents/${res.incident_id}`);
     } catch (e) {
       console.error(e);
+      setError("Simulation failed. Check backend connection.");
       setRunning(false);
       setStep(-1);
     }
@@ -93,7 +111,7 @@ export function SimulateModal({ onClose }: Props) {
           {!running ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
-                { label: "Root Cause Service", key: "root_cause_service", opts: SERVICES },
+                { label: "Root Cause Service", key: "root_cause_service", opts: services },
                 { label: "Fault Type", key: "fault_type", opts: FAULT_TYPES },
                 { label: "Severity", key: "severity", opts: SEVERITIES },
               ].map(({ label, key, opts }) => (
@@ -114,6 +132,11 @@ export function SimulateModal({ onClose }: Props) {
                   value={form.duration_minutes}
                   onChange={e => setForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))} />
               </div>
+              {error && (
+                <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, fontSize: "0.82rem", color: "#ef4444", marginTop: 4 }}>
+                  {error}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
                 <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
                 <button className="btn btn-danger" style={{ flex: 2 }} onClick={run}>

@@ -44,53 +44,76 @@ export function Navbar() {
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "0 1.5rem", height: "56px",
-      background: "#050510", backdropFilter: "blur(16px)",
+      background: "rgba(6, 11, 24, 0.85)", backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
       borderBottom: "1px solid var(--border)",
     }}>
       {/* Logo */}
       <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
         </svg>
-        <span style={{ fontWeight: 800, fontSize: "1.2rem", letterSpacing: "1px", color: "var(--primary)", textShadow: "0 0 10px var(--primary-glow)" }}>
+        <span style={{ fontWeight: 800, fontSize: "1.2rem", letterSpacing: "1px", color: "var(--primary)", textShadow: "0 0 12px var(--primary-glow)" }}>
           SYNAPSE
         </span>
       </Link>
 
       {/* Nav links */}
-      <div style={{ display: "flex", gap: 4 }}>
+      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
         {NAV.map(({ to, icon: Icon, label }) => {
           const active = loc.pathname === to;
           return (
             <Link key={to} to={to} style={{
+              position: "relative",
               display: "flex", alignItems: "center", gap: 6,
-              padding: "6px 14px", borderRadius: "8px",
-              textDecoration: "none", fontSize: "0.82rem", fontWeight: 500,
-              transition: "all 0.2s",
-              background: active ? "var(--primary-glow)" : "transparent",
-              color: active ? "var(--primary)" : "var(--text-muted)",
-              border: active ? "1px solid var(--primary)" : "1px solid transparent",
-              boxShadow: active ? "0 0 10px var(--primary-glow)" : "none",
+              padding: "7px 13px", borderRadius: "8px",
+              textDecoration: "none", fontSize: "0.82rem",
+              fontWeight: active ? 600 : 500,
+              transition: "all 0.2s ease",
+              background: active ? "rgba(59, 130, 246, 0.16)" : "transparent",
+              color: active ? "#ffffff" : "var(--text-secondary)",
+              border: active ? "1px solid var(--border-bright)" : "1px solid transparent",
+              boxShadow: active ? "0 0 12px rgba(59, 130, 246, 0.2)" : "none",
             }}>
-              <Icon size={14} />
-              {label}
+              <Icon size={14} color={active ? "var(--primary)" : "currentColor"} />
+              <span>{label}</span>
+              {active && (
+                <span style={{
+                  position: "absolute", bottom: "-1px", left: "15%", right: "15%",
+                  height: "2px", background: "var(--primary)", borderRadius: "2px",
+                  boxShadow: "0 0 8px var(--primary)"
+                }} />
+              )}
             </Link>
           );
         })}
       </div>
 
       {/* Status Indicators */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {/* System status */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "var(--text-primary)", background: "var(--surface)", padding: "4px 12px", borderRadius: "20px", border: "1px solid var(--border)" }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          fontSize: "0.75rem", color: "var(--text-primary)",
+          background: "var(--bg-elevated)", padding: "5px 12px",
+          borderRadius: "20px", border: "1px solid var(--border-bright)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+        }}>
           <div className={`status-dot ${sysStatus === "running" ? "green" : "yellow"}`} />
-          {activeSystem}
+          <span style={{ color: "var(--text-muted)", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>System</span>
+          <span style={{ fontWeight: 600 }}>{activeSystem}</span>
         </div>
 
         {/* WS status */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "var(--text-primary)", background: "var(--surface)", padding: "4px 12px", borderRadius: "20px", border: "1px solid var(--border)" }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          fontSize: "0.75rem", color: "var(--text-primary)",
+          background: "var(--bg-elevated)", padding: "5px 12px",
+          borderRadius: "20px", border: "1px solid var(--border-bright)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+        }}>
           <div className={`status-dot ${wsConnected ? "blue" : "red"}`} />
-          {wsConnected ? "Live" : "Offline"}
+          <span style={{ fontWeight: 600 }}>{wsConnected ? "Live" : "Offline"}</span>
         </div>
       </div>
     </nav>

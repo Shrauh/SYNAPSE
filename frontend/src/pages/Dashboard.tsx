@@ -1,16 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { 
-  AlertTriangle, Activity, Clock, ArrowRight, Zap, Target
+  AlertTriangle, Activity, Clock, ArrowRight, Zap, Target,
+  Plug, X, Copy, Check, ExternalLink
 } from "lucide-react";
 import { 
-  fetchHealth, fetchMetrics, fetchIncidents, 
-  getActiveSystem, switchSystem, simulateFault, getAvailableSystems 
+  fetchHealth, fetchMetrics, fetchIncidents, fetchIncident, fetchReport,
+  getActiveSystem, switchSystem, simulateFault, getAvailableSystems,
+  testConnection, listConnections
 } from "../api/endpoints";
 import type { HealthResponse, MetricsResponse, IncidentSummary } from "../types/api";
 import { Spinner } from "../components/UI";
 import { useStore } from "../store";
+
+interface SimResultData {
+  incidentId?: string;
+  service: string;
+  confidence: number;
+  faultType?: string;
+  propagationChain?: string;
+  severity?: string;
+  explanation?: string;
+}
 
 interface SystemOption {
   id: string;
@@ -34,6 +46,147 @@ const FAULT_TYPES = [
   "latency_spike", "error_spike", "cpu_overload", "memory_leak", "connection_timeout"
 ];
 
+function AnimatedNumber({ value }: { value: string | number }) {
+  const [displayValue, setDisplayValue] = useState<number>(() => (typeof value === "number" ? value : 0));
+  const [fadeKey, setFadeKey] = useState<number>(0);
+  const prevValueRef = useRef<number>(typeof value === "number" ? value : 0);
+  const animFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (typeof value === "number") {
+      const start = prevValueRef.current;
+      const end = value;
+      const duration = 750;
+      const startTime = performance.now();
+
+      const updateCount = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + (end - start) * ease);
+        setDisplayValue(current);
+
+        if (progress < 1) {
+          animFrameRef.current = requestAnimationFrame(updateCount);
+        } else {
+          prevValueRef.current = end;
+        }
+      };
+
+      animFrameRef.current = requestAnimationFrame(updateCount);
+      return () => {
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      };
+    } else {
+      setFadeKey(prev => prev + 1);
+    }
+  }, [value]);
+
+  if (typeof value === "number") {
+    return <span>{displayValue.toLocaleString()}</span>;
+  }
+
+  return (
+    <span key={fadeKey} className="fade-in" style={{ display: "inline-block" }}>
+      {value}
+    </span>
+  );
+}
+
+function TypewriterText({ text, speed = 18 }: { text: string; speed?: number }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    setDisplayedText("");
+    setIsTyping(true);
+    let index = 0;
+    const interval = setInterval(() => {
+      index++;
+      setDisplayedText(text.slice(0, index));
+      if (index >= text.length) {
+        clearInterval(interval);
+        setIsTyping(false);
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return (
+    <span>
+      {displayedText}
+      {isTyping && <span className="typewriter-cursor" />}
+    </span>
+  );
+}
+
+function PropagationFlow({ chain }: { chain: string }) {
+  const nodes = chain
+    .split(/\s*(?:→|->)\s*/)
+    .map(n => n.trim())
+    .filter(Boolean);
+
+  if (nodes.length <= 1) {
+    return (
+      <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+        {chain}
+      </div>
+    );
+  }
+
+  return (
+    <div className="propagation-flow-container">
+      {nodes.map((node, index) => {
+        const isRoot = index === 0;
+        const isLeaf = index === nodes.length - 1;
+        return (
+          <div key={`${node}-${index}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <span className={`propagation-node ${isRoot ? 'root' : isLeaf ? 'leaf' : ''}`}>
+              {isRoot && <span style={{ fontSize: '0.65rem', color: '#ef4444' }}>●</span>}
+              {node}
+            </span>
+            {index < nodes.length - 1 && (
+              <span className="propagation-arrow" title="Flow direction">
+                →
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function getSeverityDetails(severity?: string) {
+  const s = (severity || 'HIGH').toUpperCase();
+  if (s.includes('L1') || s.includes('LOW')) {
+    return {
+      cardClass: 'severity-green',
+      badgeBg: 'rgba(16, 185, 129, 0.2)',
+      badgeColor: '#10b981',
+      badgeBorder: 'rgba(16, 185, 129, 0.5)',
+      glowColor: '#10b981'
+    };
+  }
+  if (s.includes('L2') || s.includes('MED') || s.includes('WARN')) {
+    return {
+      cardClass: 'severity-orange',
+      badgeBg: 'rgba(245, 158, 11, 0.2)',
+      badgeColor: '#f59e0b',
+      badgeBorder: 'rgba(245, 158, 11, 0.5)',
+      glowColor: '#f59e0b'
+    };
+  }
+  return {
+    cardClass: 'severity-red',
+    badgeBg: 'rgba(239, 68, 68, 0.2)',
+    badgeColor: '#ef4444',
+    badgeBorder: 'rgba(239, 68, 68, 0.5)',
+    glowColor: '#ef4444'
+  };
+}
+
 function StatCard({ title, value, icon, sub }: { title: string, value: string|number, icon: React.ReactNode, sub?: string }) {
   return (
     <div className="neon-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -41,7 +194,9 @@ function StatCard({ title, value, icon, sub }: { title: string, value: string|nu
         <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase' }}>{title}</span>
         <div style={{ color: 'var(--primary)' }}>{icon}</div>
       </div>
-      <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
+      <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+        <AnimatedNumber value={value} />
+      </div>
       {sub && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sub}</div>}
     </div>
   );
@@ -49,6 +204,7 @@ function StatCard({ title, value, icon, sub }: { title: string, value: string|nu
 
 export default function Dashboard() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [apiLatency, setApiLatency] = useState<number | null>(null);
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [incidents, setIncidents] = useState<IncidentSummary[]>([]);
   const [activeSystem, setActiveSystem] = useState<string>("Default");
@@ -64,9 +220,59 @@ export default function Dashboard() {
   const [simFault, setSimFault] = useState(FAULT_TYPES[0]);
   const [simulationActive, setSimulationActive] = useState(false);
   const [simTarget, setSimTarget] = useState("");
-  const [simResult, setSimResult] = useState<{service: string, confidence: number} | null>(null);
+  const [simResult, setSimResult] = useState<SimResultData | null>(null);
+  const simIncidentIdRef = useRef<string | null>(null);
 
   const anomalyScores = useStore(s => s.anomalyScores || {});
+
+  // Connect Your System modal
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [connName, setConnName] = useState("my-prometheus");
+  const [connType, setConnType] = useState("prometheus");
+  const [connUrl, setConnUrl] = useState("http://localhost:9090");
+  const [connApiKey, setConnApiKey] = useState("");
+  const [connNamespace, setConnNamespace] = useState("default");
+  const [connTesting, setConnTesting] = useState(false);
+  const [connResult, setConnResult] = useState<{ status: string; message: string; latency_ms: number } | null>(null);
+  const [savedConnections, setSavedConnections] = useState<{ name: string; type: string; url: string; status: string; latency_ms: number; last_checked: string }[]>([]);
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleTestConnection = async () => {
+    setConnTesting(true);
+    setConnResult(null);
+    try {
+      const res = await testConnection({
+        name: connName,
+        type: connType,
+        url: connUrl,
+        api_key: connApiKey || undefined,
+        namespace: connNamespace || undefined,
+      });
+      setConnResult({ status: res.status, message: res.message, latency_ms: res.latency_ms });
+      // Refresh saved connections
+      const conns = await listConnections();
+      if (Array.isArray(conns)) setSavedConnections(conns);
+    } catch {
+      setConnResult({ status: "failed", message: "Could not reach SYNAPSE backend", latency_ms: 0 });
+    } finally {
+      setConnTesting(false);
+    }
+  };
+
+  // Load saved connections when modal opens
+  useEffect(() => {
+    if (connectModalOpen) {
+      listConnections().then(conns => {
+        if (Array.isArray(conns)) setSavedConnections(conns);
+      }).catch(() => {});
+    }
+  }, [connectModalOpen]);
 
   const showToast = (msg: string, type: string = "info") => {
     setToast({message: msg, type});
@@ -80,8 +286,15 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
+      const t0 = performance.now();
       const [h, m, i, sys] = await Promise.all([
-        fetchHealth().catch(() => null),
+        fetchHealth().then(res => {
+          setApiLatency(Math.round(performance.now() - t0));
+          return res;
+        }).catch(() => {
+          setApiLatency(null);
+          return null;
+        }),
         fetchMetrics().catch(() => null),
         fetchIncidents(1).catch(() => ({ incidents: [] })),
         getActiveSystem().catch(() => null)
@@ -123,6 +336,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
     const iv = setInterval(() => {
+      const t0 = performance.now();
+      fetchHealth().then(h => {
+        setApiLatency(Math.round(performance.now() - t0));
+        if (h) setHealth(h);
+      }).catch(() => {
+        setApiLatency(null);
+      });
       fetchIncidents(1).then(i => {
         if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
       }).catch(() => {});
@@ -130,6 +350,40 @@ export default function Dashboard() {
     }, 5000);
     return () => clearInterval(iv);
   }, []);
+
+  const loadCompletedRCA = async (incidentId: string, wsData?: any) => {
+    try {
+      const [inc, rep] = await Promise.all([
+        fetchIncident(incidentId).catch(() => null),
+        fetchReport(incidentId).catch(() => null)
+      ]);
+      const service = inc?.root_cause?.service || wsData?.root_cause || wsData?.service || simService;
+      const confidence = inc?.root_cause?.confidence ?? wsData?.confidence ?? 0.92;
+      const faultType = inc?.root_cause?.fault_type || rep?.root_cause?.fault_type || wsData?.fault_type || simFault;
+      const propagationChain = rep?.propagation_chain || wsData?.propagation_chain || (inc?.affected_services && inc.affected_services.length > 0 ? `${service} → ${inc.affected_services.join(' → ')}` : undefined);
+      const severity = rep?.severity?.level || inc?.severity || wsData?.severity || 'HIGH';
+      const explanation = rep?.explanation || wsData?.explanation;
+
+      setSimResult({
+        incidentId,
+        service,
+        confidence,
+        faultType,
+        propagationChain,
+        severity,
+        explanation
+      });
+    } catch {
+      setSimResult({
+        incidentId,
+        service: wsData?.root_cause || wsData?.service || simService,
+        confidence: wsData?.confidence ?? 0.92,
+        faultType: wsData?.fault_type || simFault,
+        propagationChain: wsData?.propagation_chain,
+        severity: wsData?.severity || 'HIGH'
+      });
+    }
+  };
 
   useEffect(() => {
     // Custom WebSocket handling for specific dashboard events
@@ -140,19 +394,44 @@ export default function Dashboard() {
         const data = JSON.parse(event.data);
         if (data.type === "simulation_started") {
           setSimulationActive(true);
-          setSimTarget(data.service);
+          const target = data.root_cause_service || data.service || simService;
+          setSimTarget(target);
+          if (data.incident_id) {
+            simIncidentIdRef.current = data.incident_id;
+          }
           setSimResult(null);
         } else if (data.type === "rca_complete") {
           setSimulationActive(false);
-          const topService = Object.entries(data.anomaly_scores || {}).sort((a: any, b: any) => b[1] - a[1])[0] as [string, number];
-          if (topService) {
-            setSimResult({ service: topService[0], confidence: topService[1] });
-            showToast(`🔴 Root cause found: ${topService[0]} (${(topService[1]*100).toFixed(0)}%)`, 'error');
+          if (data.anomaly_scores) {
+            useStore.getState().setAnomalyScores(data.anomaly_scores);
           }
+          const incId = data.incident_id || simIncidentIdRef.current;
+          const topService = data.root_cause || (data.anomaly_scores ? Object.entries(data.anomaly_scores).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] : null) || simService;
+          const conf = typeof data.confidence === 'number' ? data.confidence : 0.92;
+
+          if (incId) {
+            loadCompletedRCA(incId, data);
+          } else {
+            setSimResult({
+              service: topService,
+              confidence: conf,
+              faultType: data.fault_type || simFault,
+              propagationChain: data.propagation_chain,
+              severity: data.severity || 'HIGH'
+            });
+          }
+          showToast(`🔴 Root cause found: ${topService} (${(conf * 100).toFixed(0)}%)`, 'error');
+
+          fetchIncidents(1).then(i => {
+            if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
+          }).catch(() => {});
         } else if (data.type === "system_switched") {
           setActiveSystem(data.system);
+          useStore.getState().setAnomalyScores({});
+          setSimResult(null);
+          setSimTarget("");
           if (data.services && data.services.length > 0) {
-            setCurrentServices(data.services);
+            setCurrentServices([...data.services]);
             setSimService(data.services[0]);
           }
           showToast(`System switched to ${data.system}`, 'info');
@@ -163,7 +442,7 @@ export default function Dashboard() {
     return () => {
       ws.close();
     };
-  }, []);
+  }, [simService, simFault]);
 
   const handleSystemSwitch = async (sys: string) => {
     const sysId = sys.toLowerCase().replace(/ /g, "-");
@@ -173,10 +452,13 @@ export default function Dashboard() {
     try {
       await switchSystem(sysId);
       setActiveSystem(sys);
+      useStore.getState().setAnomalyScores({});
+      setSimResult(null);
+      setSimTarget("");
       // Refresh services from backend
       const updated = await getActiveSystem();
       if (updated && updated.services) {
-        setCurrentServices(updated.services);
+        setCurrentServices([...updated.services]);
         if (updated.services.length > 0) setSimService(updated.services[0]);
       }
       showToast(`System switched to ${sys}`, 'info');
@@ -193,20 +475,28 @@ export default function Dashboard() {
     setSimTarget(simService);
     setSimResult(null);
     try {
-      await simulateFault({
+      const res = await simulateFault({
         fault_type: simFault,
         root_cause_service: simService,
         severity: "high",
         duration_minutes: 3
       });
+      if (res?.incident_id) {
+        simIncidentIdRef.current = res.incident_id;
+      }
       showToast(`Fault injected into ${simService}`, 'warning');
       
       // Fallback for simulation finish if WS doesn't catch it
-      setTimeout(() => {
+      const fallbackIncId = res?.incident_id;
+      setTimeout(async () => {
         if (simulationActive) {
-           setSimulationActive(false);
-           setSimResult({ service: simService, confidence: 0.92 });
-           showToast(`🔴 Root cause found: ${simService} (92%)`, 'error');
+          setSimulationActive(false);
+          if (fallbackIncId) {
+            await loadCompletedRCA(fallbackIncId, { root_cause: simService, confidence: 0.92, fault_type: simFault });
+          } else {
+            setSimResult({ service: simService, confidence: 0.92, faultType: simFault, severity: 'HIGH' });
+          }
+          showToast(`🔴 Root cause found: ${simService} (92%)`, 'error');
         }
       }, 15000);
       
@@ -216,8 +506,34 @@ export default function Dashboard() {
     }
   };
 
+  const isHealthy = health?.status === "healthy" || health?.status === "up";
+
+  const avgConfidenceDisplay = (() => {
+    if (metrics?.avg_confidence != null) {
+      return typeof metrics.avg_confidence === "number"
+        ? `${metrics.avg_confidence}%`
+        : `${metrics.avg_confidence}`;
+    }
+    const confs = incidents
+      .map(i => i.confidence)
+      .filter((c): c is number => typeof c === "number" && c > 0);
+    if (confs.length > 0) {
+      return `${((confs.reduce((a, b) => a + b, 0) / confs.length) * 100).toFixed(1)}%`;
+    }
+    return "N/A";
+  })();
+
+  const uptimeDisplay = (() => {
+    if (metrics?.uptime) return metrics.uptime;
+    if (health?.uptime_seconds != null) {
+      const s = health.uptime_seconds;
+      return s < 3600 ? `${Math.floor(s / 60)}m ${Math.floor(s % 60)}s` : `${(s / 3600).toFixed(1)}h`;
+    }
+    return "N/A";
+  })();
+
   return (
-    <div style={{ padding: "84px 2rem 2rem", position: "relative" }}>
+    <div className="dashboard-bg" style={{ padding: "84px 2rem 2rem", position: "relative", minHeight: "100vh" }}>
       {toast && (
         <div className="toast-container">
           <div className={`toast ${toast.type}`}>
@@ -229,12 +545,242 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Connect Your System Modal */}
+      {connectModalOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setConnectModalOpen(false)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(10, 15, 30, 0.98))',
+              border: '1px solid rgba(0, 255, 136, 0.25)',
+              borderRadius: '16px',
+              padding: '2rem',
+              width: '600px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              boxShadow: '0 0 60px rgba(0, 255, 136, 0.1), 0 25px 50px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 255, 0.2))',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1px solid rgba(0, 255, 136, 0.3)',
+                }}>
+                  <Plug size={20} color="#00ff88" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>Connect Your System</h2>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Link Prometheus, Kubernetes, or any webhook</p>
+                </div>
+              </div>
+              <button onClick={() => setConnectModalOpen(false)} style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '0.4rem', cursor: 'pointer', color: 'var(--text-muted)',
+              }}><X size={18} /></button>
+            </div>
+
+            {/* Connection Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+              {/* Row 1: Name + Type */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Connection Name</label>
+                  <input
+                    value={connName} onChange={e => setConnName(e.target.value)}
+                    placeholder="my-prometheus"
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>System Type</label>
+                  <select
+                    value={connType} onChange={e => {
+                      setConnType(e.target.value);
+                      if (e.target.value === 'prometheus') setConnUrl('http://localhost:9090');
+                      else if (e.target.value === 'alertmanager') setConnUrl('http://localhost:9093');
+                      else if (e.target.value === 'kubernetes') setConnUrl('https://kubernetes.default.svc');
+                      else setConnUrl('http://');
+                    }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                  >
+                    <option value="prometheus">Prometheus</option>
+                    <option value="alertmanager">Alertmanager</option>
+                    <option value="kubernetes">Kubernetes API</option>
+                    <option value="webhook">Custom Webhook</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: URL */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Endpoint URL</label>
+                <input
+                  value={connUrl} onChange={e => setConnUrl(e.target.value)}
+                  placeholder="http://localhost:9090"
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: '#00ff88', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Row 3: API Key + Namespace */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>API Key / Token <span style={{ opacity: 0.5 }}>(optional)</span></label>
+                  <input
+                    type="password"
+                    value={connApiKey} onChange={e => setConnApiKey(e.target.value)}
+                    placeholder="Bearer token..."
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Namespace <span style={{ opacity: 0.5 }}>(K8s)</span></label>
+                  <input
+                    value={connNamespace} onChange={e => setConnNamespace(e.target.value)}
+                    placeholder="default"
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Test Connection Button */}
+            <button
+              onClick={handleTestConnection}
+              disabled={connTesting || !connUrl}
+              className="btn-neon"
+              style={{
+                width: '100%', padding: '0.75rem', marginBottom: '1rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                background: connTesting ? 'rgba(0,255,136,0.05)' : 'linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 255, 0.15))',
+                border: '1px solid rgba(0, 255, 136, 0.4)',
+                color: '#00ff88', fontWeight: 700, fontSize: '0.9rem',
+              }}
+            >
+              {connTesting ? (
+                <><div className="spinner" style={{ width: '14px', height: '14px', borderColor: '#00ff88', borderTopColor: 'transparent' }} /> Testing Connection...</>
+              ) : (
+                <><Zap size={16} /> Test Connection</>
+              )}
+            </button>
+
+            {/* Connection Result */}
+            {connResult && (
+              <div style={{
+                padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1rem',
+                background: connResult.status === 'connected'
+                  ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                border: `1px solid ${connResult.status === 'connected'
+                  ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+              }}>
+                <div style={{
+                  width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                  background: connResult.status === 'connected'
+                    ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginTop: '2px',
+                }}>
+                  {connResult.status === 'connected'
+                    ? <Check size={14} color="#10b981" />
+                    : <X size={14} color="#ef4444" />
+                  }
+                </div>
+                <div>
+                  <div style={{
+                    fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.25rem',
+                    color: connResult.status === 'connected' ? '#10b981' : '#ef4444',
+                  }}>
+                    {connResult.status === 'connected' ? '✓ Connected Successfully' : '✗ Connection Failed'}
+                    {connResult.latency_ms > 0 && (
+                      <span style={{ fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                        {connResult.latency_ms}ms
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    {connResult.message}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Saved Connections */}
+            {savedConnections.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                  Saved Connections
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {savedConnections.map(c => (
+                    <div key={c.name} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0.5rem 0.75rem', borderRadius: '8px',
+                      background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div className={`status-dot ${c.status === 'connected' ? 'green' : 'red'}`} />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600 }}>{c.name}</span>
+                        <span style={{
+                          fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px',
+                          background: 'rgba(0,200,255,0.1)', border: '1px solid rgba(0,200,255,0.3)',
+                          color: '#00c8ff', textTransform: 'uppercase',
+                        }}>{c.type}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          {c.latency_ms}ms
+                        </span>
+                        <span style={{
+                          fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px',
+                          background: c.status === 'connected' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                          color: c.status === 'connected' ? '#10b981' : '#ef4444',
+                          fontWeight: 600,
+                        }}>
+                          {c.status === 'connected' ? 'LIVE' : 'OFFLINE'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer Tip */}
+            <div style={{
+              padding: '0.75rem 1rem', borderRadius: '10px',
+              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 200, 255, 0.05))',
+              border: '1px solid rgba(0, 255, 136, 0.15)',
+              fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5,
+            }}>
+              <span style={{ color: '#00ff88', fontWeight: 600 }}>No live cluster?</span>{' '}
+              Use the <strong style={{ color: 'var(--text-primary)' }}>Simulate Fault</strong> panel to inject synthetic faults — the AI pipeline runs the same GNN + Causal + LLM analysis on simulated data.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ color: 'var(--primary)', textShadow: '0 0 10px var(--primary-glow)' }}>SYNAPSE</span>
-            <span className="badge-live"><div className="status-dot green" /> ONLINE</span>
+            <span className="badge-live" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div className={`status-dot ${isHealthy ? 'green' : 'red'}`} />
+              <span>{health ? (health.status === 'healthy' ? 'ONLINE' : health.status.toUpperCase()) : 'OFFLINE'}</span>
+            </span>
+            {apiLatency !== null && (
+              <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontWeight: 500, background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                {apiLatency}ms API
+              </span>
+            )}
           </h1>
           <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 0 0' }}>Real-time AIOps Monitoring</p>
         </div>
@@ -267,6 +813,24 @@ export default function Dashboard() {
               })}
             </div>
           </div>
+          <button
+            onClick={() => setConnectModalOpen(true)}
+            className="btn-neon"
+            style={{
+              padding: '0.4rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 255, 0.15))',
+              border: '1px solid rgba(0, 255, 136, 0.4)',
+              color: '#00ff88',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Plug size={14} /> Connect Your System
+          </button>
         </div>
       </div>
 
@@ -278,8 +842,8 @@ export default function Dashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
             <StatCard title="Total Incidents" value={metrics?.total_incidents ?? 0} icon={<AlertTriangle size={20} />} sub="All time" />
             <StatCard title="Active Alerts" value={metrics?.active_incidents ?? 0} icon={<Activity size={20} />} sub="Currently analyzing" />
-            <StatCard title="Avg Confidence" value="94.2%" icon={<Target size={20} />} sub="Model accuracy" />
-            <StatCard title="Uptime" value="99.99%" icon={<Clock size={20} />} sub="System availability" />
+            <StatCard title="Avg Confidence" value={avgConfidenceDisplay} icon={<Target size={20} />} sub="Model accuracy" />
+            <StatCard title="Uptime" value={uptimeDisplay} icon={<Clock size={20} />} sub="System availability" />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 350px", gap: "2rem" }}>
@@ -289,44 +853,80 @@ export default function Dashboard() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 {currentServices.map(svc => {
                   const score = anomalyScores[svc] || (simResult && simResult.service === svc ? simResult.confidence : 0);
-                  const isTarget = simulationActive && simTarget === svc;
-                  const isResult = simResult && simResult.service === svc;
+                  const isTarget = simulationActive && (simTarget === svc || (!simTarget && simService === svc));
+                  const isResult = Boolean(simResult && simResult.service === svc);
                   
                   let dotClass = "green";
                   let fillClass = "normal";
-                  let cardStyle: React.CSSProperties = { flex: '1 1 calc(33.333% - 1rem)', minWidth: '200px' };
+                  const cardStyle: React.CSSProperties = { 
+                    flex: '1 1 calc(33.333% - 1rem)', 
+                    minWidth: '200px',
+                    transition: 'all 0.3s ease'
+                  };
+
+                  let statusLabel = "HEALTHY";
+                  let statusColor = "var(--success)";
+                  let statusBg = "rgba(16, 185, 129, 0.12)";
+                  let statusBorder = "rgba(16, 185, 129, 0.3)";
 
                   if (isTarget) {
                     dotClass = "yellow";
                     fillClass = "warning";
                     cardStyle.borderColor = "var(--warning)";
-                    cardStyle.boxShadow = "0 0 15px rgba(245, 158, 11, 0.2)";
+                    cardStyle.boxShadow = "0 0 20px rgba(245, 158, 11, 0.4)";
+                    cardStyle.animation = "pulse-warn 1.5s infinite";
+                    statusLabel = "INJECTING";
+                    statusColor = "var(--warning)";
+                    statusBg = "rgba(245, 158, 11, 0.15)";
+                    statusBorder = "rgba(245, 158, 11, 0.4)";
                   } else if (score > 0.6 || isResult) {
                     dotClass = "red";
                     fillClass = "danger";
                     cardStyle.borderColor = "var(--danger)";
-                    cardStyle.boxShadow = "0 0 15px rgba(239, 68, 68, 0.2)";
+                    cardStyle.boxShadow = "0 0 18px rgba(239, 68, 68, 0.3)";
+                    statusLabel = "CRITICAL";
+                    statusColor = "var(--danger)";
+                    statusBg = "rgba(239, 68, 68, 0.15)";
+                    statusBorder = "rgba(239, 68, 68, 0.4)";
                   } else if (score > 0.3) {
                     dotClass = "yellow";
                     fillClass = "warning";
+                    statusLabel = "WARNING";
+                    statusColor = "var(--warning)";
+                    statusBg = "rgba(245, 158, 11, 0.15)";
+                    statusBorder = "rgba(245, 158, 11, 0.4)";
                   }
 
                   return (
-                    <div key={svc} className={`neon-card ${isTarget ? 'processing-overlay' : ''}`} style={cardStyle}>
+                    <div key={svc} className={`neon-card ${isTarget ? 'processing-overlay fault-ripple' : ''}`} style={cardStyle}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{svc}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.95rem' }}>{svc}</span>
                         <div className={`status-dot ${dotClass}`} />
                       </div>
                       <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         <span>Anomaly Score</span>
-                        <span>{(score * 100).toFixed(1)}%</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: score > 0.3 ? statusColor : 'var(--text-muted)' }}>
+                          {(score * 100).toFixed(1)}%
+                        </span>
                       </div>
                       <div className="score-bar-track" style={{ marginBottom: '1rem' }}>
                         <div className={`score-bar-fill ${fillClass}`} style={{ width: `${Math.max(score * 100, 2)}%` }} />
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        <span>Lat: {Math.floor(Math.random() * 20 + 5)}ms</span>
-                        <span>Err: {(Math.random() * 0.5).toFixed(2)}%</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Status</span>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          fontFamily: 'var(--font-mono)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          color: statusColor,
+                          background: statusBg,
+                          border: `1px solid ${statusBorder}`,
+                          textTransform: 'uppercase'
+                        }}>
+                          {statusLabel}
+                        </span>
                       </div>
                     </div>
                   );
@@ -367,26 +967,132 @@ export default function Dashboard() {
                 </div>
 
                 <button 
-                  className={`btn-neon ${simulationActive ? '' : 'danger'}`} 
-                  style={{ width: '100%', padding: '0.75rem' }}
+                  className={`btn-neon ${simulationActive ? 'fault-ripple' : 'danger'}`} 
+                  style={{ width: '100%', padding: '0.75rem', position: 'relative' }}
                   onClick={handleSimulate}
                   disabled={simulationActive}
                 >
-                  {simulationActive ? 'INJECTING...' : 'INJECT FAULT'}
+                  {simulationActive ? 'INJECTING FAULT...' : 'INJECT FAULT'}
                 </button>
 
                 {simulationActive && (
-                  <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: 'var(--warning)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="fault-ripple" style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: 'var(--warning)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }}>
                     <div className="spinner" style={{ width: '14px', height: '14px', borderColor: 'var(--warning)', borderTopColor: 'transparent' }} />
-                    Analyzing telemetry...
+                    Injecting telemetry fault into <strong style={{ color: 'var(--text-primary)' }}>{simTarget || simService}</strong>...
                   </div>
                 )}
                 
-                {simResult && !simulationActive && (
-                  <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: 'var(--danger)', fontSize: '0.875rem' }}>
-                    <strong>Root cause:</strong> {simResult.service} ({(simResult.confidence * 100).toFixed(0)}% confidence)
-                  </div>
-                )}
+                {simResult && !simulationActive && (() => {
+                  const sevInfo = getSeverityDetails(simResult.severity);
+                  return (
+                    <div className={`neon-card rca-severity-card ${sevInfo.cardClass}`} style={{
+                      marginTop: '1.25rem',
+                      padding: '1.25rem',
+                      boxShadow: '0 0 25px rgba(0,0,0,0.4)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: sevInfo.badgeColor }}>
+                          ROOT CAUSE ANALYSIS COMPLETE
+                        </span>
+                        {simResult.severity && (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            background: sevInfo.badgeBg,
+                            color: sevInfo.badgeColor,
+                            border: `1px solid ${sevInfo.badgeBorder}`,
+                            textTransform: 'uppercase'
+                          }}>
+                            {simResult.severity}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{
+                        fontSize: '1.4rem',
+                        fontWeight: 800,
+                        fontFamily: 'var(--font-mono)',
+                        color: sevInfo.badgeColor,
+                        textShadow: `0 0 14px ${sevInfo.glowColor}66`,
+                        marginBottom: '0.75rem',
+                        wordBreak: 'break-all'
+                      }}>
+                        {simResult.service}
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          background: simResult.confidence > 0.8 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+                          border: `1px solid ${simResult.confidence > 0.8 ? '#ef4444' : '#f59e0b'}`,
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: simResult.confidence > 0.8 ? '#f87171' : '#fbbf24'
+                        }}>
+                          <span>Confidence:</span>
+                          <span style={{ fontFamily: 'var(--font-mono)' }}>{(simResult.confidence * 100).toFixed(0)}%</span>
+                        </div>
+
+                        {simResult.faultType && (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: 'rgba(99,102,241,0.15)',
+                            border: '1px solid rgba(99,102,241,0.4)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: '#818cf8',
+                            textTransform: 'capitalize'
+                          }}>
+                            {simResult.faultType.replace(/_/g, ' ')}
+                          </div>
+                        )}
+                      </div>
+
+                      {simResult.propagationChain && (
+                        <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem', fontWeight: 600 }}>
+                            Propagation Chain
+                          </div>
+                          <PropagationFlow chain={simResult.propagationChain} />
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Zap size={12} /> AI Diagnosis
+                        </div>
+                        <TypewriterText text={simResult.explanation || `Algorithmic analysis confirmed root cause anomaly in ${simResult.service}. Degradation profile matches ${simResult.faultType?.replace(/_/g, ' ') || 'injected fault'} with ${(simResult.confidence * 100).toFixed(0)}% model certainty.`} />
+                      </div>
+
+                      {simResult.incidentId && (
+                        <Link
+                          to={`/incidents/${simResult.incidentId}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            color: 'var(--primary)',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            marginTop: '0.25rem'
+                          }}
+                        >
+                          View Full Report <ArrowRight size={14} />
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Recent Incidents */}

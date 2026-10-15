@@ -71,6 +71,7 @@ export interface RCAReport {
   };
   recovery?: {
     action: string;
+    action_type?: string;
     target: string;
     kubectl_command: string;
     success: boolean;
@@ -114,6 +115,8 @@ export interface MetricsResponse {
   active_incidents: number;
   avg_resolution_time_sec: number;
   model_stats: Record<string, unknown>;
+  avg_confidence?: number | string | null;
+  uptime?: string | null;
 }
 
 export interface ModelStatus {
