@@ -42,39 +42,66 @@ export default function IncidentList() {
               <table>
                 <thead>
                   <tr>
-                    <th>Title</th><th>Status</th><th>Severity</th>
-                    <th>Root Cause</th><th>Confidence</th>
-                    <th>Affected Services</th><th>Detected At</th>
+                    <th>Title</th>
+                    <th>Root Cause</th>
+                    <th>Severity</th>
+                    <th>Confidence</th>
+                    <th>Time</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {incidents.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                    <tr><td colSpan={6} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
                       No incidents found. Simulate a fault to create one!
                     </td></tr>
                   ) : incidents.map((inc, i) => (
                     <motion.tr key={inc.id}
                       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      onClick={() => nav(`/incidents/${inc.id}`)}>
-                      <td style={{ color: "var(--text-primary)", fontWeight: 600, maxWidth: 240 }}>
+                      onClick={() => nav(`/incidents/${inc.id}`)}
+                      style={{
+                        background: i % 2 === 1 ? "rgba(255, 255, 255, 0.02)" : "transparent",
+                        cursor: "pointer",
+                      }}>
+                      <td style={{ color: "var(--text-primary)", fontWeight: 600, maxWidth: 260 }}>
                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inc.title}</div>
-                        <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>{inc.id}</div>
+                        <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>{inc.id}</div>
                       </td>
-                      <td><StatusBadge status={inc.status} /></td>
-                      <td><span className={`badge badge-${inc.severity === "critical" ? "critical" : inc.severity === "high" ? "warning" : "degraded"}`}>{inc.severity}</span></td>
-                      <td style={{ fontFamily: "JetBrains Mono", fontSize: "0.78rem", color: inc.root_cause_service ? "var(--accent-blue)" : "var(--text-muted)" }}>
+                      <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: inc.root_cause_service ? "var(--accent-blue)" : "var(--text-muted)" }}>
                         {inc.root_cause_service ?? "analyzing..."}
                       </td>
-                      <td style={{ fontWeight: 600, color: "var(--status-healthy)" }}>
+                      <td>
+                        <span className={`badge ${
+                          inc.severity === "critical" || inc.severity === "L4" || inc.severity === "L3"
+                            ? "badge-critical"
+                            : inc.severity === "high" || inc.severity === "L2"
+                            ? "badge-warning"
+                            : inc.severity === "medium" || inc.severity === "L1"
+                            ? "badge-degraded"
+                            : "badge-healthy"
+                        }`}>
+                          {inc.severity}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 600, color: inc.confidence != null ? "var(--status-healthy)" : "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
                         {inc.confidence != null ? `${(inc.confidence * 100).toFixed(0)}%` : "—"}
                       </td>
-                      <td style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {inc.affected_services?.slice(0, 2).join(", ") ?? "—"}
-                        {(inc.affected_services?.length ?? 0) > 2 && ` +${inc.affected_services.length - 2}`}
-                      </td>
-                      <td style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
                         {format(new Date(inc.detected_at), "dd MMM HH:mm")}
+                      </td>
+                      <td>
+                        <span className={`badge ${
+                          inc.status === "analyzing"
+                            ? "badge-analyzing"
+                            : inc.status === "detected" || inc.status === "resolved"
+                            ? "badge-detected"
+                            : inc.status === "error"
+                            ? "badge-error"
+                            : `badge-${inc.status}`
+                        }`}>
+                          {inc.status}
+                        </span>
                       </td>
                     </motion.tr>
                   ))}

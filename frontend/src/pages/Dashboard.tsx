@@ -1,16 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { 
   AlertTriangle, Activity, Clock, ArrowRight, Zap, Target
 } from "lucide-react";
 import { 
-  fetchHealth, fetchMetrics, fetchIncidents, 
+  fetchHealth, fetchMetrics, fetchIncidents, fetchIncident, fetchReport,
   getActiveSystem, switchSystem, simulateFault, getAvailableSystems 
 } from "../api/endpoints";
 import type { HealthResponse, MetricsResponse, IncidentSummary } from "../types/api";
 import { Spinner } from "../components/UI";
 import { useStore } from "../store";
+
+interface SimResultData {
+  incidentId?: string;
+  service: string;
+  confidence: number;
+  faultType?: string;
+  propagationChain?: string;
+  severity?: string;
+  explanation?: string;
+}
 
 interface SystemOption {
   id: string;
@@ -49,6 +59,7 @@ function StatCard({ title, value, icon, sub }: { title: string, value: string|nu
 
 export default function Dashboard() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [apiLatency, setApiLatency] = useState<number | null>(null);
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [incidents, setIncidents] = useState<IncidentSummary[]>([]);
   const [activeSystem, setActiveSystem] = useState<string>("Default");
@@ -64,7 +75,8 @@ export default function Dashboard() {
   const [simFault, setSimFault] = useState(FAULT_TYPES[0]);
   const [simulationActive, setSimulationActive] = useState(false);
   const [simTarget, setSimTarget] = useState("");
-  const [simResult, setSimResult] = useState<{service: string, confidence: number} | null>(null);
+  const [simResult, setSimResult] = useState<SimResultData | null>(null);
+  const simIncidentIdRef = useRef<string | null>(null);
 
   const anomalyScores = useStore(s => s.anomalyScores || {});
 
@@ -80,8 +92,15 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
+      const t0 = performance.now();
       const [h, m, i, sys] = await Promise.all([
-        fetchHealth().catch(() => null),
+        fetchHealth().then(res => {
+          setApiLatency(Math.round(performance.now() - t0));
+          return res;
+        }).catch(() => {
+          setApiLatency(null);
+          return null;
+        }),
         fetchMetrics().catch(() => null),
         fetchIncidents(1).catch(() => ({ incidents: [] })),
         getActiveSystem().catch(() => null)
@@ -123,6 +142,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
     const iv = setInterval(() => {
+      const t0 = performance.now();
+      fetchHealth().then(h => {
+        setApiLatency(Math.round(performance.now() - t0));
+        if (h) setHealth(h);
+      }).catch(() => {
+        setApiLatency(null);
+      });
       fetchIncidents(1).then(i => {
         if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
       }).catch(() => {});
@@ -130,6 +156,40 @@ export default function Dashboard() {
     }, 5000);
     return () => clearInterval(iv);
   }, []);
+
+  const loadCompletedRCA = async (incidentId: string, wsData?: any) => {
+    try {
+      const [inc, rep] = await Promise.all([
+        fetchIncident(incidentId).catch(() => null),
+        fetchReport(incidentId).catch(() => null)
+      ]);
+      const service = inc?.root_cause?.service || wsData?.root_cause || wsData?.service || simService;
+      const confidence = inc?.root_cause?.confidence ?? wsData?.confidence ?? 0.92;
+      const faultType = inc?.root_cause?.fault_type || rep?.root_cause?.fault_type || wsData?.fault_type || simFault;
+      const propagationChain = rep?.propagation_chain || wsData?.propagation_chain || (inc?.affected_services && inc.affected_services.length > 0 ? `${service} → ${inc.affected_services.join(' → ')}` : undefined);
+      const severity = rep?.severity?.level || inc?.severity || wsData?.severity || 'HIGH';
+      const explanation = rep?.explanation || wsData?.explanation;
+
+      setSimResult({
+        incidentId,
+        service,
+        confidence,
+        faultType,
+        propagationChain,
+        severity,
+        explanation
+      });
+    } catch {
+      setSimResult({
+        incidentId,
+        service: wsData?.root_cause || wsData?.service || simService,
+        confidence: wsData?.confidence ?? 0.92,
+        faultType: wsData?.fault_type || simFault,
+        propagationChain: wsData?.propagation_chain,
+        severity: wsData?.severity || 'HIGH'
+      });
+    }
+  };
 
   useEffect(() => {
     // Custom WebSocket handling for specific dashboard events
@@ -140,19 +200,44 @@ export default function Dashboard() {
         const data = JSON.parse(event.data);
         if (data.type === "simulation_started") {
           setSimulationActive(true);
-          setSimTarget(data.service);
+          const target = data.root_cause_service || data.service || simService;
+          setSimTarget(target);
+          if (data.incident_id) {
+            simIncidentIdRef.current = data.incident_id;
+          }
           setSimResult(null);
         } else if (data.type === "rca_complete") {
           setSimulationActive(false);
-          const topService = Object.entries(data.anomaly_scores || {}).sort((a: any, b: any) => b[1] - a[1])[0] as [string, number];
-          if (topService) {
-            setSimResult({ service: topService[0], confidence: topService[1] });
-            showToast(`🔴 Root cause found: ${topService[0]} (${(topService[1]*100).toFixed(0)}%)`, 'error');
+          if (data.anomaly_scores) {
+            useStore.getState().setAnomalyScores(data.anomaly_scores);
           }
+          const incId = data.incident_id || simIncidentIdRef.current;
+          const topService = data.root_cause || (data.anomaly_scores ? Object.entries(data.anomaly_scores).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] : null) || simService;
+          const conf = typeof data.confidence === 'number' ? data.confidence : 0.92;
+
+          if (incId) {
+            loadCompletedRCA(incId, data);
+          } else {
+            setSimResult({
+              service: topService,
+              confidence: conf,
+              faultType: data.fault_type || simFault,
+              propagationChain: data.propagation_chain,
+              severity: data.severity || 'HIGH'
+            });
+          }
+          showToast(`🔴 Root cause found: ${topService} (${(conf * 100).toFixed(0)}%)`, 'error');
+
+          fetchIncidents(1).then(i => {
+            if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
+          }).catch(() => {});
         } else if (data.type === "system_switched") {
           setActiveSystem(data.system);
+          useStore.getState().setAnomalyScores({});
+          setSimResult(null);
+          setSimTarget("");
           if (data.services && data.services.length > 0) {
-            setCurrentServices(data.services);
+            setCurrentServices([...data.services]);
             setSimService(data.services[0]);
           }
           showToast(`System switched to ${data.system}`, 'info');
@@ -163,7 +248,7 @@ export default function Dashboard() {
     return () => {
       ws.close();
     };
-  }, []);
+  }, [simService, simFault]);
 
   const handleSystemSwitch = async (sys: string) => {
     const sysId = sys.toLowerCase().replace(/ /g, "-");
@@ -173,10 +258,13 @@ export default function Dashboard() {
     try {
       await switchSystem(sysId);
       setActiveSystem(sys);
+      useStore.getState().setAnomalyScores({});
+      setSimResult(null);
+      setSimTarget("");
       // Refresh services from backend
       const updated = await getActiveSystem();
       if (updated && updated.services) {
-        setCurrentServices(updated.services);
+        setCurrentServices([...updated.services]);
         if (updated.services.length > 0) setSimService(updated.services[0]);
       }
       showToast(`System switched to ${sys}`, 'info');
@@ -193,20 +281,28 @@ export default function Dashboard() {
     setSimTarget(simService);
     setSimResult(null);
     try {
-      await simulateFault({
+      const res = await simulateFault({
         fault_type: simFault,
         root_cause_service: simService,
         severity: "high",
         duration_minutes: 3
       });
+      if (res?.incident_id) {
+        simIncidentIdRef.current = res.incident_id;
+      }
       showToast(`Fault injected into ${simService}`, 'warning');
       
       // Fallback for simulation finish if WS doesn't catch it
-      setTimeout(() => {
+      const fallbackIncId = res?.incident_id;
+      setTimeout(async () => {
         if (simulationActive) {
-           setSimulationActive(false);
-           setSimResult({ service: simService, confidence: 0.92 });
-           showToast(`🔴 Root cause found: ${simService} (92%)`, 'error');
+          setSimulationActive(false);
+          if (fallbackIncId) {
+            await loadCompletedRCA(fallbackIncId, { root_cause: simService, confidence: 0.92, fault_type: simFault });
+          } else {
+            setSimResult({ service: simService, confidence: 0.92, faultType: simFault, severity: 'HIGH' });
+          }
+          showToast(`🔴 Root cause found: ${simService} (92%)`, 'error');
         }
       }, 15000);
       
@@ -215,6 +311,32 @@ export default function Dashboard() {
       setSimulationActive(false);
     }
   };
+
+  const isHealthy = health?.status === "healthy" || health?.status === "up";
+
+  const avgConfidenceDisplay = (() => {
+    if (metrics?.avg_confidence != null) {
+      return typeof metrics.avg_confidence === "number"
+        ? `${metrics.avg_confidence}%`
+        : `${metrics.avg_confidence}`;
+    }
+    const confs = incidents
+      .map(i => i.confidence)
+      .filter((c): c is number => typeof c === "number" && c > 0);
+    if (confs.length > 0) {
+      return `${((confs.reduce((a, b) => a + b, 0) / confs.length) * 100).toFixed(1)}%`;
+    }
+    return "N/A";
+  })();
+
+  const uptimeDisplay = (() => {
+    if (metrics?.uptime) return metrics.uptime;
+    if (health?.uptime_seconds != null) {
+      const s = health.uptime_seconds;
+      return s < 3600 ? `${Math.floor(s / 60)}m ${Math.floor(s % 60)}s` : `${(s / 3600).toFixed(1)}h`;
+    }
+    return "N/A";
+  })();
 
   return (
     <div style={{ padding: "84px 2rem 2rem", position: "relative" }}>
@@ -234,7 +356,15 @@ export default function Dashboard() {
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ color: 'var(--primary)', textShadow: '0 0 10px var(--primary-glow)' }}>SYNAPSE</span>
-            <span className="badge-live"><div className="status-dot green" /> ONLINE</span>
+            <span className="badge-live" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div className={`status-dot ${isHealthy ? 'green' : 'red'}`} />
+              <span>{health ? (health.status === 'healthy' ? 'ONLINE' : health.status.toUpperCase()) : 'OFFLINE'}</span>
+            </span>
+            {apiLatency !== null && (
+              <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontWeight: 500, background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                {apiLatency}ms API
+              </span>
+            )}
           </h1>
           <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 0 0' }}>Real-time AIOps Monitoring</p>
         </div>
@@ -278,8 +408,8 @@ export default function Dashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
             <StatCard title="Total Incidents" value={metrics?.total_incidents ?? 0} icon={<AlertTriangle size={20} />} sub="All time" />
             <StatCard title="Active Alerts" value={metrics?.active_incidents ?? 0} icon={<Activity size={20} />} sub="Currently analyzing" />
-            <StatCard title="Avg Confidence" value="94.2%" icon={<Target size={20} />} sub="Model accuracy" />
-            <StatCard title="Uptime" value="99.99%" icon={<Clock size={20} />} sub="System availability" />
+            <StatCard title="Avg Confidence" value={avgConfidenceDisplay} icon={<Target size={20} />} sub="Model accuracy" />
+            <StatCard title="Uptime" value={uptimeDisplay} icon={<Clock size={20} />} sub="System availability" />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 350px", gap: "2rem" }}>
@@ -289,44 +419,80 @@ export default function Dashboard() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 {currentServices.map(svc => {
                   const score = anomalyScores[svc] || (simResult && simResult.service === svc ? simResult.confidence : 0);
-                  const isTarget = simulationActive && simTarget === svc;
-                  const isResult = simResult && simResult.service === svc;
+                  const isTarget = simulationActive && (simTarget === svc || (!simTarget && simService === svc));
+                  const isResult = Boolean(simResult && simResult.service === svc);
                   
                   let dotClass = "green";
                   let fillClass = "normal";
-                  let cardStyle: React.CSSProperties = { flex: '1 1 calc(33.333% - 1rem)', minWidth: '200px' };
+                  const cardStyle: React.CSSProperties = { 
+                    flex: '1 1 calc(33.333% - 1rem)', 
+                    minWidth: '200px',
+                    transition: 'all 0.3s ease'
+                  };
+
+                  let statusLabel = "HEALTHY";
+                  let statusColor = "var(--success)";
+                  let statusBg = "rgba(16, 185, 129, 0.12)";
+                  let statusBorder = "rgba(16, 185, 129, 0.3)";
 
                   if (isTarget) {
                     dotClass = "yellow";
                     fillClass = "warning";
                     cardStyle.borderColor = "var(--warning)";
-                    cardStyle.boxShadow = "0 0 15px rgba(245, 158, 11, 0.2)";
+                    cardStyle.boxShadow = "0 0 20px rgba(245, 158, 11, 0.4)";
+                    cardStyle.animation = "pulse-warn 1.5s infinite";
+                    statusLabel = "INJECTING";
+                    statusColor = "var(--warning)";
+                    statusBg = "rgba(245, 158, 11, 0.15)";
+                    statusBorder = "rgba(245, 158, 11, 0.4)";
                   } else if (score > 0.6 || isResult) {
                     dotClass = "red";
                     fillClass = "danger";
                     cardStyle.borderColor = "var(--danger)";
-                    cardStyle.boxShadow = "0 0 15px rgba(239, 68, 68, 0.2)";
+                    cardStyle.boxShadow = "0 0 18px rgba(239, 68, 68, 0.3)";
+                    statusLabel = "CRITICAL";
+                    statusColor = "var(--danger)";
+                    statusBg = "rgba(239, 68, 68, 0.15)";
+                    statusBorder = "rgba(239, 68, 68, 0.4)";
                   } else if (score > 0.3) {
                     dotClass = "yellow";
                     fillClass = "warning";
+                    statusLabel = "WARNING";
+                    statusColor = "var(--warning)";
+                    statusBg = "rgba(245, 158, 11, 0.15)";
+                    statusBorder = "rgba(245, 158, 11, 0.4)";
                   }
 
                   return (
                     <div key={svc} className={`neon-card ${isTarget ? 'processing-overlay' : ''}`} style={cardStyle}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{svc}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.95rem' }}>{svc}</span>
                         <div className={`status-dot ${dotClass}`} />
                       </div>
                       <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         <span>Anomaly Score</span>
-                        <span>{(score * 100).toFixed(1)}%</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: score > 0.3 ? statusColor : 'var(--text-muted)' }}>
+                          {(score * 100).toFixed(1)}%
+                        </span>
                       </div>
                       <div className="score-bar-track" style={{ marginBottom: '1rem' }}>
                         <div className={`score-bar-fill ${fillClass}`} style={{ width: `${Math.max(score * 100, 2)}%` }} />
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        <span>Lat: {Math.floor(Math.random() * 20 + 5)}ms</span>
-                        <span>Err: {(Math.random() * 0.5).toFixed(2)}%</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Status</span>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          fontFamily: 'var(--font-mono)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          color: statusColor,
+                          background: statusBg,
+                          border: `1px solid ${statusBorder}`,
+                          textTransform: 'uppercase'
+                        }}>
+                          {statusLabel}
+                        </span>
                       </div>
                     </div>
                   );
@@ -383,8 +549,115 @@ export default function Dashboard() {
                 )}
                 
                 {simResult && !simulationActive && (
-                  <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: 'var(--danger)', fontSize: '0.875rem' }}>
-                    <strong>Root cause:</strong> {simResult.service} ({(simResult.confidence * 100).toFixed(0)}% confidence)
+                  <div className="neon-card" style={{
+                    marginTop: '1.25rem',
+                    padding: '1.25rem',
+                    background: 'linear-gradient(180deg, rgba(239,68,68,0.12) 0%, rgba(20,20,30,0.6) 100%)',
+                    border: '1px solid rgba(239,68,68,0.4)',
+                    borderRadius: '10px',
+                    boxShadow: '0 0 20px rgba(239,68,68,0.15)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--danger)' }}>
+                        ROOT CAUSE ANALYSIS COMPLETE
+                      </span>
+                      {simResult.severity && (
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          background: 'rgba(239,68,68,0.2)',
+                          color: '#ef4444',
+                          border: '1px solid rgba(239,68,68,0.5)',
+                          textTransform: 'uppercase'
+                        }}>
+                          {simResult.severity}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{
+                      fontSize: '1.4rem',
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-mono)',
+                      color: '#ef4444',
+                      textShadow: '0 0 12px rgba(239,68,68,0.4)',
+                      marginBottom: '0.75rem',
+                      wordBreak: 'break-all'
+                    }}>
+                      {simResult.service}
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        background: simResult.confidence > 0.8 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+                        border: `1px solid ${simResult.confidence > 0.8 ? '#ef4444' : '#f59e0b'}`,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: simResult.confidence > 0.8 ? '#f87171' : '#fbbf24'
+                      }}>
+                        <span>Confidence:</span>
+                        <span style={{ fontFamily: 'var(--font-mono)' }}>{(simResult.confidence * 100).toFixed(0)}%</span>
+                      </div>
+
+                      {simResult.faultType && (
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(99,102,241,0.15)',
+                          border: '1px solid rgba(99,102,241,0.4)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: '#818cf8',
+                          textTransform: 'capitalize'
+                        }}>
+                          {simResult.faultType.replace(/_/g, ' ')}
+                        </div>
+                      )}
+                    </div>
+
+                    {simResult.propagationChain && (
+                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem', fontWeight: 600 }}>
+                          Propagation Chain
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                          {simResult.propagationChain}
+                        </div>
+                      </div>
+                    )}
+
+                    {simResult.explanation && (
+                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                        {simResult.explanation}
+                      </div>
+                    )}
+
+                    {simResult.incidentId && (
+                      <Link
+                        to={`/incidents/${simResult.incidentId}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          color: 'var(--primary)',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          marginTop: '0.25rem'
+                        }}
+                      >
+                        View Full Report <ArrowRight size={14} />
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>

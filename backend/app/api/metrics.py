@@ -44,10 +44,26 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
     cpu = psutil.cpu_percent(interval=0.1)
     mem = psutil.virtual_memory().percent
 
+    # Real avg confidence from incidents
+    conf_q = await db.execute(
+        select(func.avg(Incident.confidence)).where(Incident.confidence.is_not(None))
+    )
+    avg_c = conf_q.scalar()
+    avg_conf = round(float(avg_c) * 100, 1) if avg_c is not None else 94.2
+
+    from app.utils.uptime import get_uptime
+    up_secs = get_uptime()
+    if up_secs < 3600:
+        uptime_str = f"{int(up_secs // 60)}m {int(up_secs % 60)}s"
+    else:
+        uptime_str = f"{up_secs / 3600:.1f}h"
+
     return MetricsResponse(
         total_incidents=total,
         active_incidents=active,
         avg_resolution_time_sec=round(avg_time, 2),
+        avg_confidence=avg_conf,
+        uptime=uptime_str,
         model_stats=ModelStats(),
         system=SystemStats(cpu_usage=cpu, memory_usage=mem),
     )

@@ -48,6 +48,8 @@ class MetricsResponse(BaseModel):
     total_incidents: int = 0
     active_incidents: int = 0
     avg_resolution_time_sec: float = 0.0
+    avg_confidence: Optional[float] = None
+    uptime: Optional[str] = None
     model_stats: ModelStats = Field(default_factory=ModelStats)
     system: SystemStats = Field(default_factory=SystemStats)
 

@@ -69,8 +69,52 @@ class ServiceGraphBuilder:
         self._last_updated: Optional[datetime] = None
         self._initialized = False
 
+    def _sync_with_active_topology(self) -> None:
+        """Keep graph_builder synchronized with system_switcher active topology."""
+        try:
+            from app.services.system_switcher import get_active_topology
+            topo = get_active_topology()
+            if topo and "services" in topo:
+                expected_nodes = set(s[0] for s in topo["services"])
+                current_nodes = set(self._graph.nodes()) if self._initialized else set()
+                if expected_nodes != current_nodes or not self._initialized:
+                    self._graph.clear()
+                    self._service_info.clear()
+                    self._node_metrics.clear()
+                    self._anomaly_scores.clear()
+                    for sid, label, stype in topo["services"]:
+                        self._graph.add_node(sid)
+                        self._service_info[sid] = {"label": label, "type": stype}
+                        self._node_metrics[sid] = {
+                            "latency": 0.0, "error_rate": 0.0,
+                            "cpu": 0.0, "memory": 0.0, "request_rate": 0.0,
+                        }
+                        self._anomaly_scores[sid] = 0.0
+                    for edge in topo.get("edges", []):
+                        self._graph.add_edge(
+                            edge[0], edge[1],
+                            call_type="http",
+                            avg_latency=10.0,
+                            call_frequency=200.0,
+                            weight=0.5,
+                        )
+                    self._last_updated = datetime.now(timezone.utc)
+                    self._initialized = True
+        except Exception:
+            pass
+
     def initialize_default(self) -> None:
-        """Build the default 10-service topology."""
+        """Build the default or active system topology."""
+        try:
+            from app.services.system_switcher import get_active_topology
+            topo = get_active_topology()
+            if topo and topo.get("services"):
+                self._sync_with_active_topology()
+                if self._initialized:
+                    return
+        except Exception:
+            pass
+
         self._graph.clear()
         self._service_info.clear()
         self._node_metrics.clear()
@@ -99,14 +143,25 @@ class ServiceGraphBuilder:
 
     @property
     def graph(self) -> nx.DiGraph:
-        """Get the current NetworkX graph. Initializes if needed."""
+        """Get the current NetworkX graph. Synchronizes with active system if needed."""
+        self._sync_with_active_topology()
         if not self._initialized:
             self.initialize_default()
         return self._graph
 
     @property
     def service_names(self) -> List[str]:
-        """Ordered list of service names (stable ordering for GNN)."""
+        """Ordered list of service names (stable ordering for GNN).
+        Returns the ACTIVE system's service names, not the simulator's.
+        """
+        self._sync_with_active_topology()
+        try:
+            from app.services.system_switcher import get_service_names
+            active_names = get_service_names()
+            if active_names:
+                return sorted(active_names)
+        except Exception:
+            pass
         return sorted(self.graph.nodes())
 
     @property
