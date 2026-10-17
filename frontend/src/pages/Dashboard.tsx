@@ -570,7 +570,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{
                   width: '40px', height: '40px', borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(0, 200, 255, 0.2))',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2))',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   border: '1px solid rgba(99, 102, 241, 0.3)',
                 }}>
@@ -659,7 +659,7 @@ export default function Dashboard() {
               style={{
                 width: '100%', padding: '0.75rem', marginBottom: '1rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                background: connTesting ? 'rgba(99,102,241,0.05)' : 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(0, 200, 255, 0.15))',
+                background: connTesting ? 'rgba(99,102,241,0.05)' : 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15))',
                 border: '1px solid rgba(99, 102, 241, 0.4)',
                 color: '#6366f1', fontWeight: 700, fontSize: '0.9rem',
               }}
@@ -730,8 +730,8 @@ export default function Dashboard() {
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600 }}>{c.name}</span>
                         <span style={{
                           fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px',
-                          background: 'rgba(0,200,255,0.1)', border: '1px solid rgba(0,200,255,0.3)',
-                          color: '#00c8ff', textTransform: 'uppercase',
+                          background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)',
+                          color: '#818cf8', textTransform: 'uppercase',
                         }}>{c.type}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -756,7 +756,7 @@ export default function Dashboard() {
             {/* Footer Tip */}
             <div style={{
               padding: '0.75rem 1rem', borderRadius: '10px',
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(0, 200, 255, 0.05))',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05))',
               border: '1px solid rgba(99, 102, 241, 0.15)',
               fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5,
             }}>
@@ -821,7 +821,7 @@ export default function Dashboard() {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(0, 200, 255, 0.15))',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15))',
               border: '1px solid rgba(99, 102, 241, 0.4)',
               color: '#6366f1',
               fontWeight: 600,
@@ -835,7 +835,15 @@ export default function Dashboard() {
       </div>
 
       {loading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}><Spinner /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton-line w-50" />
+              <div className="skeleton-line h-lg w-75" />
+              <div className="skeleton-line w-40" />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           {/* Top Stats */}
