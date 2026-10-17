@@ -113,8 +113,8 @@ export default function IncidentDetailPage() {
           style={{
             marginBottom: 24,
             background: "linear-gradient(135deg, rgba(12, 18, 34, 0.95) 0%, rgba(17, 29, 48, 0.92) 100%)",
-            border: "1px solid rgba(59, 130, 246, 0.35)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.15)",
+            border: "1px solid rgba(99, 102, 241, 0.35)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.15)",
             overflow: "hidden",
             position: "relative",
           }}
@@ -126,7 +126,7 @@ export default function IncidentDetailPage() {
             left: "25%",
             width: 320,
             height: 100,
-            background: "rgba(59, 130, 246, 0.15)",
+            background: "rgba(99, 102, 241, 0.15)",
             filter: "blur(48px)",
             pointerEvents: "none",
             borderRadius: "50%",
@@ -171,18 +171,18 @@ export default function IncidentDetailPage() {
                         background: isDone
                           ? "linear-gradient(135deg, #10b981, #059669)"
                           : isActive
-                          ? "linear-gradient(135deg, #3b82f6, #1d4ed8)"
+                          ? "linear-gradient(135deg, #6366f1, #4f46e5)"
                           : "var(--bg-elevated)",
                         border: isDone
                           ? "2px solid #10b981"
                           : isActive
-                          ? "2px solid #60a5fa"
+                          ? "2px solid #818cf8"
                           : "2px solid var(--border)",
                         color: isDone || isActive ? "#fff" : "var(--text-muted)",
                         boxShadow: isDone
                           ? "0 0 12px rgba(16, 185, 129, 0.45)"
                           : isActive
-                          ? "0 0 20px rgba(59, 130, 246, 0.7)"
+                          ? "0 0 20px rgba(99, 102, 241, 0.7)"
                           : "none",
                         transition: "all 0.35s ease",
                       }}
@@ -307,7 +307,7 @@ export default function IncidentDetailPage() {
 
       {/* AI Analysis */}
       {report?.explanation && (
-        <div className="card" style={{ borderColor: 'rgba(59,130,246,0.3)', marginBottom: 20 }}>
+        <div className="card" style={{ borderColor: 'rgba(99,102,241,0.3)', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <span style={{ fontSize: '1.2rem' }}>🧠</span>
             <span className="section-title" style={{ marginBottom: 0 }}>AI Analysis</span>
@@ -331,8 +331,8 @@ export default function IncidentDetailPage() {
                 <div style={{ 
                   padding: '8px 16px', 
                   borderRadius: 8, 
-                  background: i === 0 ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.1)',
-                  border: `1px solid ${i === 0 ? 'rgba(239,68,68,0.3)' : 'rgba(59,130,246,0.2)'}`,
+                  background: i === 0 ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.1)',
+                  border: `1px solid ${i === 0 ? 'rgba(239,68,68,0.3)' : 'rgba(99,102,241,0.2)'}`,
                   fontFamily: 'var(--font-mono)',
                   fontSize: '0.85rem',
                   fontWeight: 600,

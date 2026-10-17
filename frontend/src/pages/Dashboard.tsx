@@ -556,13 +556,13 @@ export default function Dashboard() {
             onClick={e => e.stopPropagation()}
             style={{
               background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(10, 15, 30, 0.98))',
-              border: '1px solid rgba(0, 255, 136, 0.25)',
+              border: '1px solid rgba(99, 102, 241, 0.25)',
               borderRadius: '16px',
               padding: '2rem',
               width: '600px',
               maxHeight: '85vh',
               overflowY: 'auto',
-              boxShadow: '0 0 60px rgba(0, 255, 136, 0.1), 0 25px 50px rgba(0, 0, 0, 0.5)',
+              boxShadow: '0 0 60px rgba(99, 102, 241, 0.1), 0 25px 50px rgba(0, 0, 0, 0.5)',
             }}
           >
             {/* Header */}
@@ -570,11 +570,11 @@ export default function Dashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{
                   width: '40px', height: '40px', borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 255, 0.2))',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2))',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1px solid rgba(0, 255, 136, 0.3)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
                 }}>
-                  <Plug size={20} color="#00ff88" />
+                  <Plug size={20} color="#6366f1" />
                 </div>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>Connect Your System</h2>
@@ -625,7 +625,7 @@ export default function Dashboard() {
                 <input
                   value={connUrl} onChange={e => setConnUrl(e.target.value)}
                   placeholder="http://localhost:9090"
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: '#00ff88', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: '#6366f1', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -659,13 +659,13 @@ export default function Dashboard() {
               style={{
                 width: '100%', padding: '0.75rem', marginBottom: '1rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                background: connTesting ? 'rgba(0,255,136,0.05)' : 'linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 255, 0.15))',
-                border: '1px solid rgba(0, 255, 136, 0.4)',
-                color: '#00ff88', fontWeight: 700, fontSize: '0.9rem',
+                background: connTesting ? 'rgba(99,102,241,0.05)' : 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15))',
+                border: '1px solid rgba(99, 102, 241, 0.4)',
+                color: '#6366f1', fontWeight: 700, fontSize: '0.9rem',
               }}
             >
               {connTesting ? (
-                <><div className="spinner" style={{ width: '14px', height: '14px', borderColor: '#00ff88', borderTopColor: 'transparent' }} /> Testing Connection...</>
+                <><div className="spinner" style={{ width: '14px', height: '14px', borderColor: '#6366f1', borderTopColor: 'transparent' }} /> Testing Connection...</>
               ) : (
                 <><Zap size={16} /> Test Connection</>
               )}
@@ -730,8 +730,8 @@ export default function Dashboard() {
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600 }}>{c.name}</span>
                         <span style={{
                           fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px',
-                          background: 'rgba(0,200,255,0.1)', border: '1px solid rgba(0,200,255,0.3)',
-                          color: '#00c8ff', textTransform: 'uppercase',
+                          background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)',
+                          color: '#818cf8', textTransform: 'uppercase',
                         }}>{c.type}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -756,11 +756,11 @@ export default function Dashboard() {
             {/* Footer Tip */}
             <div style={{
               padding: '0.75rem 1rem', borderRadius: '10px',
-              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 200, 255, 0.05))',
-              border: '1px solid rgba(0, 255, 136, 0.15)',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05))',
+              border: '1px solid rgba(99, 102, 241, 0.15)',
               fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5,
             }}>
-              <span style={{ color: '#00ff88', fontWeight: 600 }}>No live cluster?</span>{' '}
+              <span style={{ color: '#6366f1', fontWeight: 600 }}>No live cluster?</span>{' '}
               Use the <strong style={{ color: 'var(--text-primary)' }}>Simulate Fault</strong> panel to inject synthetic faults — the AI pipeline runs the same GNN + Causal + LLM analysis on simulated data.
             </div>
           </div>
@@ -771,7 +771,7 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ color: 'var(--primary)', textShadow: '0 0 10px var(--primary-glow)' }}>SYNAPSE</span>
+            <span style={{ color: 'var(--primary)' }}>SYNAPSE</span>
             <span className="badge-live" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
               <div className={`status-dot ${isHealthy ? 'green' : 'red'}`} />
               <span>{health ? (health.status === 'healthy' ? 'ONLINE' : health.status.toUpperCase()) : 'OFFLINE'}</span>
@@ -785,7 +785,7 @@ export default function Dashboard() {
           <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 0 0' }}>Real-time AIOps Monitoring</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.2rem', color: 'var(--primary)', textShadow: '0 0 8px var(--primary-glow)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.2rem', color: 'var(--primary)' }}>
             {format(currentTime, 'HH:mm:ss')}
           </div>
           <div className="neon-card" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -821,9 +821,9 @@ export default function Dashboard() {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 255, 0.15))',
-              border: '1px solid rgba(0, 255, 136, 0.4)',
-              color: '#00ff88',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15))',
+              border: '1px solid rgba(99, 102, 241, 0.4)',
+              color: '#6366f1',
               fontWeight: 600,
               fontSize: '0.8rem',
               whiteSpace: 'nowrap',
@@ -835,7 +835,15 @@ export default function Dashboard() {
       </div>
 
       {loading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}><Spinner /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton-line w-50" />
+              <div className="skeleton-line h-lg w-75" />
+              <div className="skeleton-line w-40" />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           {/* Top Stats */}
