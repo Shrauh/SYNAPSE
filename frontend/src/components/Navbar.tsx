@@ -44,7 +44,7 @@ export function Navbar() {
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "0 1.5rem", height: "56px",
-      background: "rgba(6, 11, 24, 0.85)", backdropFilter: "blur(16px)",
+      background: "rgba(15, 20, 25, 0.9)", backdropFilter: "blur(16px)",
       WebkitBackdropFilter: "blur(16px)",
       borderBottom: "1px solid var(--border)",
     }}>
@@ -53,7 +53,7 @@ export function Navbar() {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
         </svg>
-        <span style={{ fontWeight: 800, fontSize: "1.2rem", letterSpacing: "1px", color: "var(--primary)", textShadow: "0 0 12px var(--primary-glow)" }}>
+        <span style={{ fontWeight: 800, fontSize: "1.2rem", letterSpacing: "1px", color: "var(--primary)" }}>
           SYNAPSE
         </span>
       </Link>
@@ -70,10 +70,10 @@ export function Navbar() {
               textDecoration: "none", fontSize: "0.82rem",
               fontWeight: active ? 600 : 500,
               transition: "all 0.2s ease",
-              background: active ? "rgba(59, 130, 246, 0.16)" : "transparent",
+              background: active ? "rgba(99, 102, 241, 0.12)" : "transparent",
               color: active ? "#ffffff" : "var(--text-secondary)",
               border: active ? "1px solid var(--border-bright)" : "1px solid transparent",
-              boxShadow: active ? "0 0 12px rgba(59, 130, 246, 0.2)" : "none",
+              boxShadow: active ? "0 0 8px rgba(99, 102, 241, 0.15)" : "none",
             }}>
               <Icon size={14} color={active ? "var(--primary)" : "currentColor"} />
               <span>{label}</span>
