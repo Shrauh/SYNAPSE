@@ -1,7 +1,3 @@
-"""
-API Router — aggregates all sub-routers into a single v1 router.
-"""
-
 from fastapi import APIRouter
 
 from app.api import graph, health, incidents, metrics, model, rca, severity, ws
@@ -54,3 +50,26 @@ api_router.include_router(alerts.router)
 
 from app.api import connect
 api_router.include_router(connect.router)
+
+# ── P1: Actions, Reports, Audit, Platform Health ─────────────────────────────
+from app.api.actions import (
+    incident_actions_router,
+    actions_router,
+    report_router,
+    audit_router,
+    platform_router,
+)
+
+# Incident-scoped: /api/v1/incidents/{id}/actions, /incidents/{id}/download, etc.
+api_router.include_router(incident_actions_router, prefix="/incidents")
+api_router.include_router(report_router, prefix="/incidents")
+
+# Standalone: /api/v1/actions/{action_id}
+api_router.include_router(actions_router)
+
+# Audit: /api/v1/audit
+api_router.include_router(audit_router)
+
+# Platform health: /api/v1/platform/health
+api_router.include_router(platform_router)
+

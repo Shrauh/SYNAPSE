@@ -48,7 +48,28 @@ async def _run_pipeline_background(
                 logger.info(f"Starting pipeline for incident {incident_id}")
                 await pipeline.run_rca_pipeline(incident, db, sim_hint)
                 logger.info(f"Pipeline completed for incident {incident_id}")
-                
+
+                # Auto-generate suggested actions from RCA result
+                try:
+                    from sqlalchemy import select as sel2
+                    from app.db.models import RCAResult
+                    from app.services.action_service import create_actions_for_incident
+                    r_rca = await db.execute(
+                        sel2(RCAResult).where(RCAResult.incident_id == incident_id)
+                        .order_by(RCAResult.id.desc())
+                    )
+                    rca_result = r_rca.scalars().first()
+                    # Refresh incident to get updated root_cause_service
+                    r_inc = await db.execute(sel2(Incident).where(Incident.id == incident_id))
+                    incident_fresh = r_inc.scalar_one_or_none()
+                    if rca_result and incident_fresh:
+                        actions = await create_actions_for_incident(
+                            db, incident_id, rca_result, incident_fresh
+                        )
+                        logger.info(f"Generated {len(actions)} suggested action(s) for {incident_id}")
+                except Exception as act_err:
+                    logger.warning(f"Action generation failed (non-critical): {act_err}")
+
                 # After successful pipeline run, send notification
                 try:
                     from app.services.notifications import notify_rca_complete
@@ -68,6 +89,7 @@ async def _run_pipeline_background(
             except Exception as e:
                 logger.error(f"Pipeline error for {incident_id}: {e}")
                 traceback.print_exc()
+
                 # Update status in a fresh session to avoid MissingGreenlet
                 try:
                     async with async_session() as err_db:
