@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Sidebar, TopBar } from "./components/Layout";
 import { useLiveAnomalies } from "./hooks/useLiveAnomalies";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import "./styles/auth.css";
 
 // Existing pages (preserved — not replaced)
 import Dashboard from "./pages/Dashboard";
@@ -19,6 +22,13 @@ import NotificationsPage from "./pages/NotificationsPage";
 import ActionsWorkspace from "./pages/ActionsWorkspace";
 import PlatformHealthPage from "./pages/PlatformHealthPage";
 import AuditPage from "./pages/AuditPage";
+
+// Auth pages
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import ProfilePage from "./pages/auth/ProfilePage";
 
 // Approval queue — simple redirect to incidents list filtered
 function ApprovalQueuePage() {
@@ -64,30 +74,29 @@ function AppInner() {
         <TopBar />
         <main style={{ flex: 1, overflowY: "auto" }}>
           <Routes>
-            {/* Existing routes — all preserved */}
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/graph" element={<GraphPage />} />
-            <Route path="/incidents" element={<IncidentList />} />
-            <Route path="/incidents/:id" element={<IncidentDetail />} />
-            <Route path="/simulate" element={<SimulatePage />} />
-            <Route path="/model" element={<ModelStatusPage />} />
-            <Route path="/evaluation" element={<EvaluationPage />} />
-            <Route path="/alerts" element={<AlertsPage />} />
-            <Route path="/logs" element={<LogsPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
+            {/* ── Public auth routes ── */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-            {/* P1 — new routes (additive) */}
-            {/* Actions workspace: reached from incident detail OR directly */}
-            <Route path="/incidents/:id/actions" element={<ActionsWorkspace />} />
-            <Route path="/actions" element={
-              <div style={{ padding: "32px", color: "var(--text-muted)" }}>
-                Select an incident first to view its actions.{" "}
-                <a href="/incidents" style={{ color: "var(--primary)" }}>Go to Incidents →</a>
-              </div>
-            } />
-            <Route path="/approval-queue" element={<ApprovalQueuePage />} />
-            <Route path="/platform" element={<PlatformHealthPage />} />
-            <Route path="/audit" element={<AuditPage />} />
+            {/* ── Protected routes ── */}
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/graph" element={<ProtectedRoute><GraphPage /></ProtectedRoute>} />
+            <Route path="/incidents" element={<ProtectedRoute><IncidentList /></ProtectedRoute>} />
+            <Route path="/incidents/:id" element={<ProtectedRoute><IncidentDetail /></ProtectedRoute>} />
+            <Route path="/incidents/:id/actions" element={<ProtectedRoute><ActionsWorkspace /></ProtectedRoute>} />
+            <Route path="/simulate" element={<ProtectedRoute><SimulatePage /></ProtectedRoute>} />
+            <Route path="/model" element={<ProtectedRoute><ModelStatusPage /></ProtectedRoute>} />
+            <Route path="/evaluation" element={<ProtectedRoute><EvaluationPage /></ProtectedRoute>} />
+            <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
+            <Route path="/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/approval-queue" element={<ProtectedRoute><ApprovalQueuePage /></ProtectedRoute>} />
+            <Route path="/platform" element={<ProtectedRoute><PlatformHealthPage /></ProtectedRoute>} />
+            <Route path="/audit" element={<ProtectedRoute requiredRole="admin"><AuditPage /></ProtectedRoute>} />
+            <Route path="/actions" element={<ProtectedRoute><div style={{ padding: "32px", color: "var(--text-muted)" }}>Select an incident first. <a href="/incidents" style={{ color: "var(--primary)" }}>Go to Incidents →</a></div></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           </Routes>
         </main>
       </div>
@@ -98,7 +107,9 @@ function AppInner() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppInner />
+      <AuthProvider>
+        <AppInner />
+      </AuthProvider>
     </BrowserRouter>
   );
 }

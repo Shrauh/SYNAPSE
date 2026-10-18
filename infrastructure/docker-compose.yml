@@ -76,18 +76,18 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    networks:
-      - synapse-net
-
-  loki:
-    image: grafana/loki:latest
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+      - prometheus_data:/prometheus
     networks:
       - synapse-net
     restart: unless-stopped
 
+  # NOTE: Loki removed — TLS handshake error prevents pull on this machine.
+  # To re-enable: docker pull grafana/loki:latest then add it back.
+
+volumes:
+  prometheus_data:
+
 networks:
   synapse-net:
+    name: synapse-net
     driver: bridge

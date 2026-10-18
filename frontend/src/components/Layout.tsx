@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import ProfileMenu from "./ProfileMenu";
+
 
 interface NavItem {
   path: string;
@@ -230,23 +232,7 @@ export function TopBar() {
       </h1>
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <StatusPill />
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border-bright)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "12px",
-            color: "var(--text-secondary)",
-            cursor: "pointer",
-          }}
-        >
-          OP
-        </div>
+        <ProfileMenu />
       </div>
     </header>
   );

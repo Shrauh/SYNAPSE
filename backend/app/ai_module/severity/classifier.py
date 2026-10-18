@@ -1,4 +1,4 @@
-﻿"""
+"""
 Severity classifier for incident management.
 
 Classifies incidents into 4 levels based on the number of anomalous services,
@@ -141,13 +141,17 @@ class SeverityClassifier:
     def record_incident(
         self,
         root_cause_service: str,
-        severity_level: SeverityLevel,
-        resolved: bool = False
+        severity_level: Optional[SeverityLevel] = None,
+        resolved: bool = False,
+        # Alias used by orchestrator.py — accepts severity= as well
+        severity: Optional[SeverityLevel] = None,
     ) -> None:
         """Record an incident in the history for recurring pattern detection."""
+        # Accept severity= alias (used by orchestrator) or severity_level=
+        resolved_severity = severity_level or severity
         self._incident_history.append({
             'root_cause': root_cause_service,
-            'severity': severity_level,
+            'severity': resolved_severity,
             'resolved': resolved,
             'timestamp': datetime.now(timezone.utc).isoformat(),
         })

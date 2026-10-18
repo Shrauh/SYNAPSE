@@ -73,3 +73,6 @@ api_router.include_router(audit_router)
 # Platform health: /api/v1/platform/health
 api_router.include_router(platform_router)
 
+# ── Authentication ────────────────────────────────────────────────────────────
+from app.api.auth import router as auth_router
+api_router.include_router(auth_router)
