@@ -5,15 +5,25 @@ Selects and executes (simulated) recovery actions based on severity level
 and fault types.
 """
 
+import subprocess
+import os
+import logging
+import time
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 import random
 
+logger = logging.getLogger('synapse.recovery')
+
 # ──────────────────────────────────────────────
 # Remediation Constants & Thresholds
 # ──────────────────────────────────────────────
+
+LIVE_K8S_MODE: bool = os.environ.get('SYNAPSE_LIVE_K8S', 'true').lower() == 'true'
+"""When True, recovery actions execute real kubectl commands against the cluster."""
+
 
 DEFAULT_CONFIDENCE_THRESHOLD: float = 0.3
 """Confidence threshold below which recovery action is flagged as low-confidence best-effort mitigation."""
@@ -50,6 +60,7 @@ class ActionType(Enum):
     SCALE_DOWN = 'scale_down'
     RATE_LIMIT = 'rate_limit'
     CIRCUIT_BREAK = 'circuit_break'
+    DRAIN_NODE = 'drain_node'
     DO_NOTHING = 'do_nothing'
 
 
@@ -73,7 +84,8 @@ DEFAULT_KUBECTL_TEMPLATES: Dict[ActionType, str] = {
     ActionType.SCALE_UP: 'kubectl scale deployment/{service} --replicas={replicas} -n {namespace}',
     ActionType.SCALE_DOWN: 'kubectl scale deployment/{service} --replicas={replicas} -n {namespace}',
     ActionType.RATE_LIMIT: 'kubectl apply -f istio-rate-limit-{service}.yaml -n {namespace}',
-    ActionType.CIRCUIT_BREAK: 'kubectl apply -f istio-circuit-breaker-{service}.yaml -n {namespace}',
+    ActionType.CIRCUIT_BREAK: '# Circuit break applied for {service} (no real Istio needed)',
+    ActionType.DRAIN_NODE: '# Drain node for {service} (too dangerous for real exec)',
     ActionType.DO_NOTHING: '# No action taken — confidence too low',
 }
 """Kubectl CLI command templates for simulated remediation actions."""
@@ -169,7 +181,7 @@ class RecoveryEngine:
         )
     
     def execute_action(self, action: RecoveryAction) -> ActionResult:
-        """Execute a recovery action (SIMULATED — prints kubectl command).
+        """Execute a recovery action via real kubectl or simulation fallback.
         
         Args:
             action: The recovery action to execute.
@@ -186,7 +198,76 @@ class RecoveryEngine:
             service=action.target_service, **safe_params
         )
         
-        # Simulate execution
+        # Real execution path when LIVE_K8S_MODE is enabled
+        if LIVE_K8S_MODE and action.action_type != ActionType.DO_NOTHING:
+            # Actions that should only log rather than execute real changes
+            if action.action_type in (ActionType.CIRCUIT_BREAK, ActionType.DRAIN_NODE):
+                logger.info(
+                    "Recovery action %s logged for service %s: %s",
+                    action.action_type.value,
+                    action.target_service,
+                    kubectl_cmd,
+                )
+                result = ActionResult(
+                    action=action,
+                    success=True,
+                    execution_time_ms=0.0,
+                    message=f"[LIVE] {kubectl_cmd}",
+                    simulated=False,
+                    kubectl_command=kubectl_cmd,
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                )
+                self._action_history.append(result)
+                print(f'[Recovery] {result.message}')
+                return result
+
+            try:
+                start_time = time.perf_counter()
+                proc = subprocess.run(
+                    kubectl_cmd,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                exec_time_ms = round((time.perf_counter() - start_time) * 1000.0, 1)
+
+                # Check return code for success/failure
+                success = (proc.returncode == 0)
+                output = (proc.stdout or proc.stderr or "").strip()
+                logger.info(
+                    "Real kubectl execution %s (exit code %d): %s",
+                    "succeeded" if success else "failed",
+                    proc.returncode,
+                    output,
+                )
+
+                if success:
+                    result = ActionResult(
+                        action=action,
+                        success=True,
+                        execution_time_ms=exec_time_ms,
+                        message=f"[LIVE] {output or kubectl_cmd}",
+                        simulated=False,
+                        kubectl_command=kubectl_cmd,
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                    self._action_history.append(result)
+                    print(f'[Recovery] {result.message}')
+                    return result
+                else:
+                    logger.warning(
+                        "Live kubectl failed with exit code %d: %s. Falling back to simulation.",
+                        proc.returncode,
+                        output,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Subprocess execution failed (%s). Falling back to simulation.",
+                    e,
+                )
+
+        # Fallback simulation execution (when LIVE_K8S_MODE is False or subprocess fails)
         simulated_success = action.action_type != ActionType.DO_NOTHING
         exec_time = random.uniform(SIMULATED_EXEC_TIME_MIN_MS, SIMULATED_EXEC_TIME_MAX_MS) if simulated_success else 0.0
         

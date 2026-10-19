@@ -33,9 +33,6 @@ api_router.include_router(ws.router)
 api_router.include_router(fault_injection.router)
 api_router.include_router(ollama.router)
 
-# K8s
-from app.api import k8s
-api_router.include_router(k8s.router)
 
 from app.api import system
 api_router.include_router(system.router)

@@ -57,3 +57,31 @@ export const listConnections = () =>
   api.get<{ name: string; type: string; url: string; status: string; latency_ms: number; last_checked: string }[]>("/connect/list").then(r => r.data);
 export const removeConnection = (name: string) =>
   api.delete(`/connect/${name}`).then(r => r.data);
+
+// Kubernetes Cluster
+export const getK8sPods = async (): Promise<any> => {
+  const res = await fetch("http://localhost:8000/api/v1/k8s/pods");
+  if (!res.ok) throw new Error('Failed to fetch pods');
+  return res.json();
+};
+
+export const injectK8sFault = async (service: string, faultType: string = 'pod_kill'): Promise<any> => {
+  const res = await fetch("http://localhost:8000/api/v1/k8s/inject-fault", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ service, fault_type: faultType })
+  });
+  if (!res.ok) throw new Error('Failed to inject fault');
+  return res.json();
+};
+
+export const recoverK8sService = async (service: string, action: string = 'restart_pod'): Promise<any> => {
+  const res = await fetch("http://localhost:8000/api/v1/k8s/recover", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ service, action })
+  });
+  if (!res.ok) throw new Error('Recovery failed');
+  return res.json();
+};
+

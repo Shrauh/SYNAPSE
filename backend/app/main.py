@@ -31,6 +31,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.api.k8s import router as k8s_router
 from app.config import settings
 from app.db.database import init_db
 
@@ -94,6 +95,7 @@ app.add_middleware(
 
 # Mount all API routes under /api/v1
 app.include_router(api_router)
+app.include_router(k8s_router, prefix="/api/v1")
 
 @app.get("/health", tags=["Root"], include_in_schema=False)
 async def health_shortcut():

@@ -70,7 +70,7 @@ class KubernetesDiscovery:
                                 edges.append({"source": service, "target": ds.strip()})
         return edges
 
-    def get_pod_status(self, service_name: str) -> List[Dict[str, str]]:
+    def get_pod_status(self, service_name: str) -> List[Dict[str, Any]]:
         data = _kubectl(f"get pods -l app={service_name} -n default -o json")
         if not data or 'items' not in data:
             return []
@@ -79,15 +79,24 @@ class KubernetesDiscovery:
         for item in data['items']:
             pod_name = item['metadata']['name']
             status = item.get('status', {}).get('phase', 'Unknown')
-            # Check for CrashLoopBackOff
+            restarts = 0
             container_statuses = item.get('status', {}).get('containerStatuses', [])
             for cs in container_statuses:
-                if cs.get('state', {}).get('waiting', {}).get('reason') == 'CrashLoopBackOff':
-                    status = 'CrashLoopBackOff'
+                restarts += cs.get('restartCount', 0)
+                waiting_reason = cs.get('state', {}).get('waiting', {}).get('reason', '')
+                term_reason = cs.get('state', {}).get('terminated', {}).get('reason', '')
+                if waiting_reason in ('CrashLoopBackOff', 'Error'):
+                    status = waiting_reason
+                    break
+                elif term_reason in ('Error', 'CrashLoopBackOff'):
+                    status = term_reason
                     break
             statuses.append({
                 "pod_name": pod_name,
-                "status": status
+                "name": pod_name,
+                "service": service_name,
+                "status": status,
+                "restarts": restarts
             })
         return statuses
 
