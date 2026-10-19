@@ -4,11 +4,7 @@ import { X, Zap, CheckCircle, Loader } from "lucide-react";
 import { simulateFault, getActiveSystem } from "../api/endpoints";
 import { useNavigate } from "react-router-dom";
 
-const FALLBACK_SERVICES = [
-  "api-gateway","auth-service","user-service","payment-service",
-  "order-service","inventory-service","notification-service",
-  "search-service","cache-service","database",
-];
+const FALLBACK_SERVICES = ["api-gateway", "auth-service"];
 const FAULT_TYPES = ["latency_spike","error_burst","resource_exhaustion"];
 const SEVERITIES = ["low","medium","high","critical"];
 
@@ -25,6 +21,7 @@ interface Props { onClose: () => void; }
 export function SimulateModal({ onClose }: Props) {
   const nav = useNavigate();
   const [services, setServices] = useState<string[]>(FALLBACK_SERVICES);
+  const [activeSystemName, setActiveSystemName] = useState<string>("");
   const [form, setForm] = useState({
     root_cause_service: "",
     fault_type: "latency_spike",
@@ -37,12 +34,65 @@ export function SimulateModal({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getActiveSystem().then(sys => {
-      if (sys?.services?.length) {
-        setServices(sys.services);
-        setForm(f => ({ ...f, root_cause_service: f.root_cause_service || sys.services[0] }));
+    let mounted = true;
+
+    const fetchActiveServices = async () => {
+      try {
+        const sys = await getActiveSystem();
+        if (!mounted) return;
+        if (sys?.services && sys.services.length > 0) {
+          setServices(sys.services);
+          setActiveSystemName(sys.label || sys.system || "");
+          setForm(f => ({
+            ...f,
+            root_cause_service: sys.services.includes(f.root_cause_service) ? f.root_cause_service : sys.services[0]
+          }));
+        } else {
+          setServices(FALLBACK_SERVICES);
+          setForm(f => ({
+            ...f,
+            root_cause_service: FALLBACK_SERVICES.includes(f.root_cause_service) ? f.root_cause_service : FALLBACK_SERVICES[0]
+          }));
+        }
+      } catch {
+        if (!mounted) return;
+        setServices(FALLBACK_SERVICES);
+        setForm(f => ({
+          ...f,
+          root_cause_service: FALLBACK_SERVICES.includes(f.root_cause_service) ? f.root_cause_service : FALLBACK_SERVICES[0]
+        }));
       }
-    }).catch(() => {});
+    };
+
+    fetchActiveServices();
+
+    // Re-fetch when active system changes via live WebSocket
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket("ws://localhost:8000/api/v1/live");
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "system_switched") {
+            if (data.services && data.services.length > 0) {
+              setServices(data.services);
+              setActiveSystemName(data.system || "");
+              setForm(f => ({
+                ...f,
+                root_cause_service: data.services[0]
+              }));
+            } else {
+              fetchActiveServices();
+            }
+          }
+        } catch {}
+      };
+    } catch {}
+
+    return () => {
+      mounted = false;
+      ws?.close();
+    };
   }, []);
 
   useEffect(() => {
@@ -98,13 +148,15 @@ export function SimulateModal({ onClose }: Props) {
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(239,68,68,0.15)",
-              display: "flex", alignItems: "center", justifyContent: "center", color: "var(--status-critical)" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(99,102,241,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center", color: "#6366f1" }}>
               <Zap size={18} />
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: "1rem" }}>Simulate Fault</div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Inject a synthetic fault and run full RCA</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                {activeSystemName ? `Active Topology: ${activeSystemName} (${services.length} services)` : "Inject a synthetic fault and run full RCA"}
+              </div>
             </div>
           </div>
 
@@ -149,14 +201,14 @@ export function SimulateModal({ onClose }: Props) {
               {STEPS.map((s, i) => (
                 <motion.div key={i} initial={{ opacity: 0, x: -12 }} animate={{ opacity: i <= step ? 1 : 0.3, x: 0 }}
                   style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {i < step ? <CheckCircle size={16} color="var(--status-healthy)" /> :
-                   i === step ? <Loader size={16} color="var(--accent-blue)" style={{ animation: "spin 1s linear infinite" }} /> :
+                  {i < step ? <CheckCircle size={16} color="#10b981" /> :
+                   i === step ? <Loader size={16} color="#6366f1" style={{ animation: "spin 1s linear infinite" }} /> :
                    <div style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--border)" }} />}
                   <span style={{ fontSize: "0.85rem", color: i <= step ? "var(--text-primary)" : "var(--text-muted)" }}>{s}</span>
                 </motion.div>
               ))}
               {incidentId && step === STEPS.length - 1 && (
-                <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(16,185,129,0.1)", borderRadius: 8, fontSize: "0.8rem", color: "var(--status-healthy)" }}>
+                <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(16,185,129,0.1)", borderRadius: 8, fontSize: "0.8rem", color: "#10b981" }}>
                   Incident ID: <span className="mono">{incidentId}</span> — Redirecting...
                 </div>
               )}

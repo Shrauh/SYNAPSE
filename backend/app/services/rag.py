@@ -9,6 +9,39 @@ from datetime import datetime
 import chromadb
 from chromadb import EmbeddingFunction, Embeddings
 
+# ── RAG & Causal Prior Constants ──────────────────────────────────────────────
+
+DEFAULT_BASE_TOPOLOGY_WEIGHT: float = 0.85
+"""Base causal prior weight assigned to direct service topology dependency edges in W0."""
+
+DEFAULT_RUNBOOK_BOOST_WEIGHT: float = 0.25
+"""Additive prior probability boost when a runbook identifies a service as root cause."""
+
+DEFAULT_TRANSITIVE_WEIGHT: float = 0.35
+"""Prior probability floor applied to 2-hop transitive causal dependencies in W0."""
+
+MAX_PRIOR_WEIGHT: float = 1.0
+"""Maximum allowed value for entries in the causal prior matrix W0."""
+
+MIN_PRIOR_WEIGHT: float = 0.0
+"""Baseline/diagonal weight representing absence of causal influence."""
+
+EMBEDDING_DIM: int = 128
+"""Dimensionality of the deterministic hash-based embedding vector."""
+
+SIMILARITY_ROUND_DECIMALS: int = 3
+"""Number of decimal places for rounding cosine similarity scores."""
+
+DEFAULT_RETRIEVAL_LIMIT: int = 3
+"""Default maximum number of similar incidents or runbooks to retrieve."""
+
+DEFAULT_PROMPT_RETRIEVAL_LIMIT: int = 2
+"""Number of top similar incidents and runbooks injected into the prompt."""
+
+DEFAULT_PERSIST_DIR: str = "./data/chromadb"
+"""Default local filesystem path for ChromaDB persistent storage."""
+
+
 # ── Lightweight embedding (no GPU / model download needed) ────────────────────
 class SynapseHashEmbedding(EmbeddingFunction):
     def __init__(self): pass
@@ -20,7 +53,7 @@ class SynapseHashEmbedding(EmbeddingFunction):
                 text.lower().strip().encode()
             ).hexdigest()[:8], 16)
             rng = np.random.default_rng(seed)
-            results.append(rng.random(128).tolist())
+            results.append(rng.random(EMBEDDING_DIM).tolist())
         return results
 
 
@@ -57,6 +90,76 @@ RUNBOOKS = [
         ),
         "fault_type": "cpu_stress",
         "root_service": "payment",
+    },
+    {
+        "id": "rb_cpu_overload",
+        "content": (
+            "CPU Overload Runbook: Service CPU utilization spikes above 90% causing thread starvation and queuing delays. "
+            "Scale deployment horizontally or increase CPU limits in cgroups. "
+            "Root cause: affected service. Victims: direct downstream callers."
+        ),
+        "fault_type": "cpu_overload",
+        "root_service": "payment",
+    },
+    {
+        "id": "rb_latency_spike",
+        "content": (
+            "Latency Spike Runbook: Response time surge across critical service path. "
+            "Perform rolling restart and inspect thread contention or slow query logs. "
+            "Root cause: target service. Victims: upstream callers."
+        ),
+        "fault_type": "latency_spike",
+        "root_service": "orderdb",
+    },
+    {
+        "id": "rb_error_burst",
+        "content": (
+            "Error Burst Runbook: Sudden surge in HTTP 5xx responses or runtime exceptions. "
+            "Inspect pod exception logs, trip circuit breakers to protect downstream services, and restart crashing pods. "
+            "Root cause: failing service."
+        ),
+        "fault_type": "error_burst",
+        "root_service": "payment",
+    },
+    {
+        "id": "rb_memory_leak",
+        "content": (
+            "Memory Leak Runbook: Unchecked heap growth and progressive GC pauses approaching OOM kill. "
+            "Capture heap dump, restart deployment to reclaim memory, and profile object retention. "
+            "Root cause: leaking service."
+        ),
+        "fault_type": "memory_leak",
+        "root_service": "order",
+    },
+    {
+        "id": "rb_connection_timeout",
+        "content": (
+            "Connection Timeout Runbook: Upstream socket connection pool exhaustion or network SYN drops. "
+            "Increase connection pool limits, apply Istio circuit breaking, and check endpoint readiness. "
+            "Root cause: target backend service."
+        ),
+        "fault_type": "connection_timeout",
+        "root_service": "orderdb",
+    },
+    {
+        "id": "rb_disk_pressure",
+        "content": (
+            "Disk Pressure Runbook: Local node storage saturation and IOPS bottleneck stalling write operations. "
+            "Clean ephemeral storage, rotate log files, and increase persistent volume claim capacity. "
+            "Root cause: saturated storage service."
+        ),
+        "fault_type": "disk_pressure",
+        "root_service": "orderdb",
+    },
+    {
+        "id": "rb_network_partition",
+        "content": (
+            "Network Partition Runbook: Cross-zone routing failure or Kubernetes network policy misconfiguration causing packet drops. "
+            "Inspect Calico/Cilium policies, CoreDNS resolution, and Istio VirtualService routing rules. "
+            "Root cause: isolated service."
+        ),
+        "fault_type": "network_partition",
+        "root_service": "redis",
     },
     {
         "id": "rb_db_exhaustion",
@@ -128,7 +231,8 @@ class SynapseRAG:
     Collections: 'incidents' and 'runbooks'
     """
 
-    def __init__(self, persist_dir: str = "./data/chromadb"):
+    def __init__(self, persist_dir: str = DEFAULT_PERSIST_DIR):
+        self._persist_dir = persist_dir
         os.makedirs(persist_dir, exist_ok=True)
         self._ef     = SynapseHashEmbedding()
         self._client = chromadb.PersistentClient(path=persist_dir)
@@ -181,7 +285,7 @@ class SynapseRAG:
     def retrieve_similar_incidents(
         self,
         query:             str,
-        n_results:         int = 3,
+        n_results:         int = DEFAULT_RETRIEVAL_LIMIT,
         fault_type_filter: Optional[str] = None,
     ) -> List[Dict]:
         count = self._incidents.count()
@@ -202,13 +306,13 @@ class SynapseRAG:
             out.append({
                 "document":   doc,
                 "metadata":   results["metadatas"][0][i],
-                "similarity": round(1 - results["distances"][0][i], 3),
+                "similarity": round(1 - results["distances"][0][i], SIMILARITY_ROUND_DECIMALS),
             })
         return out
 
     # ── Retrieve runbooks ─────────────────────────────────────────────────────
     def retrieve_runbooks(
-        self, query: str, n_results: int = 3
+        self, query: str, n_results: int = DEFAULT_RETRIEVAL_LIMIT
     ) -> List[Dict]:
         count = self._runbooks.count()
         if count == 0:
@@ -224,7 +328,7 @@ class SynapseRAG:
                 "document":     doc,
                 "fault_type":   m.get("fault_type", ""),
                 "root_service": m.get("root_service", ""),
-                "similarity":   round(1 - results["distances"][0][i], 3),
+                "similarity":   round(1 - results["distances"][0][i], SIMILARITY_ROUND_DECIMALS),
             })
         return out
 
@@ -233,13 +337,15 @@ class SynapseRAG:
         self,
         anomaly_description: str,
         fault_type: Optional[str] = None,
+        n_incidents: int = DEFAULT_PROMPT_RETRIEVAL_LIMIT,
+        n_runbooks: int = DEFAULT_PROMPT_RETRIEVAL_LIMIT,
     ) -> str:
         incidents = self.retrieve_similar_incidents(
-            anomaly_description, n_results=2,
+            anomaly_description, n_results=n_incidents,
             fault_type_filter=fault_type
         )
         runbooks = self.retrieve_runbooks(
-            anomaly_description, n_results=2
+            anomaly_description, n_results=n_runbooks
         )
         parts = [
             "You are SYNAPSE, an AI root cause analysis system.",
@@ -273,45 +379,53 @@ class SynapseRAG:
 
     # ── Generate W0 prior matrix (novel SYNAPSE contribution) ─────────────────
     def generate_w0_prior(
-        self, anomaly_description: str
+        self,
+        anomaly_description: str,
+        service_ids: Optional[List[str]] = None,
+        topology: Optional[Dict[str, List[str]]] = None,
+        base_weight: float = DEFAULT_BASE_TOPOLOGY_WEIGHT,
+        boost_weight: float = DEFAULT_RUNBOOK_BOOST_WEIGHT,
+        transitive_weight: float = DEFAULT_TRANSITIVE_WEIGHT,
     ) -> np.ndarray:
         """
         W0[i][j] = probability that service i causally influences service j.
         Injected into DECI loss: L += lambda * ||W*(1 - W0)||_F
         """
-        n   = len(SERVICE_IDS)
-        idx = {s: i for i, s in enumerate(SERVICE_IDS)}
+        active_ids = service_ids if service_ids is not None else SERVICE_IDS
+        active_topology = topology if topology is not None else TOPOLOGY
+        n   = len(active_ids)
+        idx = {s: i for i, s in enumerate(active_ids)}
         w0  = np.zeros((n, n))
 
         # Base topology edges
-        for src, targets in TOPOLOGY.items():
+        for src, targets in active_topology.items():
             if src not in idx:
                 continue
             for tgt in targets:
                 if tgt in idx:
-                    w0[idx[src]][idx[tgt]] = 0.85
+                    w0[idx[src]][idx[tgt]] = base_weight
 
         # Boost from retrieved runbooks
-        rbs = self.retrieve_runbooks(anomaly_description, n_results=2)
+        rbs = self.retrieve_runbooks(anomaly_description, n_results=DEFAULT_PROMPT_RETRIEVAL_LIMIT)
         for rb in rbs:
             root = rb.get("root_service", "")
             if root in idx:
-                for caller, callees in TOPOLOGY.items():
+                for caller, callees in active_topology.items():
                     if root in callees and caller in idx:
                         w0[idx[root]][idx[caller]] = min(
-                            1.0,
-                            w0[idx[root]][idx[caller]] + 0.25
+                            MAX_PRIOR_WEIGHT,
+                            w0[idx[root]][idx[caller]] + boost_weight
                         )
 
         # 2-hop transitive edges (weaker weight)
         for i in range(n):
             for j in range(n):
-                if w0[i][j] > 0:
+                if w0[i][j] > MIN_PRIOR_WEIGHT:
                     for k in range(n):
-                        if w0[j][k] > 0 and i != k:
-                            w0[i][k] = max(w0[i][k], 0.35)
+                        if w0[j][k] > MIN_PRIOR_WEIGHT and i != k:
+                            w0[i][k] = max(w0[i][k], transitive_weight)
 
-        np.fill_diagonal(w0, 0.0)
+        np.fill_diagonal(w0, MIN_PRIOR_WEIGHT)
         return w0
 
     # ── Stats ─────────────────────────────────────────────────────────────────

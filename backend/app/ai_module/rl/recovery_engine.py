@@ -11,6 +11,38 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 import random
 
+# ──────────────────────────────────────────────
+# Remediation Constants & Thresholds
+# ──────────────────────────────────────────────
+
+DEFAULT_CONFIDENCE_THRESHOLD: float = 0.3
+"""Confidence threshold below which recovery action is flagged as low-confidence best-effort mitigation."""
+
+ESCALATION_SEVERITY_LEVEL: int = 4
+"""Severity level threshold at or above which automated remediation escalates to SRE."""
+
+DEFAULT_SCALE_UP_REPLICAS: int = 4
+"""Default target replica count for SCALE_UP remediation action."""
+
+DEFAULT_SCALE_DOWN_REPLICAS: int = 1
+"""Default target replica count for SCALE_DOWN remediation action."""
+
+DEFAULT_FALLBACK_REPLICAS: int = 2
+"""Safe fallback replica count when executing scaled commands without specified parameter."""
+
+SIMULATED_EXEC_TIME_MIN_MS: float = 1000.0
+"""Minimum simulated execution duration in milliseconds for realistic latency modeling."""
+
+SIMULATED_EXEC_TIME_MAX_MS: float = 5000.0
+"""Maximum simulated execution duration in milliseconds for realistic latency modeling."""
+
+RECOVERY_VERIFICATION_THRESHOLD: float = 0.5
+"""Post-action anomaly score threshold below which a service is considered successfully recovered."""
+
+DEFAULT_K8S_NAMESPACE: str = "default"
+"""Default Kubernetes namespace used in remediation commands."""
+
+
 class ActionType(Enum):
     """Enumeration of possible recovery action types."""
     RESTART_POD = 'restart_pod'
@@ -19,6 +51,33 @@ class ActionType(Enum):
     RATE_LIMIT = 'rate_limit'
     CIRCUIT_BREAK = 'circuit_break'
     DO_NOTHING = 'do_nothing'
+
+
+# Complete fault type to action mapping (learned rules)
+DEFAULT_FAULT_ACTION_MAP: Dict[str, ActionType] = {
+    'latency_spike': ActionType.RESTART_POD,
+    'error_spike': ActionType.RESTART_POD,
+    'error_burst': ActionType.SCALE_UP,
+    'cpu_overload': ActionType.SCALE_UP,
+    'memory_leak': ActionType.RESTART_POD,
+    'connection_timeout': ActionType.CIRCUIT_BREAK,
+    'disk_pressure': ActionType.RESTART_POD,
+    'network_partition': ActionType.CIRCUIT_BREAK,
+    'cascading_failure': ActionType.RATE_LIMIT,
+    'resource_exhaustion': ActionType.SCALE_UP,
+}
+"""Mapping of incident fault types to their automated remediation action types."""
+
+DEFAULT_KUBECTL_TEMPLATES: Dict[ActionType, str] = {
+    ActionType.RESTART_POD: 'kubectl rollout restart deployment/{service} -n {namespace}',
+    ActionType.SCALE_UP: 'kubectl scale deployment/{service} --replicas={replicas} -n {namespace}',
+    ActionType.SCALE_DOWN: 'kubectl scale deployment/{service} --replicas={replicas} -n {namespace}',
+    ActionType.RATE_LIMIT: 'kubectl apply -f istio-rate-limit-{service}.yaml -n {namespace}',
+    ActionType.CIRCUIT_BREAK: 'kubectl apply -f istio-circuit-breaker-{service}.yaml -n {namespace}',
+    ActionType.DO_NOTHING: '# No action taken — confidence too low',
+}
+"""Kubectl CLI command templates for simulated remediation actions."""
+
 
 @dataclass
 class RecoveryAction:
@@ -44,30 +103,14 @@ class RecoveryEngine:
     """Selects and executes (simulated) recovery actions based on severity level."""
     
     # Fault type to action mapping (learned rules)
-    FAULT_ACTION_MAP = {
-        'latency_spike': ActionType.RESTART_POD,
-        'error_spike': ActionType.RESTART_POD,
-        'error_burst': ActionType.SCALE_UP,
-        'cpu_overload': ActionType.SCALE_UP,
-        'memory_leak': ActionType.RESTART_POD,
-        'connection_timeout': ActionType.CIRCUIT_BREAK,
-        'cascading_failure': ActionType.RATE_LIMIT,
-        'resource_exhaustion': ActionType.SCALE_UP,
-    }
+    FAULT_ACTION_MAP = DEFAULT_FAULT_ACTION_MAP
     
-    KUBECTL_TEMPLATES = {
-        ActionType.RESTART_POD: 'kubectl rollout restart deployment/{service} -n default',
-        ActionType.SCALE_UP: 'kubectl scale deployment/{service} --replicas={replicas} -n default',
-        ActionType.SCALE_DOWN: 'kubectl scale deployment/{service} --replicas={replicas} -n default',
-        ActionType.RATE_LIMIT: 'kubectl apply -f istio-rate-limit-{service}.yaml',
-        ActionType.CIRCUIT_BREAK: 'kubectl apply -f istio-circuit-breaker-{service}.yaml',
-        ActionType.DO_NOTHING: '# No action taken — confidence too low',
-    }
+    KUBECTL_TEMPLATES = DEFAULT_KUBECTL_TEMPLATES
     
-    def __init__(self):
+    def __init__(self, confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD):
         """Initialize the recovery engine."""
         self._action_history: List[ActionResult] = []
-        self._confidence_threshold = 0.3
+        self._confidence_threshold = confidence_threshold
     
     def select_action(
         self, 
@@ -90,7 +133,7 @@ class RecoveryEngine:
             Selected RecoveryAction.
         """
         # L4 only: Don't auto-fix catastrophic / design-flaw issues
-        if severity_level >= 4:
+        if severity_level >= ESCALATION_SEVERITY_LEVEL:
             return RecoveryAction(
                 action_type=ActionType.RESTART_POD, 
                 target_service=root_cause_service, 
@@ -113,9 +156,9 @@ class RecoveryEngine:
         
         params = {}
         if action_type in (ActionType.SCALE_UP,):
-            params['replicas'] = 4
+            params['replicas'] = DEFAULT_SCALE_UP_REPLICAS
         elif action_type in (ActionType.SCALE_DOWN,):
-            params['replicas'] = 1
+            params['replicas'] = DEFAULT_SCALE_DOWN_REPLICAS
         
         return RecoveryAction(
             action_type=action_type, 
@@ -134,14 +177,18 @@ class RecoveryEngine:
         Returns:
             ActionResult indicating success or failure.
         """
-        safe_params = {"replicas": 2, **action.parameters}
+        safe_params = {
+            "replicas": DEFAULT_FALLBACK_REPLICAS,
+            "namespace": DEFAULT_K8S_NAMESPACE,
+            **action.parameters,
+        }
         kubectl_cmd = self.KUBECTL_TEMPLATES.get(action.action_type, '# unknown action').format(
             service=action.target_service, **safe_params
         )
         
         # Simulate execution
         simulated_success = action.action_type != ActionType.DO_NOTHING
-        exec_time = random.uniform(1000, 5000) if simulated_success else 0
+        exec_time = random.uniform(SIMULATED_EXEC_TIME_MIN_MS, SIMULATED_EXEC_TIME_MAX_MS) if simulated_success else 0.0
         
         result = ActionResult(
             action=action,
@@ -172,7 +219,7 @@ class RecoveryEngine:
         
         if post_anomaly_scores:
             target = action_result.action.target_service
-            if target in post_anomaly_scores and post_anomaly_scores[target] < 0.5:
+            if target in post_anomaly_scores and post_anomaly_scores[target] < RECOVERY_VERIFICATION_THRESHOLD:
                 return {'recovered': True, 'reason': f'{target} anomaly score dropped to {post_anomaly_scores[target]:.2f}'}
             else:
                 return {'recovered': False, 'reason': f'{target} still anomalous after action'}

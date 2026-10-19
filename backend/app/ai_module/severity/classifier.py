@@ -11,6 +11,38 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from datetime import datetime, timezone
 
+# ──────────────────────────────────────────────
+# Severity Classification Threshold Constants
+# ──────────────────────────────────────────────
+
+DEFAULT_ANOMALY_THRESHOLD: float = 0.5
+"""Default anomaly score threshold (0.0 - 1.0) to qualify a service as anomalous."""
+
+L4_ANOMALOUS_RATIO_THRESHOLD: float = 0.8
+"""Ratio of anomalous services (>80%) required to trigger L4 Catastrophic severity."""
+
+L4_RECURRING_COUNT_THRESHOLD: int = 3
+"""Number of recurring incidents (>3) required to classify an incident as an L4 Design Flaw."""
+
+L3_ANOMALOUS_RATIO_THRESHOLD: float = 0.5
+"""Ratio of anomalous services (>50%) required to trigger L3 Systemic severity."""
+
+L3_ANOMALOUS_COUNT_THRESHOLD: int = 4
+"""Minimum count of anomalous services (>=4) that triggers L3 Systemic when causal confidence is low."""
+
+L3_CONFIDENCE_THRESHOLD: float = 0.6
+"""Confidence threshold (<0.6) below which 4+ anomalous services trigger L3 Systemic severity."""
+
+L2_ANOMALOUS_COUNT_THRESHOLD: int = 2
+"""Minimum count of anomalous services (>=2) required to trigger L2 Cascading severity."""
+
+RECURRING_INCIDENT_THRESHOLD: int = 2
+"""Minimum occurrence count in incident history for a root cause to be flagged as recurring."""
+
+DEFAULT_ROUND_DECIMALS: int = 2
+"""Standard decimal places for rounding confidence scores and ratios in severity explanations."""
+
+
 class SeverityLevel(Enum):
     """Enumeration of incident severity levels."""
     L1_SIMPLE = 1        # Single service, known pattern, high confidence
@@ -40,7 +72,7 @@ class SeverityClassifier:
         anomaly_scores: Dict[str, float], 
         causal_confidence: float, 
         root_cause_service: Optional[str] = None, 
-        threshold: float = 0.5
+        threshold: float = DEFAULT_ANOMALY_THRESHOLD
     ) -> SeverityResult:
         """Classify an incident into a SeverityLevel.
         
@@ -62,11 +94,11 @@ class SeverityClassifier:
         is_recurring, recurring_count = self._check_recurring(root_cause_service)
         
         # L4: Catastrophic — >80% of services down OR recurring design flaw (>3 times)
-        if anomalous_ratio > 0.8 or (is_recurring and recurring_count > 3):
+        if anomalous_ratio > L4_ANOMALOUS_RATIO_THRESHOLD or (is_recurring and recurring_count > L4_RECURRING_COUNT_THRESHOLD):
             reason = (
                 f'CATASTROPHIC: {num_anomalous}/{total_services} services affected '
                 f'({anomalous_ratio:.0%} blast radius)'
-            ) if anomalous_ratio > 0.8 else (
+            ) if anomalous_ratio > L4_ANOMALOUS_RATIO_THRESHOLD else (
                 f'DESIGN FLAW: {root_cause_service} has triggered {recurring_count} incidents — '
                 f'indicates systemic architectural vulnerability'
             )
@@ -81,12 +113,12 @@ class SeverityClassifier:
             )
         
         # L3: Systemic — >50% services anomalous OR confidence too low to isolate
-        if anomalous_ratio > 0.5 or (num_anomalous >= 4 and causal_confidence < 0.6):
+        if anomalous_ratio > L3_ANOMALOUS_RATIO_THRESHOLD or (num_anomalous >= L3_ANOMALOUS_COUNT_THRESHOLD and causal_confidence < L3_CONFIDENCE_THRESHOLD):
             return SeverityResult(
                 level=SeverityLevel.L3_SYSTEMIC, 
                 reason=(
                     f'SYSTEMIC: {num_anomalous} services degraded across the mesh '
-                    f'(confidence={causal_confidence:.2f}) — cross-service cascading failure detected'
+                    f'(confidence={causal_confidence:.{DEFAULT_ROUND_DECIMALS}f}) — cross-service cascading failure detected'
                 ), 
                 num_anomalous=num_anomalous, 
                 causal_confidence=causal_confidence, 
@@ -96,7 +128,7 @@ class SeverityClassifier:
             )
         
         # L2: Cascading — 2-3 services affected with reasonable confidence
-        if num_anomalous >= 2:
+        if num_anomalous >= L2_ANOMALOUS_COUNT_THRESHOLD:
             # Find the max anomaly score for context
             max_score_svc = max(anomaly_scores, key=anomaly_scores.get)
             max_score = anomaly_scores[max_score_svc]
@@ -104,8 +136,8 @@ class SeverityClassifier:
                 level=SeverityLevel.L2_CASCADING, 
                 reason=(
                     f'CASCADING: {num_anomalous} services in failure chain — '
-                    f'peak anomaly {max_score:.2f} on {max_score_svc} '
-                    f'(confidence={causal_confidence:.2f})'
+                    f'peak anomaly {max_score:.{DEFAULT_ROUND_DECIMALS}f} on {max_score_svc} '
+                    f'(confidence={causal_confidence:.{DEFAULT_ROUND_DECIMALS}f})'
                 ), 
                 num_anomalous=num_anomalous, 
                 causal_confidence=causal_confidence, 
@@ -119,7 +151,7 @@ class SeverityClassifier:
             level=SeverityLevel.L1_SIMPLE, 
             reason=(
                 f'ISOLATED: Single-service fault on {root_cause_service or "unknown"} '
-                f'(confidence={causal_confidence:.2f}) — auto-remediation eligible'
+                f'(confidence={causal_confidence:.{DEFAULT_ROUND_DECIMALS}f}) — auto-remediation eligible'
             ), 
             num_anomalous=num_anomalous, 
             causal_confidence=causal_confidence, 
@@ -155,7 +187,7 @@ class SeverityClassifier:
         if not root_cause_service:
             return False, 0
         count = sum(1 for h in self._incident_history if h['root_cause'] == root_cause_service)
-        return count >= 2, count
+        return count >= RECURRING_INCIDENT_THRESHOLD, count
     
     def get_history(self) -> List[dict]:
         """Get a copy of the incident history.
@@ -173,7 +205,7 @@ class SeverityClassifier:
         """
         from collections import Counter
         counts = Counter(h['root_cause'] for h in self._incident_history)
-        return {svc: cnt for svc, cnt in counts.items() if cnt >= 2}
+        return {svc: cnt for svc, cnt in counts.items() if cnt >= RECURRING_INCIDENT_THRESHOLD}
 
 # Module-level singleton
 severity_classifier = SeverityClassifier()

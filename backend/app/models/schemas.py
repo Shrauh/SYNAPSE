@@ -177,6 +177,8 @@ class ModelInfo(BaseModel):
 
 
 class RCAReportResponse(BaseModel):
+    model_config = {"extra": "allow"}
+
     incident_id: str
     root_cause: RootCauseInfo
     explanation: str = ""
@@ -184,6 +186,8 @@ class RCAReportResponse(BaseModel):
     metric_deltas: Dict[str, Dict[str, str]] = {}
     recommended_actions: List[str] = []
     model_info: ModelInfo = Field(default_factory=ModelInfo)
+    severity: Optional[Dict[str, Any]] = None
+    recovery: Optional[Dict[str, Any]] = None
 
 
 class CausalNode(BaseModel):

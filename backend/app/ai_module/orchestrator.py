@@ -386,7 +386,7 @@ class RCAPipeline:
         t0 = time.time()
 
         # Compute propagation chain before recovery needs it
-        chain = get_propagation_chain(dag, root_cause_svc)
+        chain = get_propagation_chain(dag, root_cause_svc, topology_graph=graph_builder.graph)
 
         recovery_action = recovery_engine.select_action(
             severity_level=int(severity_result.level.value),
@@ -479,7 +479,7 @@ class RCAPipeline:
         )
 
         # Build propagation chain
-        chain = get_propagation_chain(dag, root_cause_svc)
+        chain = get_propagation_chain(dag, root_cause_svc, topology_graph=graph_builder.graph)
         propagation_str = " → ".join(chain)
 
         # Create RCA result

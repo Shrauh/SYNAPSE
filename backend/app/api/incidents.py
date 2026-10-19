@@ -158,6 +158,9 @@ async def get_incident_report(incident_id: str, db: AsyncSession = Depends(get_d
             status_code=404, detail="RCA report not found. Pipeline may still be running."
         )
 
+    severity_val = (rca.model_info or {}).get("severity")
+    recovery_val = (rca.model_info or {}).get("recovery")
+
     return RCAReportResponse(
         incident_id=rca.incident_id,
         root_cause=RootCauseInfo(
@@ -170,6 +173,8 @@ async def get_incident_report(incident_id: str, db: AsyncSession = Depends(get_d
         metric_deltas=rca.metric_deltas or {},
         recommended_actions=rca.recommended_actions or [],
         model_info=ModelInfo(**(rca.model_info or {})),
+        severity=severity_val,
+        recovery=recovery_val,
     )
 
 

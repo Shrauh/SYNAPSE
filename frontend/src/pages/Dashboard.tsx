@@ -17,7 +17,7 @@ import { useStore } from "../store";
 interface SimResultData {
   incidentId?: string;
   service: string;
-  confidence: number;
+  confidence: number | null;
   faultType?: string;
   propagationChain?: string;
   severity?: string;
@@ -36,11 +36,7 @@ const DEFAULT_SYSTEMS: SystemOption[] = [
   { id: "default", label: "Default" },
 ];
 
-const FALLBACK_SERVICES = [
-  "frontend", "cartservice", "checkoutservice", "paymentservice",
-  "productcatalogservice", "recommendationservice", "shippingservice",
-  "currencyservice", "emailservice", "redis-cart"
-];
+const FALLBACK_SERVICES = ["api-gateway", "auth-service"];
 
 const FAULT_TYPES = [
   "latency_spike", "error_spike", "cpu_overload", "memory_leak", "connection_timeout"
@@ -351,6 +347,31 @@ export default function Dashboard() {
     return () => clearInterval(iv);
   }, []);
 
+  // Fetch active system services dynamically on mount and when active system changes
+  useEffect(() => {
+    let mounted = true;
+    getActiveSystem()
+      .then(sys => {
+        if (!mounted) return;
+        if (sys?.services && sys.services.length > 0) {
+          setCurrentServices(sys.services);
+          setSimService(prev => (sys.services.includes(prev) ? prev : sys.services[0]));
+        } else {
+          setCurrentServices(FALLBACK_SERVICES);
+          setSimService(prev => (FALLBACK_SERVICES.includes(prev) ? prev : FALLBACK_SERVICES[0]));
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setCurrentServices(prev => (prev.length > 0 ? prev : FALLBACK_SERVICES));
+        setSimService(prev => (prev ? prev : FALLBACK_SERVICES[0]));
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeSystem]);
+
   const loadCompletedRCA = async (incidentId: string, wsData?: any) => {
     try {
       const [inc, rep] = await Promise.all([
@@ -358,7 +379,7 @@ export default function Dashboard() {
         fetchReport(incidentId).catch(() => null)
       ]);
       const service = inc?.root_cause?.service || wsData?.root_cause || wsData?.service || simService;
-      const confidence = inc?.root_cause?.confidence ?? wsData?.confidence ?? 0.92;
+      const confidence = inc?.root_cause?.confidence ?? wsData?.confidence ?? null;
       const faultType = inc?.root_cause?.fault_type || rep?.root_cause?.fault_type || wsData?.fault_type || simFault;
       const propagationChain = rep?.propagation_chain || wsData?.propagation_chain || (inc?.affected_services && inc.affected_services.length > 0 ? `${service} → ${inc.affected_services.join(' → ')}` : undefined);
       const severity = rep?.severity?.level || inc?.severity || wsData?.severity || 'HIGH';
@@ -377,7 +398,7 @@ export default function Dashboard() {
       setSimResult({
         incidentId,
         service: wsData?.root_cause || wsData?.service || simService,
-        confidence: wsData?.confidence ?? 0.92,
+        confidence: wsData?.confidence ?? null,
         faultType: wsData?.fault_type || simFault,
         propagationChain: wsData?.propagation_chain,
         severity: wsData?.severity || 'HIGH'
@@ -407,7 +428,7 @@ export default function Dashboard() {
           }
           const incId = data.incident_id || simIncidentIdRef.current;
           const topService = data.root_cause || (data.anomaly_scores ? Object.entries(data.anomaly_scores).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] : null) || simService;
-          const conf = typeof data.confidence === 'number' ? data.confidence : 0.92;
+          const conf = typeof data.confidence === 'number' ? data.confidence : null;
 
           if (incId) {
             loadCompletedRCA(incId, data);
@@ -491,12 +512,12 @@ export default function Dashboard() {
       setTimeout(async () => {
         if (simulationActive) {
           setSimulationActive(false);
-          if (fallbackIncId) {
-            await loadCompletedRCA(fallbackIncId, { root_cause: simService, confidence: 0.92, fault_type: simFault });
+           if (fallbackIncId) {
+            await loadCompletedRCA(fallbackIncId, { root_cause: simService, confidence: null, fault_type: simFault });
           } else {
-            setSimResult({ service: simService, confidence: 0.92, faultType: simFault, severity: 'HIGH' });
+            setSimResult({ service: simService, confidence: null, faultType: simFault, severity: 'HIGH' });
           }
-          showToast(`🔴 Root cause found: ${simService} (92%)`, 'error');
+          showToast(`🔴 Root cause found: ${simService}`, 'error');
         }
       }, 15000);
       
@@ -860,7 +881,7 @@ export default function Dashboard() {
               <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Service Map</h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 {currentServices.map(svc => {
-                  const score = anomalyScores[svc] || (simResult && simResult.service === svc ? simResult.confidence : 0);
+                  const score = anomalyScores[svc] || (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
                   const isTarget = simulationActive && (simTarget === svc || (!simTarget && simService === svc));
                   const isResult = Boolean(simResult && simResult.service === svc);
                   
@@ -1031,6 +1052,7 @@ export default function Dashboard() {
                       </div>
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        {simResult.confidence != null ? (
                         <div style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1046,6 +1068,23 @@ export default function Dashboard() {
                           <span>Confidence:</span>
                           <span style={{ fontFamily: 'var(--font-mono)' }}>{(simResult.confidence * 100).toFixed(0)}%</span>
                         </div>
+                        ) : (
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(99,102,241,0.15)',
+                          border: '1px solid rgba(99,102,241,0.3)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: '#a5b4fc'
+                        }}>
+                          <span>Confidence:</span>
+                          <span style={{ fontFamily: 'var(--font-mono)' }}>Analyzing…</span>
+                        </div>
+                        )}
 
                         {simResult.faultType && (
                           <div style={{
@@ -1078,7 +1117,7 @@ export default function Dashboard() {
                         <div style={{ fontSize: '0.7rem', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Zap size={12} /> AI Diagnosis
                         </div>
-                        <TypewriterText text={simResult.explanation || `Algorithmic analysis confirmed root cause anomaly in ${simResult.service}. Degradation profile matches ${simResult.faultType?.replace(/_/g, ' ') || 'injected fault'} with ${(simResult.confidence * 100).toFixed(0)}% model certainty.`} />
+                        <TypewriterText text={simResult.explanation || `Algorithmic analysis confirmed root cause anomaly in ${simResult.service}. Degradation profile matches ${simResult.faultType?.replace(/_/g, ' ') || 'injected fault'}${simResult.confidence != null ? ` with ${(simResult.confidence * 100).toFixed(0)}% model certainty` : '. Computing confidence score'}.`} />
                       </div>
 
                       {simResult.incidentId && (

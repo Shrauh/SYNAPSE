@@ -18,6 +18,29 @@ if HAS_PYG:
     from torch_geometric.data import Data
 
 
+# ──────────────────────────────────────────────
+# GNN Inference Thresholds & Mathematical Constants
+# ──────────────────────────────────────────────
+
+EPSILON_MEAN: float = 1e-8
+"""Small epsilon clamp applied to feature mean to prevent division by zero in variance-based scoring."""
+
+EPSILON_STD: float = 1e-6
+"""Small epsilon clamp applied to feature standard deviation to prevent zero variance."""
+
+VARIANCE_SCORE_OFFSET: float = 1.0
+"""Center offset subtracted from the coefficient of variation (std/mean) before applying sigmoid activation."""
+
+SCORE_ROUND_DECIMALS: int = 4
+"""Number of decimal places to round anomaly and uncertainty scores for numeric stability and API representation."""
+
+DEFAULT_ANOMALY_THRESHOLD: float = 0.6
+"""Default anomaly score threshold (0.0 to 1.0) above which a service is considered anomalous."""
+
+DEFAULT_SERVICE_NAME_PREFIX: str = "service_"
+"""Default prefix used to synthesize service names when none are provided."""
+
+
 class GNNInference:
     """Handles GNN-based anomaly score computation."""
 
@@ -55,22 +78,22 @@ class GNNInference:
             scores = self.model.compute_anomaly_scores(x)
         else:
             # Final fallback: use variance-based scoring
-            mean = x.mean(dim=1).clamp(min=1e-8)
-            std = x.std(dim=1).clamp(min=1e-6)
-            scores = torch.sigmoid(std / mean - 1.0)
+            mean = x.mean(dim=1).clamp(min=EPSILON_MEAN)
+            std = x.std(dim=1).clamp(min=EPSILON_STD)
+            scores = torch.sigmoid(std / mean - VARIANCE_SCORE_OFFSET)
 
         scores_np = scores.cpu().numpy()
         uncertainty_np = uncertainty.cpu().numpy() if uncertainty is not None else np.zeros_like(scores_np)
 
         if service_names is None:
-            service_names = [f"service_{i}" for i in range(len(scores_np))]
+            service_names = [f"{DEFAULT_SERVICE_NAME_PREFIX}{i}" for i in range(len(scores_np))]
 
         scores_dict = {
-            name: float(round(score, 4))
+            name: float(round(score, SCORE_ROUND_DECIMALS))
             for name, score in zip(service_names, scores_np)
         }
         uncertainty_dict = {
-            name: float(round(unc, 4))
+            name: float(round(unc, SCORE_ROUND_DECIMALS))
             for name, unc in zip(service_names, uncertainty_np)
         }
         
@@ -105,7 +128,7 @@ class GNNInference:
     def get_top_anomalous(
         self,
         scores: Dict[str, float],
-        threshold: float = 0.6,
+        threshold: float = DEFAULT_ANOMALY_THRESHOLD,
         top_k: Optional[int] = None,
     ) -> List[Tuple[str, float]]:
         """Filter and rank anomalous services.
