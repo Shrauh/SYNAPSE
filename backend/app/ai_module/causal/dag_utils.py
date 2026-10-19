@@ -56,12 +56,14 @@ def get_root_nodes(
 def get_propagation_chain(
     dag: Dict[str, List[str]],
     root: str,
+    topology_graph=None,
 ) -> List[str]:
     """BFS from root to get the propagation chain (order of impact).
 
     Args:
         dag: Adjacency dict from causal discovery.
         root: Root cause service.
+        topology_graph: Optional networkx graph for fallback downstream traversal.
 
     Returns:
         Ordered list of services in propagation order (root first).
@@ -79,6 +81,23 @@ def get_propagation_chain(
         for target in dag.get(node, []):
             if target not in visited:
                 queue.append(target)
+
+    # If chain is just the root, try to add downstream services from topology
+    if len(chain) <= 1 and topology_graph is not None:
+        try:
+            # BFS on topology to find downstream dependents
+            for neighbor in topology_graph.successors(root):
+                if neighbor not in visited:
+                    chain.append(neighbor)
+                    visited.add(neighbor)
+            # Also check predecessors (upstream services that call this one)
+            if len(chain) <= 1:
+                for predecessor in topology_graph.predecessors(root):
+                    if predecessor not in visited:
+                        chain.append(predecessor)
+                        visited.add(predecessor)
+        except Exception:
+            pass
 
     return chain
 

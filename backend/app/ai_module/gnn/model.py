@@ -284,8 +284,8 @@ class FallbackAnomalyDetector:
         Returns:
             Anomaly scores [num_nodes] in [0, 1]
         """
-        if self._baseline_mean is None:
-            # No baseline — use simple variance-based scoring
+        if self._baseline_mean is None or self._baseline_mean.shape[0] != x.shape[0]:
+            # No baseline or different topology size — use per-node variance scoring
             mean = x.mean(dim=1, keepdim=True)
             std = x.std(dim=1, keepdim=True).clamp(min=1e-6)
             z_scores = ((x - mean) / std).abs().mean(dim=1)
