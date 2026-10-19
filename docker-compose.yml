@@ -1,56 +1,26 @@
 version: '3.8'
 
 services:
-  backend:
+  synapse-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: synapse-backend
     ports:
       - "8000:8000"
     environment:
-      - LLM_PROVIDER=mock
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=llama3.2:3b
-      - PROMETHEUS_URL=http://prometheus:9090
-      - DEBUG=false
+      - SYNAPSE_LIVE_K8S=true
     volumes:
-      - ./backend:/app
-    depends_on:
-      - ollama
-    networks:
-      - synapse-net
+      - ~/.kube/config:/root/.kube/config:ro
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
-  frontend:
+  synapse-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: synapse-frontend
     ports:
-      - "5173:80"
+      - "5173:5173"
     depends_on:
-      - backend
-    networks:
-      - synapse-net
+      - synapse-backend
     restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - synapse-net
-    restart: unless-stopped
-
-volumes:
-  ollama_data:
-
-networks:
-  synapse-net:
-    driver: bridge

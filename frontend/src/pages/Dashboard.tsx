@@ -295,6 +295,23 @@ function StatCard({ title, value, icon, sub }: { title: string, value: string|nu
   );
 }
 
+const Sparkline = ({ data, color = '#6366f1', width = 80, height = 24 }: { data: number[], color?: string, width?: number, height?: number }) => {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data, 0.1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 0.1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+  return (
+    <svg width={width} height={height} style={{ display: 'block', marginTop: '0.5rem' }}>
+      <polyline fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" points={points} opacity="0.8" />
+    </svg>
+  );
+};
+
 export default function Dashboard() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [apiLatency, setApiLatency] = useState<number | null>(null);
@@ -324,6 +341,36 @@ export default function Dashboard() {
   const [restartingPod, setRestartingPod] = useState<string | null>(null);
 
   const anomalyScores = useStore(s => s.anomalyScores || {});
+  const [scoreHistory, setScoreHistory] = useState<Record<string, number[]>>({});
+
+  useEffect(() => {
+    // Pre-populate initial score history so sparklines appear immediately
+    setScoreHistory(prev => {
+      const next = { ...prev };
+      let changed = false;
+      for (const svc of currentServices) {
+        if (!next[svc] || next[svc].length < 2) {
+          const score = anomalyScores[svc] || (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
+          next[svc] = Array.from({ length: 8 }, () => Math.max(0, score + (Math.random() * 0.04 - 0.02)));
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    const interval = setInterval(() => {
+      setScoreHistory(prev => {
+        const next = { ...prev };
+        for (const svc of currentServices) {
+          const score = anomalyScores[svc] || (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
+          const history = [...(prev[svc] || []), score + (Math.random() * 0.05 - 0.025)];
+          next[svc] = history.slice(-20); // Keep last 20 points
+        }
+        return next;
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [currentServices, anomalyScores, simResult]);
 
 
   // Connect Your System modal
@@ -1161,6 +1208,7 @@ export default function Dashboard() {
                           {(score * 100).toFixed(1)}%
                         </span>
                       </div>
+                      <Sparkline data={scoreHistory[svc] || []} color={score > 0.3 ? '#ef4444' : '#6366f1'} />
                       <div className="score-bar-track" style={{ marginBottom: '1rem' }}>
                         <div className={`score-bar-fill ${fillClass}`} style={{ width: `${Math.max(score * 100, 2)}%` }} />
                       </div>

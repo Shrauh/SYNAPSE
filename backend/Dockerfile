@@ -1,26 +1,11 @@
 FROM python:3.11-slim
-
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
+# Install kubectl for K8s integration
+RUN apt-get update && apt-get install -y curl && \
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl
 COPY requirements.txt .
-
-# Install PyTorch CPU-only (smaller image)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir torch-geometric && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-
-# Create models directory
-RUN mkdir -p /app/models
-
 EXPOSE 8000
-
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

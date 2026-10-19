@@ -1,0 +1,44 @@
+# Version control
+.git
+.gitignore
+
+# Virtual environments
+venv/
+.venv/
+env/
+backend/venv/
+
+# Node dependencies
+node_modules/
+frontend/node_modules/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build and distribution
+frontend/dist/
+dist/
+build/
+*.egg-info/
+
+# Local databases and runtime data
+synapse.db
+backend/synapse.db
+*.db
+*.sqlite3
+backend/chroma_data/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
