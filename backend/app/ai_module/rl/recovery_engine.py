@@ -1,4 +1,4 @@
-"""
+﻿"""
 Recovery execution engine for automated remediation.
 
 Selects and executes (simulated) recovery actions based on severity level
@@ -43,9 +43,11 @@ class ActionResult:
 class RecoveryEngine:
     """Selects and executes (simulated) recovery actions based on severity level."""
     
-    # Fault type to action mapping (learned rules)
+    # Fault type to action mapping (learned rules).
+    # latency_spike â†’ SCALE_UP: latency under load indicates resource saturation;
+    # adding capacity is the correct first response before restarting pods.
     FAULT_ACTION_MAP = {
-        'latency_spike': ActionType.RESTART_POD,
+        'latency_spike': ActionType.SCALE_UP,
         'error_spike': ActionType.RESTART_POD,
         'error_burst': ActionType.SCALE_UP,
         'cpu_overload': ActionType.SCALE_UP,
@@ -54,6 +56,7 @@ class RecoveryEngine:
         'cascading_failure': ActionType.RATE_LIMIT,
         'resource_exhaustion': ActionType.SCALE_UP,
     }
+
     
     KUBECTL_TEMPLATES = {
         ActionType.RESTART_POD: 'kubectl rollout restart deployment/{service} -n default',
@@ -61,13 +64,13 @@ class RecoveryEngine:
         ActionType.SCALE_DOWN: 'kubectl scale deployment/{service} --replicas={replicas} -n default',
         ActionType.RATE_LIMIT: 'kubectl apply -f istio-rate-limit-{service}.yaml',
         ActionType.CIRCUIT_BREAK: 'kubectl apply -f istio-circuit-breaker-{service}.yaml',
-        ActionType.DO_NOTHING: '# No action taken — confidence too low',
+        ActionType.DO_NOTHING: '# No action taken â€” confidence too low',
     }
     
     def __init__(self):
         """Initialize the recovery engine."""
         self._action_history: List[ActionResult] = []
-        self._confidence_threshold = 0.3
+        self._confidence_threshold = 0.5
     
     def select_action(
         self, 
@@ -89,25 +92,26 @@ class RecoveryEngine:
         Returns:
             Selected RecoveryAction.
         """
-        # L4 only: Don't auto-fix catastrophic / design-flaw issues
-        if severity_level >= 4:
+        # L3+: Systemic/design-flaw incidents must NOT be auto-remediated.
+        # Test spec: severity_level >= 3 must return DO_NOTHING.
+        if severity_level >= 3:
             return RecoveryAction(
-                action_type=ActionType.RESTART_POD, 
-                target_service=root_cause_service, 
-                confidence=causal_confidence, 
-                reason=f'Severity L{severity_level}: Escalating to SRE — applying conservative restart_pod as interim mitigation'
+                action_type=ActionType.DO_NOTHING,
+                target_service=root_cause_service,
+                confidence=causal_confidence,
+                reason=f'Severity L{severity_level}: Systemic incident - no automated action. Human escalation required.'
             )
-        
-        # Low confidence: still suggest an action but note the low confidence
+
+        # Low confidence: cannot reliably identify root cause.
+        # Test spec: causal_confidence below threshold must return DO_NOTHING.
         if causal_confidence < self._confidence_threshold:
-            action_type = self.FAULT_ACTION_MAP.get(fault_type, ActionType.RESTART_POD)
             return RecoveryAction(
-                action_type=action_type, 
-                target_service=root_cause_service, 
-                confidence=causal_confidence, 
-                reason=f'Low confidence ({causal_confidence:.2f}) — applying {action_type.value} as best-effort mitigation'
+                action_type=ActionType.DO_NOTHING,
+                target_service=root_cause_service,
+                confidence=causal_confidence,
+                reason=f'Confidence {causal_confidence:.2f} below threshold {self._confidence_threshold} - no action taken'
             )
-        
+
         # L1/L2: Select action based on fault type
         action_type = self.FAULT_ACTION_MAP.get(fault_type, ActionType.RESTART_POD)
         
@@ -122,11 +126,11 @@ class RecoveryEngine:
             target_service=root_cause_service, 
             parameters=params, 
             confidence=causal_confidence, 
-            reason=f'L{severity_level} fault: {fault_type} → {action_type.value}'
+            reason=f'L{severity_level} fault: {fault_type} â†’ {action_type.value}'
         )
     
     def execute_action(self, action: RecoveryAction) -> ActionResult:
-        """Execute a recovery action (SIMULATED — prints kubectl command).
+        """Execute a recovery action (SIMULATED â€” prints kubectl command).
         
         Args:
             action: The recovery action to execute.
@@ -210,3 +214,5 @@ class RecoveryEngine:
 
 # Module-level singleton
 recovery_engine = RecoveryEngine()
+
+

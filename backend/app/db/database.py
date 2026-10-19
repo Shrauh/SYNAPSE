@@ -36,6 +36,9 @@ class Base(DeclarativeBase):
 
 async def init_db() -> None:
     """Create all tables. Called on application startup."""
+    # Import all models so SQLAlchemy registers them with Base.metadata
+    import app.db.models  # noqa: F401 — registers Incident, RCAResult, etc.
+    import app.db.auth_models  # noqa: F401 — registers User, RefreshToken, PasswordResetToken
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
