@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const isDevPort = typeof window !== "undefined" && (window.location.port === "5173" || window.location.port === "3000");
+
 export const api = axios.create({
-  baseURL: "http://localhost:8000/api/v1",
+  baseURL: isDevPort ? "http://localhost:8000/api/v1" : "/api/v1",
   headers: { "Content-Type": "application/json" },
   timeout: 30000,
 });

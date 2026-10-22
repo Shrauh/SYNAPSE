@@ -259,10 +259,7 @@ class FallbackAnomalyDetector:
     services with inherently extreme metrics (e.g., database with
     request_rate=800) from always dominating the anomaly ranking.
 
-    Calibration:
-        During fit(), we compute each service's NORMAL max-z distribution.
-        During inference, the anomaly score = how many std-devs above
-        its own normal max-z the current max-z is.
+    Supports dynamic topologies by mapping active services to simulator baselines.
     """
 
     def __init__(self):
@@ -270,12 +267,32 @@ class FallbackAnomalyDetector:
         self._baseline_std = None    # [nodes, features]
         self._normal_maxz_mean = None  # [nodes] - each service's normal max-z
         self._normal_maxz_std = None   # [nodes] - std of each service's normal max-z
+        self._service_baselines = {}
+        self._init_simulator_baselines()
 
-    def fit(self, feature_matrices: list) -> None:
+    def _init_simulator_baselines(self) -> None:
+        """Initialize default baselines from simulator constants."""
+        try:
+            from data.simulator import BASELINES
+            from app.services.ingestion import FEATURE_COLUMNS
+            for svc, b in BASELINES.items():
+                mean = torch.tensor([b[col] for col in FEATURE_COLUMNS], dtype=torch.float32)
+                std = (mean * 0.08).clamp(min=0.1)
+                self._service_baselines[svc] = {
+                    "mean": mean,
+                    "std": std,
+                    "normal_maxz_mean": torch.tensor(1.5),
+                    "normal_maxz_std": torch.tensor(0.5),
+                }
+        except Exception:
+            pass
+
+    def fit(self, feature_matrices: list, service_names=None) -> None:
         """Fit baseline statistics from list of normal feature matrices.
 
         Args:
             feature_matrices: List of tensors, ndarrays, or objects with .x
+            service_names: Optional list of service names corresponding to rows
         """
         import numpy as np
         converted = []
@@ -301,20 +318,27 @@ class FallbackAnomalyDetector:
         self._normal_maxz_mean = stacked.mean(dim=0)   # [nodes]
         self._normal_maxz_std = stacked.std(dim=0).clamp(min=0.5)  # [nodes]
 
-    def compute_anomaly_scores(self, x) -> torch.Tensor:
+        names = service_names
+        if not names and self._baseline_mean.shape[0] == 10:
+            try:
+                from app.services.graph_builder import graph_builder
+                names = graph_builder.service_names
+            except Exception:
+                pass
+
+        if names and len(names) == self._baseline_mean.shape[0]:
+            for idx, name in enumerate(names):
+                self._service_baselines[name] = {
+                    "mean": self._baseline_mean[idx],
+                    "std": self._baseline_std[idx],
+                    "normal_maxz_mean": self._normal_maxz_mean[idx],
+                    "normal_maxz_std": self._normal_maxz_std[idx],
+                }
+
+    def compute_anomaly_scores(self, x, service_names=None) -> torch.Tensor:
         """Compute CALIBRATED anomaly scores.
 
-        For each service, computes max z-score across features, then
-        subtracts that service's normal max-z and divides by its std.
-        This means a service only scores high if its CURRENT deviation
-        is significantly above what's NORMAL for that specific service.
-
-        Args:
-            x: Node features [num_nodes, num_features] (Tensor or ndarray)
-
-        Returns:
-            Calibrated anomaly scores [num_nodes] - higher = more anomalous.
-            Values are calibrated z-deviations (not bounded to [0,1]).
+        For each service, computes max z-score across features relative to its own baseline.
         """
         import numpy as np
         if isinstance(x, np.ndarray):
@@ -322,10 +346,33 @@ class FallbackAnomalyDetector:
         elif not isinstance(x, torch.Tensor):
             x = torch.as_tensor(x, dtype=torch.float32)
 
+        # Per-service baseline lookup (preferred for dynamic topologies)
+        if service_names and len(service_names) == x.shape[0]:
+            try:
+                from app.services.system_switcher import map_to_simulator
+                scores = []
+                for i, s in enumerate(service_names):
+                    sim_s = map_to_simulator(s)
+                    base = self._service_baselines.get(s) or self._service_baselines.get(sim_s)
+                    if base is not None:
+                        mean = base["mean"].to(x.device)
+                        std = base["std"].to(x.device)
+                        z = ((x[i] - mean) / std).abs()
+                        max_z = z.max()
+                        norm_mean = base.get("normal_maxz_mean", 1.5)
+                        norm_std = base.get("normal_maxz_std", 0.5)
+                        cal = ((max_z - norm_mean) / norm_std).clamp(min=0.0)
+                        scores.append(cal)
+                    else:
+                        scores.append(torch.tensor(0.0, device=x.device))
+                return torch.stack(scores)
+            except Exception:
+                pass
+
         if self._baseline_mean is None or self._baseline_mean.shape[0] != x.shape[0]:
-            # No baseline - use simple per-node variance scoring
-            mean = x.mean(dim=1, keepdim=True)
-            std = x.std(dim=1, keepdim=True).clamp(min=1e-6)
+            # No baseline - use per-feature cross-service normalization
+            mean = x.mean(dim=0, keepdim=True)
+            std = x.std(dim=0, keepdim=True).clamp(min=1e-6)
             z_scores = ((x - mean) / std).abs()
             return z_scores.max(dim=1).values
 
@@ -340,7 +387,6 @@ class FallbackAnomalyDetector:
             return calibrated
 
         return max_z
-
 
 def create_detector(use_gnn: bool = True, **kwargs) -> nn.Module:
     """Factory function to create the appropriate anomaly detector.

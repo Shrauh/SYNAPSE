@@ -75,7 +75,7 @@ class GNNInference:
             ei = torch.tensor(edge_index, dtype=torch.long).to(self.device)
             scores, uncertainty = self.model.compute_anomaly_scores(x, ei)
         elif isinstance(self.model, FallbackAnomalyDetector):
-            scores = self.model.compute_anomaly_scores(x)
+            scores = self.model.compute_anomaly_scores(x, service_names=service_names)
         else:
             # Final fallback: use variance-based scoring
             mean = x.mean(dim=1).clamp(min=EPSILON_MEAN)

@@ -59,14 +59,16 @@ export const removeConnection = (name: string) =>
   api.delete(`/connect/${name}`).then(r => r.data);
 
 // Kubernetes Cluster
+const isDevPort = typeof window !== "undefined" && (window.location.port === "5173" || window.location.port === "3000");
+const apiBase = isDevPort ? "http://localhost:8000/api/v1" : "/api/v1";
 export const getK8sPods = async (): Promise<any> => {
-  const res = await fetch("http://localhost:8000/api/v1/k8s/pods");
+  const res = await fetch(`${apiBase}/k8s/pods`);
   if (!res.ok) throw new Error('Failed to fetch pods');
   return res.json();
 };
 
 export const injectK8sFault = async (service: string, faultType: string = 'pod_kill'): Promise<any> => {
-  const res = await fetch("http://localhost:8000/api/v1/k8s/inject-fault", {
+  const res = await fetch(`${apiBase}/k8s/inject-fault`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ service, fault_type: faultType })
@@ -76,7 +78,7 @@ export const injectK8sFault = async (service: string, faultType: string = 'pod_k
 };
 
 export const recoverK8sService = async (service: string, action: string = 'restart_pod'): Promise<any> => {
-  const res = await fetch("http://localhost:8000/api/v1/k8s/recover", {
+  const res = await fetch(`${apiBase}/k8s/recover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ service, action })
@@ -84,4 +86,5 @@ export const recoverK8sService = async (service: string, action: string = 'resta
   if (!res.ok) throw new Error('Recovery failed');
   return res.json();
 };
+
 

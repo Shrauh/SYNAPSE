@@ -17,6 +17,7 @@ import {
   Sparkles,
   CheckCircle2,
   Check,
+  Zap,
 } from "lucide-react";
 import { fetchIncident, fetchCausalGraph } from "../api/endpoints";
 import type { IncidentDetail, CausalGraph } from "../types/api";
@@ -74,6 +75,21 @@ export default function IncidentDetailPage() {
   );
 
   const topScores = Object.entries(incident.anomaly_scores ?? {}).sort((a, b) => b[1] - a[1]);
+
+  const modelInfo = (report?.model_info || {}) as Record<string, any>;
+  const recoveryAction = report?.recovery?.action_type || report?.recovery?.action || modelInfo.recovery_action;
+  const recoveryTarget = report?.recovery?.target || report?.root_cause?.service || incident.root_cause?.service;
+  const recoverySuccess = report?.recovery ? report.recovery.success : (modelInfo.recovery_success ?? (recoveryAction ? true : false));
+  let recoveryCommand = report?.recovery?.kubectl_command || (report?.recommended_actions?.find(a => a.trim().startsWith("kubectl")));
+  if (!recoveryCommand && recoveryAction && recoveryTarget) {
+    if (recoveryAction.includes("restart")) {
+      recoveryCommand = `kubectl rollout restart deployment/${recoveryTarget} -n default`;
+    } else if (recoveryAction.includes("scale")) {
+      recoveryCommand = `kubectl scale deployment/${recoveryTarget} --replicas=3 -n default`;
+    }
+  }
+  const recommendedActions = report?.recommended_actions || [];
+  const hasRecovery = Boolean(report && (recoveryAction || recoveryCommand || recommendedActions.length > 0));
 
   return (
     <div style={{ padding: "84px 2rem 3rem", maxWidth: 1100, margin: "0 auto" }}>
@@ -360,63 +376,213 @@ export default function IncidentDetailPage() {
         </div>
       )}
 
-      {/* Recovery Action */}
-      {report?.recovery && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <Terminal size={15} color="var(--accent)" />
-            <span className="section-title" style={{ marginBottom: 0 }}>Recovery Action</span>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <span className={`badge badge-${report.recovery.success ? 'healthy' : 'warning'}`}>
-              {report.recovery.action_type || report.recovery.action}
-            </span>
-            <span className={`badge badge-${report.recovery.success ? 'healthy' : 'critical'}`}>
-              {report.recovery.success ? '✓ EXECUTED' : '⏳ PENDING'}
-            </span>
-            {report.recovery.target && (
-              <span className="badge badge-degraded" style={{ fontFamily: 'var(--font-mono)' }}>
-                {report.recovery.target}
+      {/* Recovery Actions */}
+      {hasRecovery && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 20,
+            borderColor: "rgba(99, 102, 241, 0.35)",
+            background: "linear-gradient(135deg, rgba(15, 20, 35, 0.9) 0%, rgba(20, 25, 45, 0.7) 100%)",
+            boxShadow: "0 4px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(99, 102, 241, 0.12)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: "rgba(99, 102, 241, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#6366f1",
+                border: "1px solid rgba(99, 102, 241, 0.3)",
+              }}
+            >
+              <Terminal size={16} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700, margin: 0, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+                Recovery Actions
+              </h2>
+              <span style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                Automated mitigation and recommended runbook execution
               </span>
-            )}
+            </div>
           </div>
-          {report.recovery.kubectl_command && (
-            <div style={{ 
-              background: '#0a0e17', 
-              border: '1px solid var(--border)', 
-              borderRadius: 8, 
-              padding: '12px 16px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '0.82rem',
-              color: '#10b981',
-              position: 'relative'
-            }}>
-              <span style={{ color: 'var(--text-muted)' }}>$ </span>
-              {report.recovery.kubectl_command}
+
+          {/* Auto-Recovery Action Status */}
+          {(recoveryAction || recoveryCommand) && (
+            <div
+              style={{
+                marginBottom: recommendedActions.length > 0 ? 16 : 0,
+                padding: "14px 16px",
+                background: "rgba(0, 0, 0, 0.25)",
+                borderRadius: 10,
+                border: "1px solid rgba(99, 102, 241, 0.2)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    color: "#818cf8",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Zap size={13} color="#818cf8" />
+                  <span>Auto-Recovery Action</span>
+                </div>
+                <span
+                  style={{
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    fontFamily: "var(--font-mono, JetBrains Mono, monospace)",
+                    padding: "3px 10px",
+                    borderRadius: 4,
+                    background: recoverySuccess !== false ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                    color: recoverySuccess !== false ? "#10b981" : "#f59e0b",
+                    border: `1px solid ${recoverySuccess !== false ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {recoverySuccess !== false ? "EXECUTED ✓" : "PENDING ⏳"}
+                </span>
+              </div>
+
+              {recoveryAction && (
+                <div
+                  style={{
+                    fontSize: "0.82rem",
+                    color: "var(--text-primary)",
+                    marginBottom: recoveryCommand ? 12 : 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>Action:</span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono, JetBrains Mono, monospace)",
+                      fontWeight: 600,
+                      color: "#818cf8",
+                      background: "rgba(99, 102, 241, 0.12)",
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      border: "1px solid rgba(99, 102, 241, 0.25)",
+                    }}
+                  >
+                    {recoveryAction.replace(/_/g, " ")}
+                  </span>
+                  {recoveryTarget && (
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
+                      on <strong style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono, JetBrains Mono, monospace)" }}>{recoveryTarget}</strong>
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {recoveryCommand && (
+                <div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                    Kubectl Command
+                  </div>
+                  <div
+                    style={{
+                      background: "rgba(0, 0, 0, 0.45)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      borderRadius: 6,
+                      padding: "10px 14px",
+                      fontFamily: "var(--font-mono, JetBrains Mono, monospace)",
+                      fontSize: "0.82rem",
+                      color: "#10b981",
+                      wordBreak: "break-all",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ color: "var(--text-muted)", userSelect: "none" }}>$</span>
+                    <span>{recoveryCommand}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recommended Actions */}
+          {recommendedActions.length > 0 && (
+            <div
+              style={{
+                padding: "14px 16px",
+                background: "rgba(0, 0, 0, 0.25)",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "var(--text-secondary)",
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Wrench size={13} color="#6366f1" />
+                <span>Recommended Recovery Actions</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {recommendedActions.map((action: string, i: number) => {
+                  const isKubectl = action.trim().startsWith("kubectl");
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        padding: "8px 12px",
+                        background: i === 0 ? "rgba(99, 102, 241, 0.06)" : "transparent",
+                        borderRadius: 6,
+                        border: i === 0 ? "1px solid rgba(99, 102, 241, 0.15)" : "none",
+                      }}
+                    >
+                      <span style={{ color: i === 0 ? "#6366f1" : "var(--text-muted)", flexShrink: 0, marginTop: 1 }}>
+                        {i === 0 ? "▶" : "○"}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.82rem",
+                          color: isKubectl ? "#10b981" : "var(--text-primary)",
+                          fontFamily: isKubectl ? "var(--font-mono, JetBrains Mono, monospace)" : "inherit",
+                          wordBreak: "break-all",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {action}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-        {/* Recommended Actions */}
-        {report?.recommended_actions && (
-          <div className="card">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <Wrench size={15} color="var(--accent-blue)" />
-              <span className="section-title" style={{ marginBottom: 0 }}>Recommended Actions</span>
-            </div>
-            <ol style={{ paddingLeft: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-              {report.recommended_actions.map((a, i) => (
-                <motion.li key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  {a}
-                </motion.li>
-              ))}
-            </ol>
-          </div>
-        )}
+      <div style={{ display: "grid", gridTemplateColumns: (report?.metric_deltas && Object.keys(report.metric_deltas).length > 0 && report?.severity) ? "1fr 1fr" : "1fr", gap: 20 }}>
 
         {/* Metric Deltas */}
         {report?.metric_deltas && Object.keys(report.metric_deltas).length > 0 && (

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import ReactFlow, {
-  Background, Controls, MiniMap, Handle, Position,
+  Background, Controls, MiniMap, Handle, Position, Panel,
   useNodesState, useEdgesState,
   type Node, type Edge,
 } from "reactflow";
@@ -8,43 +8,77 @@ import "reactflow/dist/style.css";
 import type { GraphResponse, GraphNode, GraphEdge } from "../../types/api";
 import { useStore } from "../../store";
 
-function scoreColor(score: number) {
-  if (score > 0.8) return "#ef4444";
-  if (score > 0.6) return "#f97316";
-  if (score > 0.4) return "#f59e0b";
+function scoreColor(score: number): string {
+  const s = typeof score === "number" && !isNaN(score) ? (score > 1 ? score / 100 : score) : 0;
+  if (s > 0.8) return "#ef4444";
+  if (s > 0.4) return "#f97316";
+  if (s > 0.15) return "#f59e0b";
   return "#10b981";
 }
 
 function ServiceNode({ data }: { data: { label: string; score: number; type: string; metrics: Record<string, number> } }) {
-  const c = scoreColor(data.score);
-  const isCritical = data.score > 0.8;
-  const isWarn = data.score > 0.6 && data.score <= 0.8;
+  const score = typeof data.score === "number" && !isNaN(data.score)
+    ? (data.score > 1 ? data.score / 100 : data.score)
+    : 0;
+  const c = scoreColor(score);
+  const isCritical = score > 0.8;
+  const isDirect = score > 0.4 && score <= 0.8;
+  const isIndirect = score > 0.15 && score <= 0.4;
+  const isHealthy = score <= 0.15;
+
+  const statusLabel = isCritical
+    ? "Root Cause"
+    : isDirect
+    ? "Directly Affected"
+    : isIndirect
+    ? "Indirectly Affected"
+    : "Healthy";
+
+  const glow = isCritical
+    ? `0 0 18px ${c}66`
+    : isDirect
+    ? `0 0 14px ${c}55`
+    : isIndirect
+    ? `0 0 10px ${c}40`
+    : `0 0 4px ${c}25`;
 
   return (
     <div
-      className={isCritical ? "pulse-critical" : isWarn ? "pulse-warning" : ""}
+      className={isCritical ? "pulse-critical" : isDirect ? "pulse-warning" : ""}
       style={{
         background: "var(--bg-elevated)",
         border: `2px solid ${c}`,
         borderRadius: 12,
         padding: "10px 16px",
-        minWidth: 130,
+        minWidth: 140,
         cursor: "pointer",
-        boxShadow: `0 0 ${isCritical ? 18 : 8}px ${c}40`,
+        opacity: isHealthy ? 0.65 : 1,
+        boxShadow: glow,
         position: "relative",
+        transition: "opacity 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
       }}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: c, boxShadow: `0 0 6px ${c}` }} />
         <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" }}>{data.label}</span>
       </div>
-      <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginBottom: 6 }}>{data.type}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.65rem", marginBottom: 6 }}>
+        <span style={{ color: "var(--text-muted)" }}>{data.type}</span>
+        <span style={{ color: c, fontWeight: 600, fontSize: "0.65rem" }}>{statusLabel}</span>
+      </div>
       <div style={{
-        background: `${c}18`, borderRadius: 6, padding: "3px 8px",
-        fontSize: "0.7rem", fontFamily: "JetBrains Mono", color: c, textAlign: "center",
+        background: `${c}18`,
+        border: `1px solid ${c}33`,
+        borderRadius: 6,
+        padding: "3px 8px",
+        fontSize: "0.7rem",
+        fontFamily: "JetBrains Mono",
+        color: c,
+        textAlign: "center",
+        fontWeight: 600,
       }}>
-        {(data.score * 100).toFixed(0)}% anomaly
+        {(score * 100).toFixed(0)}% anomaly
       </div>
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
@@ -187,7 +221,7 @@ export function ServiceGraph({ graph, onNodeClick }: Props) {
       position: nodePositions[n.id] ?? { x: 0, y: 0 },
       data: {
         label: n.label,
-        score: liveScores[n.id] ?? n.anomaly_score,
+        score: liveScores[n.id] ?? n.anomaly_score ?? 0,
         type: n.type,
         metrics: n.metrics,
       },
@@ -207,10 +241,11 @@ export function ServiceGraph({ graph, onNodeClick }: Props) {
   , [graph]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(toRFNodes());
-  const [edges, , onEdgesChange] = useEdgesState(toRFEdges());
+  const [edges, setEdges, onEdgesChange] = useEdgesState(toRFEdges());
 
-  // Re-render nodes when live scores update
-  useEffect(() => { setNodes(toRFNodes()); }, [liveScores, toRFNodes]);
+  // Re-render nodes when live scores or graph update
+  useEffect(() => { setNodes(toRFNodes()); }, [liveScores, toRFNodes, setNodes]);
+  useEffect(() => { setEdges(toRFEdges()); }, [toRFEdges, setEdges]);
 
   return (
     <div style={{ width: "100%", height: "100%", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
@@ -227,6 +262,36 @@ export function ServiceGraph({ graph, onNodeClick }: Props) {
       >
         <Background color="var(--border)" gap={24} size={1} />
         <Controls style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }} />
+        <Panel position="top-left" style={{ margin: 12 }}>
+          <div style={{
+            background: "rgba(13, 17, 23, 0.85)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: "8px 12px",
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.68rem" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 6px #ef4444" }} />
+              <span style={{ color: "var(--text-secondary)" }}>Root Cause (&gt;80%)</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.68rem" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f97316", boxShadow: "0 0 6px #f97316" }} />
+              <span style={{ color: "var(--text-secondary)" }}>Directly Affected (&gt;40%)</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.68rem" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", boxShadow: "0 0 6px #f59e0b" }} />
+              <span style={{ color: "var(--text-secondary)" }}>Indirectly Affected (&gt;15%)</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.68rem" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", opacity: 0.65 }} />
+              <span style={{ color: "var(--text-muted)" }}>Healthy (≤15%)</span>
+            </div>
+          </div>
+        </Panel>
         <MiniMap
           nodeColor={(n) => scoreColor((n.data as { score: number }).score ?? 0)}
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}

@@ -207,13 +207,19 @@ class RCAPipeline:
         # Handle both SimulationResult object (simulate endpoint) and plain dict (alertmanager)
         if simulation_result is not None and isinstance(simulation_result, dict):
             from data.simulator import MicroserviceSimulator
+            from app.services.system_switcher import map_to_simulator
             _sim = MicroserviceSimulator()
-            _rc = simulation_result.get("root_cause", "database")
+            _rc_raw = simulation_result.get("root_cause") or simulation_result.get("service") or simulation_result.get("root_cause_service") or "database"
+            _rc = map_to_simulator(_rc_raw)
             _ft = simulation_result.get("fault_type", "latency_spike")
+            _sev = simulation_result.get("severity", 5.0)
+            if isinstance(_sev, str):
+                _sev_map = {"low": 2.0, "medium": 4.0, "high": 6.0, "critical": 8.0}
+                _sev = _sev_map.get(_sev.lower(), 5.0)
             simulation_result = _sim.simulate_incident(
                 root_cause=_rc if _rc in _sim.services else _sim.services[3],
                 fault_type=_ft,
-                severity=5.0,
+                severity=float(_sev) if isinstance(_sev, (int, float)) else 5.0,
                 num_steps=30,
             )
         elif simulation_result is None:
@@ -234,6 +240,7 @@ class RCAPipeline:
             if "service" in metrics_df.columns:
                 metrics_df = metrics_df.copy()
                 metrics_df["service"] = metrics_df["service"].apply(map_from_simulator)
+                metrics_df = metrics_df.groupby(["service", "timestamp"], as_index=False).mean(numeric_only=True)
         except Exception:
             pass
 
@@ -512,10 +519,17 @@ class RCAPipeline:
         chain = get_propagation_chain(dag, root_cause_svc, topology_graph=graph_builder.graph)
         propagation_str = " → ".join(chain)
 
+        # Remap root cause to active system service name
+        try:
+            from app.services.system_switcher import map_from_simulator
+            final_root_cause = map_from_simulator(root_cause_svc)
+        except Exception:
+            final_root_cause = root_cause_svc
+
         # Create RCA result
         rca_result = RCAResult(
             incident_id=incident.id,
-            root_cause_service=root_cause_svc,
+            root_cause_service=final_root_cause,
             confidence=confidence,
             fault_type=explanation_result.get("fault_type"),
             explanation=explanation_result.get("explanation", ""),

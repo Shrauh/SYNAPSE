@@ -69,7 +69,11 @@ export function SimulateModal({ onClose }: Props) {
     // Re-fetch when active system changes via live WebSocket
     let ws: WebSocket | null = null;
     try {
-      ws = new WebSocket("ws://localhost:8000/api/v1/live");
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = (window.location.port === "5173" || window.location.port === "3000")
+        ? "localhost:8000"
+        : (window.location.host || "localhost:8000");
+      ws = new WebSocket(`${protocol}//${host}/api/v1/live`);
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
