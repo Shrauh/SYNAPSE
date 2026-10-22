@@ -3,6 +3,7 @@ backend/synapse.db
 synapse.db
 *.db
 backend/chroma_data/
+backend/data/chromadb/
 *.pyc
 __pycache__/
 backend/venv/

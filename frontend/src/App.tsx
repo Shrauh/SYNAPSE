@@ -4,6 +4,7 @@ import { Sidebar, TopBar } from "./components/Layout";
 import { useLiveAnomalies } from "./hooks/useLiveAnomalies";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { Cyber3DProvider, Cyber3DBackground } from "./components/Cyber3DBackground";
 import "./styles/auth.css";
 
 // Existing pages (preserved — not replaced)
@@ -60,17 +61,20 @@ function AppInner() {
     <div
       style={{
         minHeight: "100vh",
-        background: "var(--bg-primary)",
+        background: "transparent",
         color: "var(--text-primary)",
         display: "flex",
+        position: "relative",
       }}
     >
+      <Cyber3DBackground />
+
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(c => !c)}
       />
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden", position: "relative", zIndex: 1 }}>
         <TopBar />
         <main style={{ flex: 1, overflowY: "auto" }}>
           <Routes>
@@ -108,7 +112,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppInner />
+        <Cyber3DProvider>
+          <AppInner />
+        </Cyber3DProvider>
       </AuthProvider>
     </BrowserRouter>
   );

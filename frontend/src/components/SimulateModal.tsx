@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, CheckCircle, Loader } from "lucide-react";
 import { simulateFault, getActiveSystem } from "../api/endpoints";
 import { useNavigate } from "react-router-dom";
+import { cyberAudio } from "./Cyber3DBackground";
 
 const FALLBACK_SERVICES = [
   "api-gateway","auth-service","user-service","payment-service",
@@ -20,16 +21,24 @@ const STEPS = [
   "RCA complete!",
 ];
 
-interface Props { onClose: () => void; }
+interface Props {
+  onClose: () => void;
+  initialConfig?: {
+    service?: string;
+    fault_type?: string;
+    severity?: string;
+    duration_minutes?: number;
+  };
+}
 
-export function SimulateModal({ onClose }: Props) {
+export function SimulateModal({ onClose, initialConfig }: Props) {
   const nav = useNavigate();
   const [services, setServices] = useState<string[]>(FALLBACK_SERVICES);
   const [form, setForm] = useState({
-    root_cause_service: "",
-    fault_type: "latency_spike",
-    severity: "critical",
-    duration_minutes: 5,
+    root_cause_service: initialConfig?.service || "",
+    fault_type: initialConfig?.fault_type || "latency_spike",
+    severity: initialConfig?.severity || "critical",
+    duration_minutes: initialConfig?.duration_minutes || 5,
   });
   const [running, setRunning] = useState(false);
   const [step, setStep] = useState(-1);
@@ -52,6 +61,7 @@ export function SimulateModal({ onClose }: Props) {
   }, [services]);
 
   const run = async () => {
+    cyberAudio.playAlert();
     setRunning(true);
     setStep(0);
     try {

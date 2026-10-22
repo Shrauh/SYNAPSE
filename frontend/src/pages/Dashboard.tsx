@@ -13,6 +13,7 @@ import {
 import type { HealthResponse, MetricsResponse, IncidentSummary } from "../types/api";
 import { Spinner } from "../components/UI";
 import { useStore } from "../store";
+import { Card3D } from "../components/Card3D";
 
 interface SimResultData {
   incidentId?: string;
@@ -189,16 +190,24 @@ function getSeverityDetails(severity?: string) {
 
 function StatCard({ title, value, icon, sub }: { title: string, value: string|number, icon: React.ReactNode, sub?: string }) {
   return (
-    <div className="neon-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <Card3D
+      interactiveAudio
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        padding: '1.4rem',
+      }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase' }}>{title}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</span>
         <div style={{ color: 'var(--primary)' }}>{icon}</div>
       </div>
       <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
         <AnimatedNumber value={value} />
       </div>
       {sub && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sub}</div>}
-    </div>
+    </Card3D>
   );
 }
 

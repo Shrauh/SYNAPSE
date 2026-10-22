@@ -167,9 +167,35 @@ export const rollbackAction = (actionId: string, requestedBy: string, reason: st
 export const fetchExecutionLog = (actionId: string) =>
   api.get(`/actions/${actionId}/log`).then(r => r.data);
 
-// Report downloads
+// Report downloads & preview
+export interface ReportArtifactItem {
+  id: string;
+  format: string;
+  filename: string;
+  content_type: string;
+  generated_at: string | null;
+  generated_by: string;
+  checksum_sha256: string;
+}
+
+export interface ReportPreviewData {
+  incident_id: string;
+  format: string;
+  report_id: string;
+  filename: string;
+  content: string;
+  content_type: string;
+  checksum_sha256: string;
+}
+
 export const getReportDownloadUrl = (incidentId: string, fmt: string) =>
   `/api/v1/incidents/${incidentId}/download/${fmt}`;
+
+export const fetchReportArtifacts = (incidentId: string) =>
+  api.get<ReportArtifactItem[]>(`/incidents/${incidentId}/artifacts`).then(r => r.data);
+
+export const fetchReportPreview = (incidentId: string, fmt = "markdown") =>
+  api.get<ReportPreviewData>(`/incidents/${incidentId}/preview?fmt=${fmt}`).then(r => r.data);
 
 // Timeline events
 export const fetchIncidentTimeline = (incidentId: string) =>

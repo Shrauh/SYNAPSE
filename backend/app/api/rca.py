@@ -70,6 +70,18 @@ async def _run_pipeline_background(
                 except Exception as act_err:
                     logger.warning(f"Action generation failed (non-critical): {act_err}")
 
+                # Auto-generate multi-format report artifacts (JSON, Markdown, HTML, PDF)
+                try:
+                    from app.services.report_generator import generate_report
+                    for report_fmt in ["json", "markdown", "html", "pdf"]:
+                        try:
+                            await generate_report(db, incident_id, fmt=report_fmt, generated_by="rca_pipeline")
+                        except Exception as fmt_err:
+                            logger.warning(f"Report artifact {report_fmt} failed: {fmt_err}")
+                    logger.info(f"Auto-generated canonical reports for incident {incident_id}")
+                except Exception as rep_err:
+                    logger.warning(f"Report artifact generation failed (non-critical): {rep_err}")
+
                 # After successful pipeline run, send notification
                 try:
                     from app.services.notifications import notify_rca_complete

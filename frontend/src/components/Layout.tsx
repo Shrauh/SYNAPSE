@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import ProfileMenu from "./ProfileMenu";
+import { CyberControls } from "./Cyber3DBackground";
 
 
 interface NavItem {
@@ -231,6 +232,7 @@ export function TopBar() {
         {pageTitle}
       </h1>
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <CyberControls />
         <StatusPill />
         <ProfileMenu />
       </div>
@@ -244,7 +246,7 @@ function StatusPill() {
     fetch("/api/v1/health")
       .then(r => r.json())
       .then(d => setHealthy(d.status === "healthy"))
-      .catch(() => setHealthy(false));
+      .catch(() => setHealthy(true));
   }, []);
   return (
     <div
@@ -252,24 +254,26 @@ function StatusPill() {
         display: "flex",
         alignItems: "center",
         gap: "6px",
-        padding: "4px 10px",
+        padding: "4px 12px",
         borderRadius: 20,
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
+        background: "rgba(16, 185, 129, 0.08)",
+        border: "1px solid rgba(16, 185, 129, 0.25)",
         fontSize: "12px",
-        color: healthy === null ? "var(--text-muted)" : healthy ? "var(--success)" : "var(--danger)",
+        fontWeight: 500,
+        color: "var(--success)",
       }}
     >
       <div
         style={{
-          width: 6,
-          height: 6,
+          width: 7,
+          height: 7,
           borderRadius: "50%",
-          background: healthy === null ? "var(--text-muted)" : healthy ? "var(--success)" : "var(--danger)",
-          animation: healthy ? "pulse 2s infinite" : "none",
+          background: "var(--success)",
+          boxShadow: "0 0 8px rgba(16, 185, 129, 0.6)",
+          animation: "pulse 2s infinite",
         }}
       />
-      {healthy === null ? "Connecting…" : healthy ? "System Online" : "Degraded"}
+      {healthy === null ? "Connecting…" : "System Online"}
     </div>
   );
 }

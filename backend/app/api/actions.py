@@ -32,6 +32,7 @@ from app.db.models import (
     Incident,
     IncidentEvent,
     RCAResult,
+    ReportArtifact,
     SuggestedAction,
     VerificationRun,
 )
@@ -451,6 +452,70 @@ async def download_report(
         "X-Checksum-SHA256": result["checksum_sha256"],
     }
     return Response(content=content, media_type=content_type, headers=headers)
+
+
+@report_router.get("/{incident_id}/artifacts")
+async def list_report_artifacts(
+    incident_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all generated report artifacts for an incident."""
+    await _require_incident(db, incident_id)
+    r = await db.execute(
+        select(ReportArtifact)
+        .where(ReportArtifact.incident_id == incident_id)
+        .order_by(desc(ReportArtifact.generated_at))
+    )
+    artifacts = r.scalars().all()
+    ext_map = {"json": "json", "markdown": "md", "html": "html", "pdf": "pdf", "csv": "csv", "zip": "zip"}
+    mime_map = {
+        "json": "application/json",
+        "markdown": "text/markdown; charset=utf-8",
+        "html": "text/html; charset=utf-8",
+        "pdf": "application/pdf",
+        "csv": "text/csv; charset=utf-8",
+        "zip": "application/zip",
+    }
+    return [
+        {
+            "id": a.id,
+            "format": a.report_format,
+            "filename": f"synapse-incident-{incident_id}.{ext_map.get(a.report_format, 'txt')}",
+            "content_type": mime_map.get(a.report_format, "application/octet-stream"),
+            "file_size_bytes": a.file_size_bytes,
+            "generated_at": a.generated_at.isoformat() if a.generated_at else None,
+            "generated_by": a.generated_by,
+            "checksum_sha256": a.checksum_sha256,
+        }
+        for a in artifacts
+    ]
+
+
+@report_router.get("/{incident_id}/preview")
+async def preview_report(
+    incident_id: str,
+    fmt: str = "markdown",
+    db: AsyncSession = Depends(get_db),
+):
+    """Get report content preview for display in the UI."""
+    await _require_incident(db, incident_id)
+    try:
+        result = await generate_report(db, incident_id, fmt=fmt, generated_by="preview")
+        content = result["content"]
+        if isinstance(content, bytes):
+            content = content.decode("utf-8", errors="replace")
+        return {
+            "incident_id": incident_id,
+            "format": fmt,
+            "report_id": result["report_id"],
+            "filename": result["filename"],
+            "content": content,
+            "content_type": result["content_type"],
+            "checksum_sha256": result["checksum_sha256"],
+        }
+    except Exception as e:
+        logger.error(f"Report preview failed: {e}")
+        raise HTTPException(500, f"Failed to generate report preview: {e}")
 
 
 @report_router.get("/{incident_id}/timeline-events")

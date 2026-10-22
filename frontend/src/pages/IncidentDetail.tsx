@@ -23,6 +23,8 @@ import type { IncidentDetail, CausalGraph } from "../types/api";
 import { StatusBadge, ScoreBar, Spinner } from "../components/UI";
 import { CausalGraphViz } from "../components/CausalGraph";
 import { usePollReport } from "../hooks/usePollReport";
+import { ReportArtifactsHub } from "../components/ReportArtifactsHub";
+import { Card3D } from "../components/Card3D";
 
 const PIPELINE_STAGES = [
   { id: 1, label: "Data Ingestion", desc: "Telemetry & metrics ingestion", icon: Activity },
@@ -50,8 +52,15 @@ export default function IncidentDetailPage() {
   }, [id]);
 
   const isAnalyzing = incident?.status === "analyzing";
-  const { report } = usePollReport(id!, !!isAnalyzing);
+  const { report } = usePollReport(id!, !!(isAnalyzing || !incident?.root_cause));
   const [pipelineStep, setPipelineStep] = useState(1);
+
+  useEffect(() => {
+    if (report && id) {
+      fetchIncident(id).then(inc => setIncident(inc)).catch(() => {});
+      fetchCausalGraph(id).then(cg => setCausal(cg)).catch(() => {});
+    }
+  }, [report, id]);
 
   useEffect(() => {
     if (!isAnalyzing) return;
@@ -484,6 +493,13 @@ export default function IncidentDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Canonical Incident Reports & Forensics Hub */}
+      <ReportArtifactsHub
+        incidentId={id!}
+        incidentTitle={incident.title}
+        isAnalyzing={!!isAnalyzing && !report}
+      />
 
       {/* Incident Timeline */}
       {incident.timeline && incident.timeline.length > 0 && (
