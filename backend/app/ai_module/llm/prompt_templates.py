@@ -7,6 +7,7 @@ for generating human-readable RCA explanations from GNN + causal output.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 # ──────────────────────────────────────────────
@@ -326,9 +327,20 @@ def build_mock_response(
     # Generate recommendations
     actions = _generate_recommendations(root_svc, fault_type)
 
+    # Compute confidence from how much root cause stands out from other services
+    all_scores = list(anomaly_scores.values()) if anomaly_scores else [root_score]
+    if len(all_scores) > 1:
+        mean_score = sum(all_scores) / len(all_scores)
+        std_score = max((sum((s - mean_score) ** 2 for s in all_scores) / len(all_scores)) ** 0.5, 1e-6)
+        z_deviation = (root_score - mean_score) / std_score
+        # Map z-deviation through sigmoid: z=1 → 0.73, z=2 → 0.88, z=3 → 0.95
+        confidence = round(min(1.0 / (1.0 + math.exp(-z_deviation)), MAX_CONFIDENCE_SCORE), CONFIDENCE_ROUND_DECIMALS)
+    else:
+        confidence = round(min(root_score * DEFAULT_CONFIDENCE_BOOST, MAX_CONFIDENCE_SCORE), CONFIDENCE_ROUND_DECIMALS)
+
     return {
         "root_cause": root_svc,
-        "confidence": float(round(min(root_score * DEFAULT_CONFIDENCE_BOOST, MAX_CONFIDENCE_SCORE), CONFIDENCE_ROUND_DECIMALS)),
+        "confidence": confidence,
         "fault_type": fault_type,
         "explanation": explanation,
         "propagation_chain": chain_str,

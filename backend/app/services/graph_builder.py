@@ -191,6 +191,12 @@ class ServiceGraphBuilder:
         self._anomaly_scores.update(scores)
         self._last_updated = datetime.now(timezone.utc)
 
+    def get_anomaly_scores(self) -> Dict[str, float]:
+        """Get copy of current anomaly scores for all services."""
+        if not self._initialized:
+            self.initialize_default()
+        return dict(self._anomaly_scores)
+
     def get_upstream_callers(self, service: str) -> List[str]:
         """Get services that call this service (predecessors)."""
         return list(self.graph.predecessors(service))

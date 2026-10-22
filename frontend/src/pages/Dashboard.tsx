@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { 
@@ -29,6 +29,11 @@ interface SimResultData {
   propagationChain?: string;
   severity?: string;
   explanation?: string;
+  recommendedActions?: string[];
+  recoveryAction?: string;
+  recoveryCommand?: string;
+  recoverySuccess?: boolean;
+  recoveryTarget?: string;
 }
 
 interface SystemOption {
@@ -214,43 +219,6 @@ function TypewriterText({ text, speed = 18 }: { text: string; speed?: number }) 
   );
 }
 
-function PropagationFlow({ chain }: { chain: string }) {
-  const nodes = chain
-    .split(/\s*(?:→|->)\s*/)
-    .map(n => n.trim())
-    .filter(Boolean);
-
-  if (nodes.length <= 1) {
-    return (
-      <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
-        {chain}
-      </div>
-    );
-  }
-
-  return (
-    <div className="propagation-flow-container">
-      {nodes.map((node, index) => {
-        const isRoot = index === 0;
-        const isLeaf = index === nodes.length - 1;
-        return (
-          <div key={`${node}-${index}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <span className={`propagation-node ${isRoot ? 'root' : isLeaf ? 'leaf' : ''}`}>
-              {isRoot && <span style={{ fontSize: '0.65rem', color: '#ef4444' }}>●</span>}
-              {node}
-            </span>
-            {index < nodes.length - 1 && (
-              <span className="propagation-arrow" title="Flow direction">
-                →
-              </span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function getSeverityDetails(severity?: string) {
   const s = (severity || 'HIGH').toUpperCase();
   if (s.includes('L1') || s.includes('LOW')) {
@@ -341,7 +309,36 @@ export default function Dashboard() {
   const [restartingPod, setRestartingPod] = useState<string | null>(null);
 
   const anomalyScores = useStore(s => s.anomalyScores || {});
+  const latestRca = useStore(s => s.latestRca);
   const [scoreHistory, setScoreHistory] = useState<Record<string, number[]>>({});
+
+  const simServiceRef = useRef(simService);
+  simServiceRef.current = simService;
+  const simFaultRef = useRef(simFault);
+  simFaultRef.current = simFault;
+
+  useEffect(() => {
+    if (latestRca) {
+      setSimResult(latestRca);
+      setSimulationActive(false);
+      showToast(
+        `🔴 Root cause found: ${latestRca.service}${latestRca.confidence !== null ? ` (${(latestRca.confidence * 100).toFixed(0)}%)` : ''}`,
+        'error'
+      );
+      fetchIncidents(1).then(i => {
+        if (i && Array.isArray(i.incidents)) {
+          setIncidents(i.incidents.slice(0, 5));
+          if (i.incidents.length > 0) {
+            fetchIncident(i.incidents[0].id).then(incDetail => {
+              if (incDetail?.anomaly_scores && Object.keys(incDetail.anomaly_scores).length > 0) {
+                useStore.getState().setAnomalyScores(incDetail.anomaly_scores);
+              }
+            }).catch(() => {});
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [latestRca]);
 
   useEffect(() => {
     // Pre-populate initial score history so sparklines appear immediately
@@ -350,8 +347,11 @@ export default function Dashboard() {
       let changed = false;
       for (const svc of currentServices) {
         if (!next[svc] || next[svc].length < 2) {
-          const score = anomalyScores[svc] || (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
-          next[svc] = Array.from({ length: 8 }, () => Math.max(0, score + (Math.random() * 0.04 - 0.02)));
+          const realScore = anomalyScores[svc] ?? anomalyScores[svc.toLowerCase()];
+          const score = typeof realScore === "number"
+            ? realScore
+            : (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
+          next[svc] = Array.from({ length: 8 }, () => score);
           changed = true;
         }
       }
@@ -362,8 +362,11 @@ export default function Dashboard() {
       setScoreHistory(prev => {
         const next = { ...prev };
         for (const svc of currentServices) {
-          const score = anomalyScores[svc] || (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
-          const history = [...(prev[svc] || []), score + (Math.random() * 0.05 - 0.025)];
+          const realScore = anomalyScores[svc] ?? anomalyScores[svc.toLowerCase()];
+          const score = typeof realScore === "number"
+            ? realScore
+            : (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
+          const history = [...(prev[svc] || []), score];
           next[svc] = history.slice(-20); // Keep last 20 points
         }
         return next;
@@ -442,7 +445,16 @@ export default function Dashboard() {
       ]);
       if (h) setHealth(h);
       if (m) setMetrics(m);
-      if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
+      if (i && Array.isArray(i.incidents)) {
+        setIncidents(i.incidents.slice(0, 5));
+        if (i.incidents.length > 0) {
+          fetchIncident(i.incidents[0].id).then(incDetail => {
+            if (incDetail?.anomaly_scores && Object.keys(incDetail.anomaly_scores).length > 0) {
+              useStore.getState().setAnomalyScores(incDetail.anomaly_scores);
+            }
+          }).catch(() => {});
+        }
+      }
       if (sys && sys.system) {
         setActiveSystem(sys.system);
         if (sys.services && sys.services.length > 0) {
@@ -485,7 +497,16 @@ export default function Dashboard() {
         setApiLatency(null);
       });
       fetchIncidents(1).then(i => {
-        if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
+        if (i && Array.isArray(i.incidents)) {
+        setIncidents(i.incidents.slice(0, 5));
+        if (i.incidents.length > 0) {
+          fetchIncident(i.incidents[0].id).then(incDetail => {
+            if (incDetail?.anomaly_scores && Object.keys(incDetail.anomaly_scores).length > 0) {
+              useStore.getState().setAnomalyScores(incDetail.anomaly_scores);
+            }
+          }).catch(() => {});
+        }
+      }
       }).catch(() => {});
       fetchMetrics().then(m => m && setMetrics(m)).catch(() => {});
     }, 5000);
@@ -523,12 +544,27 @@ export default function Dashboard() {
         fetchIncident(incidentId).catch(() => null),
         fetchReport(incidentId).catch(() => null)
       ]);
-      const service = inc?.root_cause?.service || wsData?.root_cause || wsData?.service || simService;
-      const confidence = inc?.root_cause?.confidence ?? wsData?.confidence ?? null;
-      const faultType = inc?.root_cause?.fault_type || rep?.root_cause?.fault_type || wsData?.fault_type || simFault;
+      const service = rep?.root_cause?.service || inc?.root_cause?.service || wsData?.root_cause || wsData?.service || simServiceRef.current;
+      const confidence = (typeof rep?.root_cause?.confidence === 'number' && rep.root_cause.confidence > 0)
+        ? rep.root_cause.confidence
+        : ((typeof inc?.root_cause?.confidence === 'number' && inc.root_cause.confidence > 0)
+          ? inc.root_cause.confidence
+          : (typeof wsData?.confidence === 'number' ? wsData.confidence : null));
+      const faultType = rep?.root_cause?.fault_type || inc?.root_cause?.fault_type || wsData?.fault_type || simFaultRef.current;
       const propagationChain = rep?.propagation_chain || wsData?.propagation_chain || (inc?.affected_services && inc.affected_services.length > 0 ? `${service} → ${inc.affected_services.join(' → ')}` : undefined);
       const severity = rep?.severity?.level || inc?.severity || wsData?.severity || 'HIGH';
       const explanation = rep?.explanation || wsData?.explanation;
+      const recommendedActions = rep?.recommended_actions || wsData?.recommended_actions || [];
+      const recoveryAction = rep?.recovery?.action_type || rep?.recovery?.action || (wsData?.recovery_action && wsData.recovery_action !== 'none' ? wsData.recovery_action : undefined);
+      const recoveryCommand = rep?.recovery?.kubectl_command || wsData?.recovery_command || undefined;
+      const recoverySuccess = rep?.recovery ? rep.recovery.success : (recoveryAction ? true : undefined);
+      const recoveryTarget = rep?.recovery?.target || (recoveryAction ? service : undefined);
+
+      if (inc?.anomaly_scores && Object.keys(inc.anomaly_scores).length > 0) {
+        useStore.getState().setAnomalyScores(inc.anomaly_scores);
+      } else if (wsData?.anomaly_scores) {
+        useStore.getState().setAnomalyScores(wsData.anomaly_scores);
+      }
 
       setSimResult({
         incidentId,
@@ -537,16 +573,30 @@ export default function Dashboard() {
         faultType,
         propagationChain,
         severity,
-        explanation
+        explanation,
+        recommendedActions,
+        recoveryAction,
+        recoveryCommand,
+        recoverySuccess,
+        recoveryTarget,
       });
     } catch {
+      if (wsData?.anomaly_scores) {
+        useStore.getState().setAnomalyScores(wsData.anomaly_scores);
+      }
       setSimResult({
         incidentId,
-        service: wsData?.root_cause || wsData?.service || simService,
-        confidence: wsData?.confidence ?? null,
-        faultType: wsData?.fault_type || simFault,
+        service: wsData?.root_cause || wsData?.service || simServiceRef.current,
+        confidence: typeof wsData?.confidence === 'number' ? wsData.confidence : null,
+        faultType: wsData?.fault_type || simFaultRef.current,
         propagationChain: wsData?.propagation_chain,
-        severity: wsData?.severity || 'HIGH'
+        severity: wsData?.severity || 'HIGH',
+        explanation: wsData?.explanation,
+        recommendedActions: wsData?.recommended_actions || [],
+        recoveryAction: wsData?.recovery_action && wsData.recovery_action !== 'none' ? wsData.recovery_action : undefined,
+        recoveryCommand: wsData?.recovery_command,
+        recoverySuccess: wsData?.recovery_action && wsData.recovery_action !== 'none' ? true : undefined,
+        recoveryTarget: wsData?.root_cause || wsData?.service || simServiceRef.current,
       });
     }
   };
@@ -587,7 +637,7 @@ export default function Dashboard() {
   const handleKillPod = async (service: string, podName: string) => {
     setKillingPod(podName);
     try {
-      await injectK8sFault(service, "pod_kill");
+      const k8sRes = await injectK8sFault(service, "pod_kill");
       showToast(`Pod ${podName} killed! Simulating failure on ${service}...`, "error");
 
       // Optimistically mark pod as crashed in UI
@@ -601,39 +651,60 @@ export default function Dashboard() {
 
       // Trigger simulation flow
       setSimService(service);
-      setSimFault("error_spike");
+      setSimFault("pod_kill");
       setSimulationActive(true);
       setSimTarget(service);
       setSimResult(null);
 
-      try {
-        const res = await simulateFault({
-          fault_type: "error_spike",
-          root_cause_service: service,
-          severity: "critical",
-          duration_minutes: 3
-        });
-        if (res?.incident_id) {
-          simIncidentIdRef.current = res.incident_id;
-        }
-        const fallbackIncId = res?.incident_id;
-        setTimeout(async () => {
-          if (simulationActive) {
-            setSimulationActive(false);
-            if (fallbackIncId) {
-              await loadCompletedRCA(fallbackIncId, { root_cause: service, confidence: 0.95, fault_type: "pod_kill" });
-            } else {
-              setSimResult({ service, confidence: 0.95, faultType: "pod_kill", severity: "HIGH" });
+      let incidentId = k8sRes?.incident_id;
+      if (!incidentId) {
+        try {
+          const simRes = await simulateFault({
+            fault_type: "error_spike",
+            root_cause_service: service,
+            severity: "critical",
+            duration_minutes: 3
+          });
+          incidentId = simRes?.incident_id;
+        } catch {}
+      }
+
+      if (incidentId) {
+        simIncidentIdRef.current = incidentId;
+        // Wait for RCA pipeline to provide real results via API if WebSocket doesn't catch it
+        let attempts = 0;
+        const maxAttempts = 15;
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const report = await fetchReport(incidentId!).catch(() => null);
+            if (report && report.root_cause && report.root_cause.service) {
+              clearInterval(pollInterval);
+              setSimulationActive(false);
+              await loadCompletedRCA(incidentId!);
+              const conf = typeof report.root_cause.confidence === 'number' ? report.root_cause.confidence : null;
+              showToast(
+                `🔴 Root cause found: ${report.root_cause.service}${conf !== null ? ` (${(conf * 100).toFixed(0)}%)` : ''}`,
+                'error'
+              );
+              return;
             }
-            showToast(`🔴 Root cause found: ${service}`, "error");
+          } catch {}
+
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            if (simulationActive) {
+              const inc = await fetchIncident(incidentId!).catch(() => null);
+              if (inc?.root_cause?.service) {
+                setSimulationActive(false);
+                await loadCompletedRCA(incidentId!);
+              } else {
+                setSimulationActive(false);
+                showToast(`RCA pipeline timed out for ${service}`, 'warning');
+              }
+            }
           }
-        }, 12000);
-      } catch {
-        setTimeout(() => {
-          setSimulationActive(false);
-          setSimResult({ service, confidence: 0.92, faultType: "pod_kill", severity: "HIGH" });
-          showToast(`🔴 Root cause found: ${service}`, "error");
-        }, 6000);
+        }, 2000);
       }
 
       setTimeout(() => fetchPodsData(), 1200);
@@ -678,62 +749,112 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Custom WebSocket handling for specific dashboard events
-    const ws = new WebSocket("ws://localhost:8000/api/v1/live");
-    
-    ws.onmessage = (event) => {
+    let ws: WebSocket | null = null;
+    let unmounted = false;
+
+    const connect = () => {
+      if (unmounted) return;
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "simulation_started") {
-          setSimulationActive(true);
-          const target = data.root_cause_service || data.service || simService;
-          setSimTarget(target);
-          if (data.incident_id) {
-            simIncidentIdRef.current = data.incident_id;
-          }
-          setSimResult(null);
-        } else if (data.type === "rca_complete") {
-          setSimulationActive(false);
-          if (data.anomaly_scores) {
-            useStore.getState().setAnomalyScores(data.anomaly_scores);
-          }
-          const incId = data.incident_id || simIncidentIdRef.current;
-          const topService = data.root_cause || (data.anomaly_scores ? Object.entries(data.anomaly_scores).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] : null) || simService;
-          const conf = typeof data.confidence === 'number' ? data.confidence : null;
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const host = window.location.port === "5173" || window.location.port === "3000"
+          ? "localhost:8000"
+          : (window.location.host || "localhost:8000");
+        ws = new WebSocket(`${protocol}//${host}/api/v1/live`);
 
-          if (incId) {
-            loadCompletedRCA(incId, data);
-          } else {
-            setSimResult({
-              service: topService,
-              confidence: conf,
-              faultType: data.fault_type || simFault,
-              propagationChain: data.propagation_chain,
-              severity: data.severity || 'HIGH'
-            });
-          }
-          showToast(`🔴 Root cause found: ${topService} (${(conf * 100).toFixed(0)}%)`, 'error');
+        ws.onmessage = (event) => {
+          if (unmounted) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "simulation_started") {
+              setSimulationActive(true);
+              const target = data.root_cause_service || data.service || simServiceRef.current;
+              setSimTarget(target);
+              if (data.incident_id) {
+                simIncidentIdRef.current = data.incident_id;
+              }
+              setSimResult(null);
+            } else if (data.type === "k8s_fault_injected") {
+              setSimulationActive(true);
+              const target = data.service || simServiceRef.current;
+              setSimTarget(target);
+              if (data.incident_id) {
+                simIncidentIdRef.current = data.incident_id;
+              }
+              setSimResult(null);
+            } else if (data.type === "rca_complete") {
+              setSimulationActive(false);
+              if (data.anomaly_scores) {
+                useStore.getState().setAnomalyScores(data.anomaly_scores);
+              }
+              const incId = data.incident_id || simIncidentIdRef.current;
+              const topService = data.root_cause || (data.anomaly_scores ? Object.entries(data.anomaly_scores).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] : null) || simServiceRef.current;
+              const conf = typeof data.confidence === 'number' ? data.confidence : null;
 
-          fetchIncidents(1).then(i => {
-            if (i && Array.isArray(i.incidents)) setIncidents(i.incidents.slice(0, 5));
-          }).catch(() => {});
-        } else if (data.type === "system_switched") {
-          setActiveSystem(data.system);
-          useStore.getState().setAnomalyScores({});
-          setSimResult(null);
-          setSimTarget("");
-          if (data.services && data.services.length > 0) {
-            setCurrentServices([...data.services]);
-            setSimService(data.services[0]);
-          }
-          showToast(`System switched to ${data.system}`, 'info');
-        }
-      } catch (e) {}
+              if (incId) {
+                loadCompletedRCA(incId, data);
+              } else {
+                setSimResult({
+                  incidentId: incId,
+                  service: topService,
+                  confidence: conf,
+                  faultType: data.fault_type || simFaultRef.current,
+                  propagationChain: data.propagation_chain,
+                  severity: data.severity || 'HIGH',
+                  explanation: data.explanation,
+                  recommendedActions: data.recommended_actions || [],
+                  recoveryAction: data.recovery_action && data.recovery_action !== 'none' ? data.recovery_action : undefined,
+                  recoveryCommand: data.recovery_command,
+                  recoverySuccess: data.recovery_action && data.recovery_action !== 'none' ? true : undefined,
+                  recoveryTarget: topService,
+                });
+              }
+              showToast(`🔴 Root cause found: ${topService}${conf !== null ? ` (${(conf * 100).toFixed(0)}%)` : ''}`, 'error');
+
+              fetchIncidents(1).then(i => {
+                if (i && Array.isArray(i.incidents)) {
+                  setIncidents(i.incidents.slice(0, 5));
+                  if (i.incidents.length > 0) {
+                    fetchIncident(i.incidents[0].id).then(incDetail => {
+                      if (incDetail?.anomaly_scores && Object.keys(incDetail.anomaly_scores).length > 0) {
+                        useStore.getState().setAnomalyScores(incDetail.anomaly_scores);
+                      }
+                    }).catch(() => {});
+                  }
+                }
+              }).catch(() => {});
+            } else if (data.type === "anomaly_update") {
+              if (data.scores) {
+                useStore.getState().setAnomalyScores(data.scores);
+              }
+            } else if (data.type === "system_switched") {
+              setActiveSystem(data.system);
+              useStore.getState().setAnomalyScores({});
+              setSimResult(null);
+              setSimTarget("");
+              if (data.services && data.services.length > 0) {
+                setCurrentServices([...data.services]);
+                setSimService(data.services[0]);
+              }
+              showToast(`System switched to ${data.system}`, 'info');
+            }
+          } catch (e) {}
+        };
+
+        ws.onclose = () => {
+          if (!unmounted) setTimeout(connect, 3000);
+        };
+      } catch {
+        if (!unmounted) setTimeout(connect, 3000);
+      }
     };
+
+    connect();
 
     return () => {
-      ws.close();
+      unmounted = true;
+      ws?.close();
     };
-  }, [simService, simFault]);
+  }, []);
 
   const handleSystemSwitch = async (sys: string) => {
     const sysId = sys.toLowerCase().replace(/ /g, "-");
@@ -774,23 +895,44 @@ export default function Dashboard() {
       });
       if (res?.incident_id) {
         simIncidentIdRef.current = res.incident_id;
+        const incidentId = res.incident_id;
+
+        // Wait for RCA pipeline to provide real results via API if WebSocket doesn't catch it
+        let attempts = 0;
+        const maxAttempts = 15;
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const report = await fetchReport(incidentId).catch(() => null);
+            if (report && report.root_cause && report.root_cause.service) {
+              clearInterval(pollInterval);
+              setSimulationActive(false);
+              await loadCompletedRCA(incidentId);
+              const conf = typeof report.root_cause.confidence === 'number' ? report.root_cause.confidence : null;
+              showToast(
+                `🔴 Root cause found: ${report.root_cause.service}${conf !== null ? ` (${(conf * 100).toFixed(0)}%)` : ''}`,
+                'error'
+              );
+              return;
+            }
+          } catch {}
+
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            if (simulationActive) {
+              const inc = await fetchIncident(incidentId).catch(() => null);
+              if (inc?.root_cause?.service) {
+                setSimulationActive(false);
+                await loadCompletedRCA(incidentId);
+              } else {
+                setSimulationActive(false);
+                showToast(`RCA pipeline timed out for ${simService}`, 'warning');
+              }
+            }
+          }
+        }, 2000);
       }
       showToast(`Fault injected into ${simService}`, 'warning');
-      
-      // Fallback for simulation finish if WS doesn't catch it
-      const fallbackIncId = res?.incident_id;
-      setTimeout(async () => {
-        if (simulationActive) {
-          setSimulationActive(false);
-           if (fallbackIncId) {
-            await loadCompletedRCA(fallbackIncId, { root_cause: simService, confidence: null, fault_type: simFault });
-          } else {
-            setSimResult({ service: simService, confidence: null, faultType: simFault, severity: 'HIGH' });
-          }
-          showToast(`🔴 Root cause found: ${simService}`, 'error');
-        }
-      }, 15000);
-      
     } catch (err) {
       showToast('Failed to inject fault', 'error');
       setSimulationActive(false);
@@ -1151,7 +1293,10 @@ export default function Dashboard() {
               <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Service Map</h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 {currentServices.map(svc => {
-                  const score = anomalyScores[svc] || (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
+                  const realScore = anomalyScores[svc] ?? anomalyScores[svc.toLowerCase()];
+                  const score = typeof realScore === "number"
+                    ? realScore
+                    : (simResult && simResult.service === svc ? (simResult.confidence ?? 0) : 0);
                   const isTarget = simulationActive && (simTarget === svc || (!simTarget && simService === svc));
                   const isResult = Boolean(simResult && simResult.service === svc);
                   
@@ -1353,7 +1498,7 @@ export default function Dashboard() {
                           color: '#a5b4fc'
                         }}>
                           <span>Confidence:</span>
-                          <span style={{ fontFamily: 'var(--font-mono)' }}>Analyzing…</span>
+                          <span style={{ fontFamily: 'var(--font-mono)' }}>Analyzing...</span>
                         </div>
                         )}
 
@@ -1375,12 +1520,30 @@ export default function Dashboard() {
                         )}
                       </div>
 
-                      {simResult.propagationChain && (
-                        <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem', fontWeight: 600 }}>
-                            Propagation Chain
+                      {/* Propagation Chain Visual */}
+                      {simResult?.propagationChain && (
+                        <div style={{ margin: '16px 0', padding: '16px', background: 'rgba(99,102,241,0.06)', borderRadius: 12, border: '1px solid rgba(99,102,241,0.15)' }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Failure Propagation Chain</div>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            {(simResult.propagationChain.includes(' → ') ? simResult.propagationChain.split(' → ') : simResult.propagationChain.split(/\s*(?:→|->)\s*/).filter(Boolean)).map((svc: string, i: number, arr: string[]) => (
+                              <React.Fragment key={`${svc}-${i}`}>
+                                <span style={{
+                                  padding: '6px 14px',
+                                  borderRadius: 20,
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  background: i === 0 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.12)',
+                                  color: i === 0 ? '#ef4444' : '#f59e0b',
+                                  border: `1px solid ${i === 0 ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.25)'}`,
+                                }}>
+                                  {i === 0 && '⚠ '}{svc}
+                                </span>
+                                {i < arr.length - 1 && (
+                                  <span style={{ color: 'var(--text-tertiary)', fontSize: 18, fontWeight: 700 }}>→</span>
+                                )}
+                              </React.Fragment>
+                            ))}
                           </div>
-                          <PropagationFlow chain={simResult.propagationChain} />
                         </div>
                       )}
 
@@ -1390,6 +1553,81 @@ export default function Dashboard() {
                         </div>
                         <TypewriterText text={simResult.explanation || `Algorithmic analysis confirmed root cause anomaly in ${simResult.service}. Degradation profile matches ${simResult.faultType?.replace(/_/g, ' ') || 'injected fault'}${simResult.confidence != null ? ` with ${(simResult.confidence * 100).toFixed(0)}% model certainty` : '. Computing confidence score'}.`} />
                       </div>
+
+                      {/* Auto-Recovery Action Status */}
+                      {((simResult.recoveryAction && simResult.recoveryAction !== 'none') || simResult.recoveryCommand) && (
+                        <div style={{
+                          margin: '16px 0',
+                          padding: '12px 14px',
+                          background: 'rgba(99,102,241,0.06)',
+                          borderRadius: 10,
+                          border: '1px solid rgba(99,102,241,0.2)',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#818cf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>⚡</span> Auto-Recovery Action
+                            </div>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              fontFamily: 'var(--font-mono)',
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              background: simResult.recoverySuccess !== false ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: simResult.recoverySuccess !== false ? '#10b981' : '#f59e0b',
+                              border: `1px solid ${simResult.recoverySuccess !== false ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                            }}>
+                              {simResult.recoverySuccess !== false ? '✓ EXECUTED' : '⏳ PENDING'}
+                            </span>
+                          </div>
+                          {simResult.recoveryAction && simResult.recoveryAction !== 'none' && (
+                            <div style={{ fontSize: 12, color: 'var(--text-primary)', marginBottom: simResult.recoveryCommand ? 8 : 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ color: 'var(--text-muted)' }}>Action:</span>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#818cf8', background: 'rgba(99,102,241,0.12)', padding: '2px 6px', borderRadius: 4 }}>
+                                {simResult.recoveryAction.replace(/_/g, ' ')}
+                              </span>
+                              {simResult.recoveryTarget && (
+                                <span style={{ color: 'var(--text-muted)' }}>
+                                  on <strong style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{simResult.recoveryTarget}</strong>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {simResult.recoveryCommand && (
+                            <div style={{
+                              background: 'rgba(0, 0, 0, 0.45)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              borderRadius: 6,
+                              padding: '8px 12px',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: 12,
+                              color: '#10b981',
+                              wordBreak: 'break-all',
+                            }}>
+                              <span style={{ color: 'var(--text-muted)' }}>$ </span>
+                              {simResult.recoveryCommand}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Recovery Actions */}
+                      {simResult.recommendedActions && simResult.recommendedActions.length > 0 && (
+                        <div style={{ margin: '16px 0' }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Recommended Recovery Actions</div>
+                          {simResult.recommendedActions.map((action: string, i: number) => (
+                            <div key={i} style={{
+                              display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px',
+                              background: i === 0 ? 'rgba(99,102,241,0.06)' : 'transparent',
+                              borderRadius: 8, marginBottom: 4,
+                              border: i === 0 ? '1px solid rgba(99,102,241,0.15)' : 'none',
+                            }}>
+                              <span style={{ color: i === 0 ? '#6366f1' : 'var(--text-tertiary)', flexShrink: 0 }}>{i === 0 ? '▶' : '○'}</span>
+                              <span style={{ fontSize: 13, color: 'var(--text-primary)', fontFamily: action.includes('kubectl') ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{action}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {simResult.incidentId && (
                         <Link

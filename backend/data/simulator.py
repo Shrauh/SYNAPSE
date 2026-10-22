@@ -83,8 +83,8 @@ class FaultConfig:
     severity_multiplier: float = 5.0            # how much the root cause metric spikes
     cascade_attenuation: float = 0.55           # signal loss per hop in the dependency chain
     cascade_delay_steps: int = 2                # time steps before downstream sees impact
-    fault_start_fraction: float = 0.3           # fraction through the window when fault begins
-    fault_duration_fraction: float = 0.5        # fraction of window the fault lasts
+    fault_start_fraction: float = 0.25          # fraction through the window when fault begins
+    fault_duration_fraction: float = 0.75        # fraction of window the fault lasts (extends to end)
 
 
 @dataclass
@@ -207,11 +207,13 @@ class MicroserviceSimulator:
                 df.loc[mask, "cpu"] = np.clip(
                     df.loc[mask, "cpu"] * (1 + config.severity_multiplier * 0.15), 0, 100
                 )
+                df.loc[mask, "request_rate"] *= (1 - config.severity_multiplier * 0.1)
             elif config.fault_type == "error_burst":
                 df.loc[mask, "error_rate"] = np.clip(
                     df.loc[mask, "error_rate"] * config.severity_multiplier * 2, 0, 100
                 )
                 df.loc[mask, "latency"] *= (1 + config.severity_multiplier * 0.4)
+                df.loc[mask, "request_rate"] *= (1 - config.severity_multiplier * 0.15)
             elif config.fault_type == "resource_exhaustion":
                 df.loc[mask, "cpu"] = np.clip(
                     df.loc[mask, "cpu"] * config.severity_multiplier * 0.5, 0, 100
@@ -221,6 +223,7 @@ class MicroserviceSimulator:
                 )
                 df.loc[mask, "latency"] *= (1 + config.severity_multiplier * 0.6)
                 df.loc[mask, "error_rate"] *= (1 + config.severity_multiplier * 0.5)
+                df.loc[mask, "request_rate"] *= (1 - config.severity_multiplier * 0.12)
 
         # --- Cascade to upstream callers ---
         cascade_order = self._compute_cascade_order(root)
@@ -247,6 +250,7 @@ class MicroserviceSimulator:
                 df.loc[mask, "cpu"] = np.clip(
                     df.loc[mask, "cpu"] * (1 + 0.3 * attenuation), 0, 100
                 )
+                df.loc[mask, "request_rate"] *= (1 - 0.15 * attenuation)
 
         return df, affected
 

@@ -7,6 +7,7 @@ and LLM-powered reasoning with continual learning capabilities.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
@@ -46,6 +47,15 @@ async def lifespan(app: FastAPI):
     # Initialize database tables
     await init_db()
 
+    # Seed demo incidents if database is empty
+    try:
+        from app.db.seed import seed_demo_data
+        seeded_count = await seed_demo_data()
+        if seeded_count > 0:
+            logger.info(f"Database seeded with {seeded_count} realistic demo incidents.")
+    except Exception as e:
+        logger.warning(f"Database seeding skipped: {e}")
+
     # Pre-load AI models if available
     try:
         from app.ai_module.orchestrator import pipeline
@@ -59,12 +69,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"AI pipeline init skipped: {e}")
 
+    # Start periodic background task for WebSocket anomaly updates
+    from app.api.ws import periodic_anomaly_broadcast
+    anomaly_broadcast_task = asyncio.create_task(periodic_anomaly_broadcast())
+
     logger.info(f"Server started — {settings.app_name} v{settings.app_version}")
 
     yield
 
     # Shutdown cleanup
     logger.info("Server shutting down.")
+    anomaly_broadcast_task.cancel()
+    try:
+        await anomaly_broadcast_task
+    except asyncio.CancelledError:
+        pass
     from app.db.database import shutdown_db
     await shutdown_db()
 

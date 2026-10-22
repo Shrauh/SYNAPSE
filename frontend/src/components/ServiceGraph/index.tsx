@@ -1,11 +1,11 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import ReactFlow, {
   Background, Controls, MiniMap, Handle, Position,
   useNodesState, useEdgesState,
   type Node, type Edge,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import type { GraphResponse } from "../../types/api";
+import type { GraphResponse, GraphNode, GraphEdge } from "../../types/api";
 import { useStore } from "../../store";
 
 function scoreColor(score: number) {
@@ -55,27 +55,136 @@ const nodeTypes = { service: ServiceNode };
 
 interface Props { graph: GraphResponse; onNodeClick?: (id: string) => void; }
 
-const POSITIONS: Record<string, { x: number; y: number }> = {
-  "api-gateway":          { x: 400, y: 20  },
-  "auth-service":         { x: 180, y: 150 },
-  "user-service":         { x: 380, y: 150 },
-  "order-service":        { x: 600, y: 150 },
-  "search-service":       { x: 780, y: 150 },
-  "payment-service":      { x: 520, y: 300 },
-  "inventory-service":    { x: 680, y: 300 },
-  "notification-service": { x: 400, y: 400 },
-  "cache-service":        { x: 160, y: 350 },
-  "database":             { x: 320, y: 350 },
-};
+function getTier(node: GraphNode): "top" | "middle" | "bottom" {
+  const name = `${node.id} ${node.label || ""}`.toLowerCase();
+  const type = (node.type || "").toLowerCase();
+
+  if (name.includes("gateway") || name.includes("frontend") || type === "gateway") {
+    return "top";
+  }
+  if (
+    name.includes("database") ||
+    name.includes("db") ||
+    name.includes("redis") ||
+    name.includes("cache") ||
+    type === "infrastructure"
+  ) {
+    return "bottom";
+  }
+  return "middle";
+}
+
+function computeTieredLayout(nodes: GraphNode[], edges: GraphEdge[]): Record<string, { x: number; y: number }> {
+  // Build adjacency list for BFS
+  const adj = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (!adj.has(edge.source)) adj.set(edge.source, []);
+    adj.get(edge.source)!.push(edge.target);
+  }
+
+  // Classify nodes into tiers using heuristics
+  const topTier: GraphNode[] = [];
+  const midTier: GraphNode[] = [];
+  const bottomTier: GraphNode[] = [];
+
+  for (const node of nodes) {
+    const tier = getTier(node);
+    if (tier === "top") topTier.push(node);
+    else if (tier === "bottom") bottomTier.push(node);
+    else midTier.push(node);
+  }
+
+  // Determine entry points for BFS traversal (top tier, or in-degree 0 fallback)
+  const visited = new Set<string>();
+  const bfsOrder: string[] = [];
+
+  let startIds = topTier.map((n) => n.id).sort();
+  if (startIds.length === 0) {
+    const inDegrees = new Map<string, number>();
+    for (const n of nodes) inDegrees.set(n.id, 0);
+    for (const edge of edges) {
+      inDegrees.set(edge.target, (inDegrees.get(edge.target) || 0) + 1);
+    }
+    const zeroIn = nodes.filter((n) => (inDegrees.get(n.id) || 0) === 0).map((n) => n.id);
+    startIds = zeroIn.length > 0 ? zeroIn.sort() : nodes.map((n) => n.id).sort();
+  }
+
+  const queue: string[] = [...startIds];
+  for (const id of startIds) visited.add(id);
+
+  while (queue.length > 0) {
+    const curr = queue.shift()!;
+    bfsOrder.push(curr);
+
+    const neighbors = (adj.get(curr) || []).slice().sort();
+    for (const nbr of neighbors) {
+      if (!visited.has(nbr)) {
+        visited.add(nbr);
+        queue.push(nbr);
+      }
+    }
+  }
+
+  // Add any unvisited/disconnected nodes
+  const unvisited = nodes
+    .filter((n) => !visited.has(n.id))
+    .map((n) => n.id)
+    .sort();
+  for (const id of unvisited) {
+    bfsOrder.push(id);
+  }
+
+  // Sort nodes within each tier according to BFS discovery order
+  const bfsIndex = new Map<string, number>();
+  bfsOrder.forEach((id, idx) => bfsIndex.set(id, idx));
+
+  const sortByBfs = (a: GraphNode, b: GraphNode) =>
+    (bfsIndex.get(a.id) ?? 0) - (bfsIndex.get(b.id) ?? 0);
+
+  topTier.sort(sortByBfs);
+  midTier.sort(sortByBfs);
+  bottomTier.sort(sortByBfs);
+
+  // Spread services evenly across x-axis within each tier
+  const spacing = 200;
+  const maxNodes = Math.max(topTier.length, midTier.length, bottomTier.length, 1);
+  const totalWidth = Math.max(800, maxNodes * spacing);
+  const centerX = totalWidth / 2;
+
+  const positions: Record<string, { x: number; y: number }> = {};
+
+  const layoutTier = (tierNodes: GraphNode[], y: number) => {
+    const count = tierNodes.length;
+    if (count === 0) return;
+    const startX = centerX - ((count - 1) * spacing) / 2;
+    tierNodes.forEach((node, idx) => {
+      positions[node.id] = {
+        x: Math.round(startX + idx * spacing),
+        y,
+      };
+    });
+  };
+
+  layoutTier(topTier, 100);
+  layoutTier(midTier, 300);
+  layoutTier(bottomTier, 500);
+
+  return positions;
+}
 
 export function ServiceGraph({ graph, onNodeClick }: Props) {
   const liveScores = useStore((s) => s.anomalyScores);
+
+  const nodePositions = useMemo(
+    () => computeTieredLayout(graph.nodes, graph.edges),
+    [graph.nodes, graph.edges]
+  );
 
   const toRFNodes = useCallback((): Node[] =>
     graph.nodes.map((n) => ({
       id: n.id,
       type: "service",
-      position: POSITIONS[n.id] ?? { x: Math.random() * 600, y: Math.random() * 400 },
+      position: nodePositions[n.id] ?? { x: 0, y: 0 },
       data: {
         label: n.label,
         score: liveScores[n.id] ?? n.anomaly_score,
@@ -83,7 +192,7 @@ export function ServiceGraph({ graph, onNodeClick }: Props) {
         metrics: n.metrics,
       },
     }))
-  , [graph, liveScores]);
+  , [graph, liveScores, nodePositions]);
 
   const toRFEdges = useCallback((): Edge[] =>
     graph.edges.map((e, i) => ({

@@ -54,23 +54,34 @@ def get_root_nodes(
 
 
 def get_propagation_chain(
-    dag: Dict[str, List[str]],
-    root: str,
+    dag: Optional[Dict[str, List[str]]],
+    root_cause: str = "",
     topology_graph=None,
+    root: Optional[str] = None,
 ) -> List[str]:
     """BFS from root to get the propagation chain (order of impact).
 
+    When the causal DAG has no outgoing edges from the root cause, falls back
+    to the service topology graph to trace cascading failure via reverse-edge
+    (predecessor) BFS.
+
     Args:
         dag: Adjacency dict from causal discovery.
-        root: Root cause service.
-        topology_graph: Optional networkx graph for fallback downstream traversal.
+        root_cause: Root cause service name.
+        topology_graph: Optional networkx DiGraph for fallback traversal.
+        root: Alias for root_cause (backwards compatibility).
 
     Returns:
         Ordered list of services in propagation order (root first).
     """
+    actual_root = root_cause or root or ""
+    if not actual_root:
+        return []
+
+    dag = dag or {}
     visited = set()
     chain = []
-    queue = [root]
+    queue = [actual_root]
 
     while queue:
         node = queue.pop(0)
@@ -82,20 +93,58 @@ def get_propagation_chain(
             if target not in visited:
                 queue.append(target)
 
-    # If chain is just the root, try to add downstream services from topology
+    # If chain is just the root, use topology to build cascading failure chain
     if len(chain) <= 1 and topology_graph is not None:
         try:
-            # BFS on topology to find downstream dependents
-            for neighbor in topology_graph.successors(root):
-                if neighbor not in visited:
-                    chain.append(neighbor)
-                    visited.add(neighbor)
-            # Also check predecessors (upstream services that call this one)
-            if len(chain) <= 1:
-                for predecessor in topology_graph.predecessors(root):
-                    if predecessor not in visited:
-                        chain.append(predecessor)
-                        visited.add(predecessor)
+            # BFS walking reverse edges in topology (callers that depend on root_cause)
+            topo_visited = {actual_root}
+            topo_chain = [actual_root]
+            topo_queue = [actual_root]
+
+            while topo_queue:
+                curr = topo_queue.pop(0)
+                if hasattr(topology_graph, "predecessors") and curr in topology_graph:
+                    preds = sorted(topology_graph.predecessors(curr))
+                elif isinstance(topology_graph, dict):
+                    preds = sorted([
+                        src for src, tgts in topology_graph.items()
+                        if isinstance(tgts, (list, set, tuple)) and curr in tgts
+                    ])
+                else:
+                    preds = []
+
+                for pred in preds:
+                    if pred not in topo_visited:
+                        topo_visited.add(pred)
+                        topo_chain.append(pred)
+                        topo_queue.append(pred)
+
+            if len(topo_chain) > 1:
+                chain = topo_chain
+            else:
+                # Fallback: if root has no predecessors (e.g. gateway at top level),
+                # walk forward edges (successors) to show downstream cascade
+                succ_visited = {actual_root}
+                succ_chain = [actual_root]
+                succ_queue = [actual_root]
+
+                while succ_queue:
+                    curr = succ_queue.pop(0)
+                    if hasattr(topology_graph, "successors") and curr in topology_graph:
+                        succs = sorted(topology_graph.successors(curr))
+                    elif isinstance(topology_graph, dict):
+                        succs = sorted(list(topology_graph.get(curr, [])))
+                    else:
+                        succs = []
+
+                    for succ in succs:
+                        if succ not in succ_visited:
+                            succ_visited.add(succ)
+                            succ_chain.append(succ)
+                            succ_queue.append(succ)
+
+                if len(succ_chain) > 1:
+                    chain = succ_chain
         except Exception:
             pass
 

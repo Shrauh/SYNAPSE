@@ -49,7 +49,7 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
         select(func.avg(Incident.confidence)).where(Incident.confidence.is_not(None))
     )
     avg_c = conf_q.scalar()
-    avg_conf = round(float(avg_c) * 100, 1) if avg_c is not None else 94.2
+    avg_conf = round(float(avg_c) * 100, 1) if avg_c is not None else None
 
     from app.utils.uptime import get_uptime
     up_secs = get_uptime()

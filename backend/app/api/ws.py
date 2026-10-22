@@ -75,3 +75,22 @@ async def broadcast_json(data: dict) -> None:
             await ws.send_text(message)
         except Exception:
             manager.active_connections.discard(ws)
+
+
+async def periodic_anomaly_broadcast():
+    """Broadcast anomaly scores every 10s for live dashboard updates."""
+    while True:
+        try:
+            await asyncio.sleep(10)
+            from app.services.graph_builder import graph_builder
+            scores = graph_builder.get_anomaly_scores()
+            if scores:
+                await broadcast_json({
+                    "type": "anomaly_update",
+                    "scores": {k: round(float(v), 4) for k, v in scores.items()},
+                })
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            pass
+

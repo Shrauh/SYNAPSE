@@ -119,24 +119,31 @@ class RCAPipeline:
         print("[Orchestrator] Training GNN on normal data...")
         sim = MicroserviceSimulator(seed=42)
 
-        # Generate normal scenarios
+        # Generate normal scenarios — use SLIDING windows to get many
+        # samples per scenario for robust baseline std estimation.
+        # With 5 scenarios × 60 steps, using window=10 and stride=5,
+        # we get ~50 feature matrices (10 per scenario).
         training_data = []
         for i in range(num_scenarios):
             result = sim.simulate_normal(num_steps=60)
-            agg = ingestion_service.aggregate_window(result.metrics_df)
 
             if i == 0:
                 ingestion_service.fit_normalizer(result.metrics_df)
 
-            feature_matrix = ingestion_service.extract_feature_matrix(
-                agg, graph_builder.service_names, normalize=True
-            )
-
-            if HAS_PYG:
-                from app.ai_module.gnn.graph_builder import networkx_to_pyg
-                pyg_data = networkx_to_pyg(graph_builder, feature_matrix)
-                training_data.append(pyg_data)
-            else:
+            # Extract multiple sliding windows for robust baseline
+            timestamps = sorted(result.metrics_df["timestamp"].unique())
+            window_size = 10
+            stride = 5
+            for start in range(0, len(timestamps) - window_size + 1, stride):
+                window_ts = timestamps[start:start + window_size]
+                window_df = result.metrics_df[result.metrics_df["timestamp"].isin(window_ts)]
+                agg = ingestion_service.aggregate_window(window_df, window_size=window_size)
+                # Use raw features for FallbackAnomalyDetector — cross-service
+                # z-normalization masks per-service anomalies (e.g. database at 25ms
+                # looks normal because payment-service baseline is 25ms).
+                feature_matrix = ingestion_service.extract_feature_matrix(
+                    agg, graph_builder.service_names, normalize=HAS_PYG
+                )
                 training_data.append(
                     type('Data', (), {
                         'x': torch.tensor(feature_matrix, dtype=torch.float32),
@@ -240,8 +247,9 @@ class RCAPipeline:
         t0 = time.time()
         agg_df = ingestion_service.aggregate_window(metrics_df, window_size=10)
         service_order = graph_builder.service_names
+        # Use raw features for FallbackAnomalyDetector (see train_on_normal_data)
         feature_matrix = ingestion_service.extract_feature_matrix(
-            agg_df, service_order, normalize=True
+            agg_df, service_order, normalize=HAS_PYG
         )
 
         # Update graph with current metrics
@@ -257,16 +265,29 @@ class RCAPipeline:
         # ── Stage 3: VAE-GNN Anomaly Detection ──
         t0 = time.time()
         edge_index, _ = graph_builder.get_edge_index_tensor()
-        anomaly_scores, uncertainty_scores = self._gnn_inference.compute_scores(
+        raw_scores, uncertainty_scores = self._gnn_inference.compute_scores(
             feature_matrix=feature_matrix,
             edge_index=edge_index,
             service_names=service_order,
         )
 
+        # FallbackAnomalyDetector returns raw max z-scores (not [0,1]).
+        # Normalize to [0, 1] range preserving the ranking so root cause
+        # (z~50) is clearly separated from cascade services (z~25).
+        max_raw = max(raw_scores.values()) if raw_scores else 1.0
+        if max_raw > 0 and not HAS_PYG:
+            anomaly_scores = {
+                k: round(v / max_raw, 4) for k, v in raw_scores.items()
+            }
+        else:
+            anomaly_scores = raw_scores
+
         # Update graph with anomaly scores
         graph_builder.update_anomaly_scores(anomaly_scores)
 
-        num_anomalous = sum(1 for s in anomaly_scores.values() if s > settings.anomaly_threshold)
+        # Dynamic threshold: services with score > 20% of max are anomalous
+        dynamic_threshold = 0.20
+        num_anomalous = sum(1 for s in anomaly_scores.values() if s > dynamic_threshold)
         timeline.append({
             "time": datetime.now(timezone.utc).isoformat(),
             "event": f"VAE-GNN anomaly detection — {num_anomalous} anomalous services",
@@ -274,15 +295,17 @@ class RCAPipeline:
         })
 
         # ── Stage 4: Filter Anomalous Subset ──
+        # Use dynamic threshold for fallback detector, static for real GNN
+        effective_threshold = dynamic_threshold if not HAS_PYG else settings.anomaly_threshold
         anomalous = self._gnn_inference.get_top_anomalous(
-            anomaly_scores, threshold=settings.anomaly_threshold
+            anomaly_scores, threshold=effective_threshold
         )
         anomalous_names = [name for name, _ in anomalous]
         anomalous_scores = {name: score for name, score in anomalous}
 
         if not anomalous_names:
-            # No anomalies — lower threshold or take top 3
-            anomalous = sorted(anomaly_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+            # No anomalies — take top 5 by score
+            anomalous = sorted(anomaly_scores.items(), key=lambda x: x[1], reverse=True)[:5]
             anomalous_names = [name for name, _ in anomalous]
             anomalous_scores = dict(anomalous)
 
@@ -358,16 +381,23 @@ class RCAPipeline:
 
         # ── Stage 7: Severity Classification ──
         t0 = time.time()
-        # LLM can suggest but must match a known service in the graph
-        llm_root = explanation_result.get("root_cause", "")
-        if llm_root and llm_root in anomaly_scores:
-            root_cause_svc = llm_root
+        # Root cause = service with HIGHEST anomaly score.
+        # This is more reliable than DECI DAG direction (which can
+        # reverse cause/effect) or mock LLM guesses. The root cause
+        # service has the strongest fault signal by definition.
+        primary_root = max(anomaly_scores.items(), key=lambda x: x[1])
+        root_cause_svc = primary_root[0]
+        
+        # Confidence = how much root stands out from others (z-deviation)
+        all_scores = list(anomaly_scores.values())
+        if len(all_scores) > 1:
+            mean_s = sum(all_scores) / len(all_scores)
+            std_s = max((sum((s - mean_s)**2 for s in all_scores) / len(all_scores))**0.5, 1e-6)
+            z_dev = (primary_root[1] - mean_s) / std_s
+            import math
+            confidence = round(min(1.0 / (1.0 + math.exp(-z_dev)), 0.99), 2)
         else:
-            root_cause_svc = root_candidates[0][0] if root_candidates else "unknown"
-        try:
-            confidence = float(explanation_result.get("confidence", root_candidates[0][1] if root_candidates else 0.0))
-        except (TypeError, ValueError):
-            confidence = root_candidates[0][1] if root_candidates else 0.5
+            confidence = round(primary_root[1], 2)
 
         severity_result = severity_classifier.classify(
             anomaly_scores=anomaly_scores,
@@ -603,27 +633,49 @@ class RCAPipeline:
         """Build time-series matrix for causal discovery.
 
         Each column = one anomalous service's combined metric signal.
+        Metrics are z-normalized independently before combining so that
+        no single metric (e.g. request_rate ~800) dominates others
+        (e.g. error_rate ~0.5).
         """
         import pandas as pd
 
         timestamps = sorted(metrics_df["timestamp"].unique())
-        matrix = np.zeros((len(timestamps), len(anomalous_names)))
+        n_ts = len(timestamps)
+        n_svc = len(anomalous_names)
+        
+        # Weights: latency and error_rate carry stronger fault signals
+        METRIC_WEIGHTS = {
+            "latency": 2.0,
+            "error_rate": 2.0,
+            "cpu": 1.0,
+            "memory": 1.0,
+            "request_rate": 0.5,  # rarely changes during faults
+        }
+        
+        matrix = np.zeros((n_ts, n_svc))
 
         for j, svc in enumerate(anomalous_names):
             svc_data = metrics_df[metrics_df["service"] == svc].sort_values("timestamp")
             for col in FEATURE_COLUMNS:
                 if col in svc_data.columns:
-                    # Combine metrics into a single signal per service
-                    values = svc_data[col].values[:len(timestamps)]
-                    if len(values) == len(timestamps):
-                        matrix[:, j] += values / len(FEATURE_COLUMNS)
+                    values = svc_data[col].values[:n_ts]
+                    if len(values) == n_ts:
+                        # Per-metric z-normalization BEFORE combining
+                        col_mean = np.mean(values)
+                        col_std = np.std(values)
+                        if col_std > 1e-8:
+                            z_values = (values - col_mean) / col_std
+                        else:
+                            z_values = np.zeros_like(values)
+                        weight = METRIC_WEIGHTS.get(col, 1.0)
+                        matrix[:, j] += z_values * weight
 
-        # Z-score normalize each metric column independently
+        # Final per-service normalization
         for col in range(matrix.shape[1]):
             col_data = matrix[:, col]
             col_mean = np.mean(col_data)
             col_std = np.std(col_data)
-            if col_std > 1e-8:  # avoid division by zero
+            if col_std > 1e-8:
                 matrix[:, col] = (col_data - col_mean) / col_std
             else:
                 matrix[:, col] = 0.0

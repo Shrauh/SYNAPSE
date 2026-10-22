@@ -14,7 +14,7 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +27,21 @@ from app.services.recovery_executor import recovery_executor
 logger = logging.getLogger("synapse.k8s")
 
 router = APIRouter(prefix="/k8s", tags=["Kubernetes"])
+
+# Enable mounting at both /api/v1/k8s and /k8s so direct calls and API client calls succeed
+_orig_include_router = FastAPI.include_router
+
+
+def _dual_prefix_include_router(self, router_to_include, *args, **kwargs):
+    result = _orig_include_router(self, router_to_include, *args, **kwargs)
+    if router_to_include is router:
+        current_prefix = kwargs.get("prefix", "")
+        if current_prefix == "/api/v1":
+            _orig_include_router(self, router_to_include, prefix="", tags=kwargs.get("tags"))
+    return result
+
+
+FastAPI.include_router = _dual_prefix_include_router
 
 # Known Online Boutique microservices
 ONLINE_BOUTIQUE_SERVICES = {
@@ -50,13 +65,17 @@ ONLINE_BOUTIQUE_SERVICES = {
 # ─────────────────────────────────────────────────────────────
 
 class InjectFaultRequest(BaseModel):
-    service: str = Field(..., description="Target service to inject fault into (e.g. 'cartservice')")
+    service: Optional[str] = Field(default=None, description="Target service to inject fault into (e.g. 'cartservice')")
+    pod_name: Optional[str] = Field(default=None, description="Optional target pod name to kill")
     fault_type: str = Field(default="pod_kill", description="Fault injection type (default: 'pod_kill')")
+    namespace: str = Field(default="default", description="K8s namespace (default: 'default')")
 
 
 class RecoverRequest(BaseModel):
-    service: str = Field(..., description="Target service to recover (e.g. 'cartservice')")
-    action: str = Field(..., description="Recovery action: 'restart_pod' or 'scale_up'")
+    service: Optional[str] = Field(default=None, description="Target service to recover (e.g. 'cartservice')")
+    deployment: Optional[str] = Field(default=None, description="Target deployment name")
+    action: str = Field(default="restart_pod", description="Recovery action: 'restart_pod' or 'scale_up'")
+    namespace: str = Field(default="default", description="K8s namespace (default: 'default')")
 
 
 class PodInfo(BaseModel):

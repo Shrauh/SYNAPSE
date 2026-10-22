@@ -252,48 +252,94 @@ class GATAnomalyDetector(nn.Module):
 
 
 class FallbackAnomalyDetector:
-    """Simple statistical anomaly detector (no PyG dependency).
+    """Calibrated statistical anomaly detector (no PyG dependency).
 
-    Used as fallback when torch-geometric is not installed.
-    Computes z-score based anomaly scores per node.
+    Each service's anomaly score reflects how abnormal it is relative
+    to its OWN baseline - not compared to other services. This prevents
+    services with inherently extreme metrics (e.g., database with
+    request_rate=800) from always dominating the anomaly ranking.
+
+    Calibration:
+        During fit(), we compute each service's NORMAL max-z distribution.
+        During inference, the anomaly score = how many std-devs above
+        its own normal max-z the current max-z is.
     """
 
     def __init__(self):
-        self._baseline_mean: Optional[torch.Tensor] = None
-        self._baseline_std: Optional[torch.Tensor] = None
+        self._baseline_mean = None   # [nodes, features]
+        self._baseline_std = None    # [nodes, features]
+        self._normal_maxz_mean = None  # [nodes] - each service's normal max-z
+        self._normal_maxz_std = None   # [nodes] - std of each service's normal max-z
 
     def fit(self, feature_matrices: list) -> None:
         """Fit baseline statistics from list of normal feature matrices.
 
         Args:
-            feature_matrices: List of tensors, each [num_nodes, num_features]
+            feature_matrices: List of tensors, ndarrays, or objects with .x
         """
-        all_data = torch.stack(feature_matrices)  # [N, nodes, features]
+        import numpy as np
+        converted = []
+        for fm in feature_matrices:
+            val = fm.x if hasattr(fm, "x") else fm
+            if isinstance(val, np.ndarray):
+                converted.append(torch.tensor(val, dtype=torch.float32))
+            elif isinstance(val, torch.Tensor):
+                converted.append(val.float())
+            else:
+                converted.append(torch.as_tensor(val, dtype=torch.float32))
+
+        all_data = torch.stack(converted)  # [N, nodes, features]
         self._baseline_mean = all_data.mean(dim=0)  # [nodes, features]
         self._baseline_std = all_data.std(dim=0).clamp(min=1e-6)
 
-    def compute_anomaly_scores(
-        self,
-        x: torch.Tensor,
-    ) -> torch.Tensor:
-        """Compute z-score based anomaly scores.
+        # Calibrate: compute each service's normal max-z distribution
+        normal_maxzs = []
+        for fm in converted:
+            z = ((fm - self._baseline_mean) / self._baseline_std).abs()
+            normal_maxzs.append(z.max(dim=1).values)
+        stacked = torch.stack(normal_maxzs)  # [N, nodes]
+        self._normal_maxz_mean = stacked.mean(dim=0)   # [nodes]
+        self._normal_maxz_std = stacked.std(dim=0).clamp(min=0.5)  # [nodes]
+
+    def compute_anomaly_scores(self, x) -> torch.Tensor:
+        """Compute CALIBRATED anomaly scores.
+
+        For each service, computes max z-score across features, then
+        subtracts that service's normal max-z and divides by its std.
+        This means a service only scores high if its CURRENT deviation
+        is significantly above what's NORMAL for that specific service.
 
         Args:
-            x: Node features [num_nodes, num_features]
+            x: Node features [num_nodes, num_features] (Tensor or ndarray)
 
         Returns:
-            Anomaly scores [num_nodes] in [0, 1]
+            Calibrated anomaly scores [num_nodes] - higher = more anomalous.
+            Values are calibrated z-deviations (not bounded to [0,1]).
         """
+        import numpy as np
+        if isinstance(x, np.ndarray):
+            x = torch.tensor(x, dtype=torch.float32)
+        elif not isinstance(x, torch.Tensor):
+            x = torch.as_tensor(x, dtype=torch.float32)
+
         if self._baseline_mean is None or self._baseline_mean.shape[0] != x.shape[0]:
-            # No baseline or different topology size — use per-node variance scoring
+            # No baseline - use simple per-node variance scoring
             mean = x.mean(dim=1, keepdim=True)
             std = x.std(dim=1, keepdim=True).clamp(min=1e-6)
-            z_scores = ((x - mean) / std).abs().mean(dim=1)
-            return torch.sigmoid(z_scores - 2.0)
+            z_scores = ((x - mean) / std).abs()
+            return z_scores.max(dim=1).values
 
         z_scores = ((x - self._baseline_mean) / self._baseline_std).abs()
-        avg_z = z_scores.mean(dim=1)
-        return torch.sigmoid(avg_z - 2.0)
+        max_z = z_scores.max(dim=1).values  # [nodes]
+
+        # Calibrate: how many std-devs above normal is this service?
+        if self._normal_maxz_mean is not None:
+            calibrated = (max_z - self._normal_maxz_mean) / self._normal_maxz_std
+            # Clamp to [0, inf) - negative means below normal, not anomalous
+            calibrated = calibrated.clamp(min=0.0)
+            return calibrated
+
+        return max_z
 
 
 def create_detector(use_gnn: bool = True, **kwargs) -> nn.Module:
