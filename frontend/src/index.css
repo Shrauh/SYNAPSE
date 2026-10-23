@@ -58,12 +58,46 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #e0e7ff 0%, #f0f4f8 25%, #faf5ff 50%, #f0f4f8 75%, #dbeafe 100%);
+  background: linear-gradient(135deg, #e8eeff 0%, #f0f4f8 20%, #f5f0ff 40%, #eef2ff 60%, #f0f9ff 80%, #faf5ff 100%); background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
 }
 
+
+/* -- Animated mesh gradient blobs -- */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 60% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 30% 70%, rgba(244, 114, 182, 0.04) 0%, transparent 45%),
+    radial-gradient(circle at 85% 60%, rgba(52, 211, 153, 0.04) 0%, transparent 40%);
+  animation: meshFloat 25s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='grid' width='60' height='60' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 60 0 L 0 0 0 60' fill='none' stroke='%236366f1' stroke-width='0.3' opacity='0.06'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23grid)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+#root { position: relative; z-index: 1; }
+@keyframes meshFloat {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, -1%) rotate(1deg); }
+  66% { transform: translate(-1%, 2%) rotate(-1deg); }
+  100% { transform: translate(1%, -2%) rotate(0.5deg); }
+}
 /* Card */
 .neon-card {
   background: rgba(255, 255, 255, 0.6);
