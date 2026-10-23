@@ -16,11 +16,25 @@ function AppInner() {
   useLiveAnomalies(); // Start WebSocket globally
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #e0e7ff 0%, #f0f4f8 25%, #faf5ff 50%, #f0f4f8 75%, #dbeafe 100%)", color: "var(--text-primary)" }}>
-      {/* Creative floating orbs background */}
-      <div className="bg-orb bg-orb-1" />
-      <div className="bg-orb bg-orb-2" />
-      <div className="bg-orb bg-orb-3" />
-      <div className="bg-orb bg-orb-4" />
+      {/* ── Creative Animated Background ── */}
+      <div className="creative-bg">
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
+        <div className="orb orb-3" />
+        <div className="orb orb-4" />
+        <div className="orb orb-5" />
+        <div className="orb orb-6" />
+        <div className="ring ring-1" />
+        <div className="ring ring-2" />
+        <div className="dot dot-1" />
+        <div className="dot dot-2" />
+        <div className="dot dot-3" />
+        <div className="dot dot-4" />
+        <div className="dot dot-5" />
+        <div className="dot dot-6" />
+        <div className="dot dot-7" />
+        <div className="dot dot-8" />
+      </div>
       <Navbar />
       <main>
         <Routes>
