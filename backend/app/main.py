@@ -30,6 +30,7 @@ if _backend_root not in sys.path:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.security import SecurityHeadersMiddleware, get_security_status, audit_log
 
 from app.api.router import api_router
 from app.api.k8s import router as k8s_router
@@ -112,6 +113,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Security middleware — rate limiting, headers, audit logging
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Mount all API routes under /api/v1
 app.include_router(api_router)
 app.include_router(k8s_router, prefix="/api/v1")
@@ -122,6 +126,17 @@ async def health_shortcut():
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/api/v1/health")
 
+
+# ─── Security API Endpoints ───
+@app.get("/api/security/status", tags=["Security"])
+async def security_status():
+    """Get current security posture and audit trail"""
+    return get_security_status()
+
+@app.get("/api/security/audit", tags=["Security"])
+async def security_audit():
+    """Get recent audit log entries"""
+    return audit_log.get_stats()
 
 # Mount built React frontend if available
 _frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"

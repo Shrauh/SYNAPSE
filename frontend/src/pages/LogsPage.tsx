@@ -96,7 +96,7 @@ export default function LogsPage() {
                     <div><strong>Types:</strong> {(analysisResult.error_types ?? []).join(", ") || "None"}</div>
                   </div>
                   <strong>Last Errors:</strong>
-                  <pre style={{ marginTop: 8, padding: 8, background: "#1e1e1e", borderRadius: 4, overflowX: "auto", color: "var(--status-warning)", fontSize: "0.75rem" }}>
+                  <pre style={{ marginTop: 8, padding: 8, background: "rgba(255, 255, 255, 0.6)", borderRadius: 4, overflowX: "auto", color: "var(--status-warning)", fontSize: "0.75rem" }}>
                     {(analysisResult.last_errors ?? []).join("\n") || "No errors found."}
                   </pre>
                 </>

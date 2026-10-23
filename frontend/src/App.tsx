@@ -16,6 +16,11 @@ function AppInner() {
   useLiveAnomalies(); // Start WebSocket globally
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #e0e7ff 0%, #f0f4f8 25%, #faf5ff 50%, #f0f4f8 75%, #dbeafe 100%)", color: "var(--text-primary)" }}>
+      {/* Creative floating orbs background */}
+      <div className="bg-orb bg-orb-1" />
+      <div className="bg-orb bg-orb-2" />
+      <div className="bg-orb bg-orb-3" />
+      <div className="bg-orb bg-orb-4" />
       <Navbar />
       <main>
         <Routes>

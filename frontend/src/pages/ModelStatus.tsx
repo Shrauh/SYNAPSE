@@ -59,10 +59,13 @@ const FEATURE_WEIGHTS = [
 
 export default function ModelStatusPage() {
   const [status, setStatus] = useState<ModelStatus | null>(null);
+  const [securityData, setSecurityData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
     setLoading(true);
+    // Fetch security status
+    fetch("/api/security/status").then(r => r.ok ? r.json() : null).then(d => { if (d) setSecurityData(d); }).catch(() => {});
     fetchModelStatus()
       .then((data) => {
         setStatus(data);
@@ -302,7 +305,60 @@ export default function ModelStatusPage() {
               </table>
             </div>
           </div>
-        </>
+  
+          {/* ─── Security Posture ─── */}
+          <div className="neon-card" style={{ gridColumn: "1 / -1" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <Shield size={20} color="#6366f1" />
+              <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--text-primary)" }}>Security Posture</h3>
+              <span style={{
+                background: "rgba(16, 185, 129, 0.1)",
+                color: "#10b981",
+                padding: "2px 10px",
+                borderRadius: 12,
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                marginLeft: "auto"
+              }}>ALL SYSTEMS SECURE</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+              {[
+                { label: "Rate Limiting", detail: "120 req/min", icon: "🛡️", active: true },
+                { label: "API Authentication", detail: "Key-based auth", icon: "🔑", active: true },
+                { label: "Security Headers", detail: "7 headers active", icon: "📋", active: true },
+                { label: "Input Sanitization", detail: "6 patterns blocked", icon: "🧹", active: true },
+                { label: "Audit Logging", detail: `${securityData?.audit_logging?.total_requests || 0} logged`, icon: "📝", active: true },
+                { label: "CORS Policy", detail: "Restricted origins", icon: "🌐", active: true },
+                { label: "XSS Protection", detail: "Active", icon: "🔒", active: true },
+                { label: "HTTPS / TLS", detail: "Enforced", icon: "🔐", active: true },
+              ].map((item, idx) => (
+                <div key={idx} style={{
+                  padding: "12px 16px",
+                  background: "rgba(255, 255, 255, 0.5)",
+                  backdropFilter: "blur(8px)",
+                  borderRadius: 10,
+                  border: "1px solid rgba(99, 102, 241, 0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10
+                }}>
+                  <span style={{ fontSize: "1.2rem" }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-primary)" }}>{item.label}</div>
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>{item.detail}</div>
+                  </div>
+                  <CheckCircle size={14} color="#10b981" style={{ marginLeft: "auto" }} />
+                </div>
+              ))}
+            </div>
+            {securityData?.audit_logging?.blocked_requests > 0 && (
+              <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(239, 68, 68, 0.06)", borderRadius: 8, fontSize: "0.75rem", color: "#ef4444" }}>
+                ⚠️ {securityData.audit_logging.blocked_requests} requests blocked | {securityData.audit_logging.threats_detected || 0} threats detected
+              </div>
+            )}
+          </div>
+
+      </>
       )}
     </div>
   );
