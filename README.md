@@ -107,4 +107,3 @@ Full docs: http://localhost:8000/docs
 ## Team
 
 K.K. Wagh IEER, Nashik — Department of AI & Data Science  
-Guide: Dr. Sneha Khaire

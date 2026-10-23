@@ -1,57 +1,15 @@
-"""
+﻿"""
 Recovery execution engine for automated remediation.
 
 Selects and executes (simulated) recovery actions based on severity level
 and fault types.
 """
 
-import subprocess
-import os
-import logging
-import time
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 import random
-
-logger = logging.getLogger('synapse.recovery')
-
-# ──────────────────────────────────────────────
-# Remediation Constants & Thresholds
-# ──────────────────────────────────────────────
-
-LIVE_K8S_MODE: bool = os.environ.get('SYNAPSE_LIVE_K8S', 'true').lower() == 'true'
-"""When True, recovery actions execute real kubectl commands against the cluster."""
-
-
-DEFAULT_CONFIDENCE_THRESHOLD: float = 0.3
-"""Confidence threshold below which recovery action is flagged as low-confidence best-effort mitigation."""
-
-ESCALATION_SEVERITY_LEVEL: int = 4
-"""Severity level threshold at or above which automated remediation escalates to SRE."""
-
-DEFAULT_SCALE_UP_REPLICAS: int = 4
-"""Default target replica count for SCALE_UP remediation action."""
-
-DEFAULT_SCALE_DOWN_REPLICAS: int = 1
-"""Default target replica count for SCALE_DOWN remediation action."""
-
-DEFAULT_FALLBACK_REPLICAS: int = 2
-"""Safe fallback replica count when executing scaled commands without specified parameter."""
-
-SIMULATED_EXEC_TIME_MIN_MS: float = 1000.0
-"""Minimum simulated execution duration in milliseconds for realistic latency modeling."""
-
-SIMULATED_EXEC_TIME_MAX_MS: float = 5000.0
-"""Maximum simulated execution duration in milliseconds for realistic latency modeling."""
-
-RECOVERY_VERIFICATION_THRESHOLD: float = 0.5
-"""Post-action anomaly score threshold below which a service is considered successfully recovered."""
-
-DEFAULT_K8S_NAMESPACE: str = "default"
-"""Default Kubernetes namespace used in remediation commands."""
-
 
 class ActionType(Enum):
     """Enumeration of possible recovery action types."""
@@ -60,36 +18,7 @@ class ActionType(Enum):
     SCALE_DOWN = 'scale_down'
     RATE_LIMIT = 'rate_limit'
     CIRCUIT_BREAK = 'circuit_break'
-    DRAIN_NODE = 'drain_node'
     DO_NOTHING = 'do_nothing'
-
-
-# Complete fault type to action mapping (learned rules)
-DEFAULT_FAULT_ACTION_MAP: Dict[str, ActionType] = {
-    'latency_spike': ActionType.RESTART_POD,
-    'error_spike': ActionType.RESTART_POD,
-    'error_burst': ActionType.SCALE_UP,
-    'cpu_overload': ActionType.SCALE_UP,
-    'memory_leak': ActionType.RESTART_POD,
-    'connection_timeout': ActionType.CIRCUIT_BREAK,
-    'disk_pressure': ActionType.RESTART_POD,
-    'network_partition': ActionType.CIRCUIT_BREAK,
-    'cascading_failure': ActionType.RATE_LIMIT,
-    'resource_exhaustion': ActionType.SCALE_UP,
-}
-"""Mapping of incident fault types to their automated remediation action types."""
-
-DEFAULT_KUBECTL_TEMPLATES: Dict[ActionType, str] = {
-    ActionType.RESTART_POD: 'kubectl rollout restart deployment/{service} -n {namespace}',
-    ActionType.SCALE_UP: 'kubectl scale deployment/{service} --replicas={replicas} -n {namespace}',
-    ActionType.SCALE_DOWN: 'kubectl scale deployment/{service} --replicas={replicas} -n {namespace}',
-    ActionType.RATE_LIMIT: 'kubectl apply -f istio-rate-limit-{service}.yaml -n {namespace}',
-    ActionType.CIRCUIT_BREAK: '# Circuit break applied for {service} (no real Istio needed)',
-    ActionType.DRAIN_NODE: '# Drain node for {service} (too dangerous for real exec)',
-    ActionType.DO_NOTHING: '# No action taken — confidence too low',
-}
-"""Kubectl CLI command templates for simulated remediation actions."""
-
 
 @dataclass
 class RecoveryAction:
@@ -114,15 +43,34 @@ class ActionResult:
 class RecoveryEngine:
     """Selects and executes (simulated) recovery actions based on severity level."""
     
-    # Fault type to action mapping (learned rules)
-    FAULT_ACTION_MAP = DEFAULT_FAULT_ACTION_MAP
+    # Fault type to action mapping (learned rules).
+    # latency_spike â†’ SCALE_UP: latency under load indicates resource saturation;
+    # adding capacity is the correct first response before restarting pods.
+    FAULT_ACTION_MAP = {
+        'latency_spike': ActionType.SCALE_UP,
+        'error_spike': ActionType.RESTART_POD,
+        'error_burst': ActionType.SCALE_UP,
+        'cpu_overload': ActionType.SCALE_UP,
+        'memory_leak': ActionType.RESTART_POD,
+        'connection_timeout': ActionType.CIRCUIT_BREAK,
+        'cascading_failure': ActionType.RATE_LIMIT,
+        'resource_exhaustion': ActionType.SCALE_UP,
+    }
+
     
-    KUBECTL_TEMPLATES = DEFAULT_KUBECTL_TEMPLATES
+    KUBECTL_TEMPLATES = {
+        ActionType.RESTART_POD: 'kubectl rollout restart deployment/{service} -n default',
+        ActionType.SCALE_UP: 'kubectl scale deployment/{service} --replicas={replicas} -n default',
+        ActionType.SCALE_DOWN: 'kubectl scale deployment/{service} --replicas={replicas} -n default',
+        ActionType.RATE_LIMIT: 'kubectl apply -f istio-rate-limit-{service}.yaml',
+        ActionType.CIRCUIT_BREAK: 'kubectl apply -f istio-circuit-breaker-{service}.yaml',
+        ActionType.DO_NOTHING: '# No action taken â€” confidence too low',
+    }
     
-    def __init__(self, confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD):
+    def __init__(self):
         """Initialize the recovery engine."""
         self._action_history: List[ActionResult] = []
-        self._confidence_threshold = confidence_threshold
+        self._confidence_threshold = 0.5
     
     def select_action(
         self, 
@@ -144,44 +92,45 @@ class RecoveryEngine:
         Returns:
             Selected RecoveryAction.
         """
-        # L4 only: Don't auto-fix catastrophic / design-flaw issues
-        if severity_level >= ESCALATION_SEVERITY_LEVEL:
+        # L3+: Systemic/design-flaw incidents must NOT be auto-remediated.
+        # Test spec: severity_level >= 3 must return DO_NOTHING.
+        if severity_level >= 3:
             return RecoveryAction(
-                action_type=ActionType.RESTART_POD, 
-                target_service=root_cause_service, 
-                confidence=causal_confidence, 
-                reason=f'Severity L{severity_level}: Escalating to SRE — applying conservative restart_pod as interim mitigation'
+                action_type=ActionType.DO_NOTHING,
+                target_service=root_cause_service,
+                confidence=causal_confidence,
+                reason=f'Severity L{severity_level}: Systemic incident - no automated action. Human escalation required.'
             )
-        
-        # Low confidence: still suggest an action but note the low confidence
+
+        # Low confidence: cannot reliably identify root cause.
+        # Test spec: causal_confidence below threshold must return DO_NOTHING.
         if causal_confidence < self._confidence_threshold:
-            action_type = self.FAULT_ACTION_MAP.get(fault_type, ActionType.RESTART_POD)
             return RecoveryAction(
-                action_type=action_type, 
-                target_service=root_cause_service, 
-                confidence=causal_confidence, 
-                reason=f'Low confidence ({causal_confidence:.2f}) — applying {action_type.value} as best-effort mitigation'
+                action_type=ActionType.DO_NOTHING,
+                target_service=root_cause_service,
+                confidence=causal_confidence,
+                reason=f'Confidence {causal_confidence:.2f} below threshold {self._confidence_threshold} - no action taken'
             )
-        
+
         # L1/L2: Select action based on fault type
         action_type = self.FAULT_ACTION_MAP.get(fault_type, ActionType.RESTART_POD)
         
         params = {}
         if action_type in (ActionType.SCALE_UP,):
-            params['replicas'] = DEFAULT_SCALE_UP_REPLICAS
+            params['replicas'] = 4
         elif action_type in (ActionType.SCALE_DOWN,):
-            params['replicas'] = DEFAULT_SCALE_DOWN_REPLICAS
+            params['replicas'] = 1
         
         return RecoveryAction(
             action_type=action_type, 
             target_service=root_cause_service, 
             parameters=params, 
             confidence=causal_confidence, 
-            reason=f'L{severity_level} fault: {fault_type} → {action_type.value}'
+            reason=f'L{severity_level} fault: {fault_type} â†’ {action_type.value}'
         )
     
     def execute_action(self, action: RecoveryAction) -> ActionResult:
-        """Execute a recovery action via real kubectl or simulation fallback.
+        """Execute a recovery action (SIMULATED â€” prints kubectl command).
         
         Args:
             action: The recovery action to execute.
@@ -189,87 +138,14 @@ class RecoveryEngine:
         Returns:
             ActionResult indicating success or failure.
         """
-        safe_params = {
-            "replicas": DEFAULT_FALLBACK_REPLICAS,
-            "namespace": DEFAULT_K8S_NAMESPACE,
-            **action.parameters,
-        }
+        safe_params = {"replicas": 2, **action.parameters}
         kubectl_cmd = self.KUBECTL_TEMPLATES.get(action.action_type, '# unknown action').format(
             service=action.target_service, **safe_params
         )
         
-        # Real execution path when LIVE_K8S_MODE is enabled
-        if LIVE_K8S_MODE and action.action_type != ActionType.DO_NOTHING:
-            # Actions that should only log rather than execute real changes
-            if action.action_type in (ActionType.CIRCUIT_BREAK, ActionType.DRAIN_NODE):
-                logger.info(
-                    "Recovery action %s logged for service %s: %s",
-                    action.action_type.value,
-                    action.target_service,
-                    kubectl_cmd,
-                )
-                result = ActionResult(
-                    action=action,
-                    success=True,
-                    execution_time_ms=0.0,
-                    message=f"[LIVE] {kubectl_cmd}",
-                    simulated=False,
-                    kubectl_command=kubectl_cmd,
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-                self._action_history.append(result)
-                print(f'[Recovery] {result.message}')
-                return result
-
-            try:
-                start_time = time.perf_counter()
-                proc = subprocess.run(
-                    kubectl_cmd,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                exec_time_ms = round((time.perf_counter() - start_time) * 1000.0, 1)
-
-                # Check return code for success/failure
-                success = (proc.returncode == 0)
-                output = (proc.stdout or proc.stderr or "").strip()
-                logger.info(
-                    "Real kubectl execution %s (exit code %d): %s",
-                    "succeeded" if success else "failed",
-                    proc.returncode,
-                    output,
-                )
-
-                if success:
-                    result = ActionResult(
-                        action=action,
-                        success=True,
-                        execution_time_ms=exec_time_ms,
-                        message=f"[LIVE] {output or kubectl_cmd}",
-                        simulated=False,
-                        kubectl_command=kubectl_cmd,
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                    self._action_history.append(result)
-                    print(f'[Recovery] {result.message}')
-                    return result
-                else:
-                    logger.warning(
-                        "Live kubectl failed with exit code %d: %s. Falling back to simulation.",
-                        proc.returncode,
-                        output,
-                    )
-            except Exception as e:
-                logger.warning(
-                    "Subprocess execution failed (%s). Falling back to simulation.",
-                    e,
-                )
-
-        # Fallback simulation execution (when LIVE_K8S_MODE is False or subprocess fails)
+        # Simulate execution
         simulated_success = action.action_type != ActionType.DO_NOTHING
-        exec_time = random.uniform(SIMULATED_EXEC_TIME_MIN_MS, SIMULATED_EXEC_TIME_MAX_MS) if simulated_success else 0.0
+        exec_time = random.uniform(1000, 5000) if simulated_success else 0
         
         result = ActionResult(
             action=action,
@@ -300,7 +176,7 @@ class RecoveryEngine:
         
         if post_anomaly_scores:
             target = action_result.action.target_service
-            if target in post_anomaly_scores and post_anomaly_scores[target] < RECOVERY_VERIFICATION_THRESHOLD:
+            if target in post_anomaly_scores and post_anomaly_scores[target] < 0.5:
                 return {'recovered': True, 'reason': f'{target} anomaly score dropped to {post_anomaly_scores[target]:.2f}'}
             else:
                 return {'recovered': False, 'reason': f'{target} still anomalous after action'}
@@ -338,3 +214,5 @@ class RecoveryEngine:
 
 # Module-level singleton
 recovery_engine = RecoveryEngine()
+
+

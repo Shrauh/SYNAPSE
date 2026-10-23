@@ -110,14 +110,36 @@ export default function IncidentDetailPage() {
           </div>
         </div>
         {incident.root_cause && (
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 4 }}>CONFIDENCE</div>
-            <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--accent-blue)" }}>
-              {(incident.root_cause.confidence * 100).toFixed(0)}%
+          <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 4 }}>CONFIDENCE</div>
+              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--accent-blue)" }}>
+                {(incident.root_cause.confidence * 100).toFixed(0)}%
+              </div>
             </div>
+            <Link
+              to={`/incidents/${id}/actions`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                background: "var(--primary)",
+                color: "#fff",
+                borderRadius: "var(--radius-sm)",
+                textDecoration: "none",
+                fontSize: "13px",
+                fontWeight: 600,
+                marginTop: "4px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ▷ Actions Workspace
+            </Link>
           </div>
         )}
       </div>
+
 
       {/* Animated Multi-Step Pipeline Progress Indicator (Task 1) */}
       {isAnalyzing && (

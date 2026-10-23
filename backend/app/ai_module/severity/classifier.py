@@ -3,6 +3,12 @@ Severity classifier for incident management.
 
 Classifies incidents into 4 levels based on the number of anomalous services,
 causal confidence, and recurring patterns.
+
+Level definitions (from tests — authoritative spec):
+  L1_SIMPLE     : 1 anomalous service, confidence >= 0.5
+  L2_CASCADING  : 2-3 anomalous services, confidence >= 0.5
+  L3_SYSTEMIC   : 4+ services OR confidence < 0.5 (uncertain root cause)
+  L4_DESIGN_FLAW: recurring root cause > 3 times in history
 """
 
 from enum import Enum
@@ -10,38 +16,6 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 from datetime import datetime, timezone
-
-# ──────────────────────────────────────────────
-# Severity Classification Threshold Constants
-# ──────────────────────────────────────────────
-
-DEFAULT_ANOMALY_THRESHOLD: float = 0.5
-"""Default anomaly score threshold (0.0 - 1.0) to qualify a service as anomalous."""
-
-L4_ANOMALOUS_RATIO_THRESHOLD: float = 0.8
-"""Ratio of anomalous services (>80%) required to trigger L4 Catastrophic severity."""
-
-L4_RECURRING_COUNT_THRESHOLD: int = 3
-"""Number of recurring incidents (>3) required to classify an incident as an L4 Design Flaw."""
-
-L3_ANOMALOUS_RATIO_THRESHOLD: float = 0.5
-"""Ratio of anomalous services (>50%) required to trigger L3 Systemic severity."""
-
-L3_ANOMALOUS_COUNT_THRESHOLD: int = 4
-"""Minimum count of anomalous services (>=4) that triggers L3 Systemic when causal confidence is low."""
-
-L3_CONFIDENCE_THRESHOLD: float = 0.6
-"""Confidence threshold (<0.6) below which 4+ anomalous services trigger L3 Systemic severity."""
-
-L2_ANOMALOUS_COUNT_THRESHOLD: int = 2
-"""Minimum count of anomalous services (>=2) required to trigger L2 Cascading severity."""
-
-RECURRING_INCIDENT_THRESHOLD: int = 2
-"""Minimum occurrence count in incident history for a root cause to be flagged as recurring."""
-
-DEFAULT_ROUND_DECIMALS: int = 2
-"""Standard decimal places for rounding confidence scores and ratios in severity explanations."""
-
 
 class SeverityLevel(Enum):
     """Enumeration of incident severity levels."""
@@ -66,146 +40,157 @@ class SeverityClassifier:
     def __init__(self):
         """Initialize the severity classifier with an empty incident history."""
         self._incident_history: List[dict] = []  # In-memory for now
-    
+
     def classify(
-        self, 
-        anomaly_scores: Dict[str, float], 
-        causal_confidence: float, 
-        root_cause_service: Optional[str] = None, 
-        threshold: float = DEFAULT_ANOMALY_THRESHOLD
+        self,
+        anomaly_scores: Dict[str, float],
+        causal_confidence: float,
+        root_cause_service: Optional[str] = None,
+        threshold: float = 0.5
     ) -> SeverityResult:
         """Classify an incident into a SeverityLevel.
-        
+
         Args:
             anomaly_scores: Dictionary mapping service names to anomaly scores.
             causal_confidence: Confidence score of the root cause.
             root_cause_service: The identified root cause service.
-            threshold: Anomaly score threshold.
-            
+            threshold: Anomaly score threshold (default 0.5).
+
         Returns:
             SeverityResult containing the classification details.
+
+        Specification (from test suite — authoritative):
+          L4 triggers only on recurring root cause (> 3 times), not on ratio.
+          L3 triggers on >= 4 anomalous services OR causal_confidence < 0.5.
+          L2 triggers on 2-3 anomalous services (with confidence >= 0.5).
+          L1 is the default (1 anomalous service, good confidence).
         """
-        # Count anomalous services
-        total_services = len(anomaly_scores)
+        # Count anomalous services above threshold
         num_anomalous = sum(1 for s in anomaly_scores.values() if s > threshold)
-        anomalous_ratio = num_anomalous / max(total_services, 1)
-        
+
         # Check if this root cause is recurring
         is_recurring, recurring_count = self._check_recurring(root_cause_service)
-        
-        # L4: Catastrophic — >80% of services down OR recurring design flaw (>3 times)
-        if anomalous_ratio > L4_ANOMALOUS_RATIO_THRESHOLD or (is_recurring and recurring_count > L4_RECURRING_COUNT_THRESHOLD):
-            reason = (
-                f'CATASTROPHIC: {num_anomalous}/{total_services} services affected '
-                f'({anomalous_ratio:.0%} blast radius)'
-            ) if anomalous_ratio > L4_ANOMALOUS_RATIO_THRESHOLD else (
-                f'DESIGN FLAW: {root_cause_service} has triggered {recurring_count} incidents — '
-                f'indicates systemic architectural vulnerability'
-            )
+
+        # L4: Design flaw — recurring root cause only (> 3 times in history).
+        # NOTE: High service-ratio alone does NOT trigger L4; use L3 for that.
+        if is_recurring and recurring_count > 3:
             return SeverityResult(
-                level=SeverityLevel.L4_DESIGN_FLAW, 
-                reason=reason, 
-                num_anomalous=num_anomalous, 
-                causal_confidence=causal_confidence, 
-                is_recurring=is_recurring, 
-                recurring_count=recurring_count, 
+                level=SeverityLevel.L4_DESIGN_FLAW,
+                reason=(
+                    f'DESIGN FLAW: {root_cause_service} has triggered {recurring_count} incidents — '
+                    f'indicates systemic architectural vulnerability'
+                ),
+                num_anomalous=num_anomalous,
+                causal_confidence=causal_confidence,
+                is_recurring=is_recurring,
+                recurring_count=recurring_count,
                 response_strategy='recommend'
             )
-        
-        # L3: Systemic — >50% services anomalous OR confidence too low to isolate
-        if anomalous_ratio > L3_ANOMALOUS_RATIO_THRESHOLD or (num_anomalous >= L3_ANOMALOUS_COUNT_THRESHOLD and causal_confidence < L3_CONFIDENCE_THRESHOLD):
+
+        # L3: Systemic — 4+ services anomalous OR confidence too low to isolate root cause.
+        # Using absolute count (>= 4) so 2-3 service systems do not over-escalate.
+        if num_anomalous >= 4 or causal_confidence < 0.5:
             return SeverityResult(
-                level=SeverityLevel.L3_SYSTEMIC, 
+                level=SeverityLevel.L3_SYSTEMIC,
                 reason=(
-                    f'SYSTEMIC: {num_anomalous} services degraded across the mesh '
-                    f'(confidence={causal_confidence:.{DEFAULT_ROUND_DECIMALS}f}) — cross-service cascading failure detected'
-                ), 
-                num_anomalous=num_anomalous, 
-                causal_confidence=causal_confidence, 
-                is_recurring=is_recurring, 
-                recurring_count=recurring_count, 
+                    f'SYSTEMIC: {num_anomalous} services degraded '
+                    f'(confidence={causal_confidence:.2f}) — escalation required'
+                ),
+                num_anomalous=num_anomalous,
+                causal_confidence=causal_confidence,
+                is_recurring=is_recurring,
+                recurring_count=recurring_count,
                 response_strategy='escalate'
             )
-        
+
         # L2: Cascading — 2-3 services affected with reasonable confidence
-        if num_anomalous >= L2_ANOMALOUS_COUNT_THRESHOLD:
-            # Find the max anomaly score for context
+        if num_anomalous >= 2:
             max_score_svc = max(anomaly_scores, key=anomaly_scores.get)
             max_score = anomaly_scores[max_score_svc]
             return SeverityResult(
-                level=SeverityLevel.L2_CASCADING, 
+                level=SeverityLevel.L2_CASCADING,
                 reason=(
                     f'CASCADING: {num_anomalous} services in failure chain — '
-                    f'peak anomaly {max_score:.{DEFAULT_ROUND_DECIMALS}f} on {max_score_svc} '
-                    f'(confidence={causal_confidence:.{DEFAULT_ROUND_DECIMALS}f})'
-                ), 
-                num_anomalous=num_anomalous, 
-                causal_confidence=causal_confidence, 
-                is_recurring=is_recurring, 
-                recurring_count=recurring_count, 
+                    f'peak anomaly {max_score:.2f} on {max_score_svc} '
+                    f'(confidence={causal_confidence:.2f})'
+                ),
+                num_anomalous=num_anomalous,
+                causal_confidence=causal_confidence,
+                is_recurring=is_recurring,
+                recurring_count=recurring_count,
                 response_strategy='root_first'
             )
-        
+
         # L1: Simple — single service issue with high confidence
+        max_score_svc = max(anomaly_scores, key=anomaly_scores.get) if anomaly_scores else ''
+        max_score = anomaly_scores.get(max_score_svc, 0.0)
         return SeverityResult(
-            level=SeverityLevel.L1_SIMPLE, 
+            level=SeverityLevel.L1_SIMPLE,
             reason=(
-                f'ISOLATED: Single-service fault on {root_cause_service or "unknown"} '
-                f'(confidence={causal_confidence:.{DEFAULT_ROUND_DECIMALS}f}) — auto-remediation eligible'
-            ), 
-            num_anomalous=num_anomalous, 
-            causal_confidence=causal_confidence, 
-            is_recurring=is_recurring, 
-            recurring_count=recurring_count, 
+                f'SIMPLE: Single service anomaly on {root_cause_service} — '
+                f'anomaly score {max_score:.2f} '
+                f'(confidence={causal_confidence:.2f})'
+            ),
+            num_anomalous=num_anomalous,
+            causal_confidence=causal_confidence,
+            is_recurring=is_recurring,
+            recurring_count=recurring_count,
             response_strategy='auto_fix'
         )
-    
-    def record_incident(self, root_cause_service: str, severity: SeverityLevel, resolved: bool = False) -> None:
-        """Record an incident in the history.
-        
-        Args:
-            root_cause_service: The identified root cause service.
-            severity: The classified severity level.
-            resolved: Whether the incident is resolved.
-        """
+
+    def record_incident(
+        self,
+        root_cause_service: str,
+        severity_level: Optional[SeverityLevel] = None,
+        resolved: bool = False,
+        # Alias used by orchestrator.py — accepts severity= as well
+        severity: Optional[SeverityLevel] = None,
+    ) -> None:
+        """Record an incident in the history for recurring pattern detection."""
+        # Accept severity= alias (used by orchestrator) or severity_level=
+        resolved_severity = severity_level or severity
         self._incident_history.append({
-            'root_cause': root_cause_service, 
-            'severity': severity.value, 
-            'timestamp': datetime.now(timezone.utc).isoformat(), 
-            'resolved': resolved
+            'root_cause': root_cause_service,
+            'severity': resolved_severity,
+            'resolved': resolved,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
         })
-    
+
+    def get_history(self) -> List[dict]:
+        """Return the full incident history."""
+        return list(self._incident_history)
+
+    def get_patterns(self) -> List[dict]:
+        """Detect services with recurring incidents (> 3 times)."""
+        from collections import Counter
+        counts = Counter(entry['root_cause'] for entry in self._incident_history)
+        return [
+            {'service': svc, 'count': cnt, 'recurring': cnt > 3}
+            for svc, cnt in counts.items()
+            if cnt > 1
+        ]
+
     def _check_recurring(self, root_cause_service: Optional[str]) -> Tuple[bool, int]:
-        """Check if a root cause is recurring.
-        
-        Args:
-            root_cause_service: The service to check.
-            
-        Returns:
-            Tuple containing boolean indicating recurrence and the total count.
-        """
+        """Check if the given service has been a recurring root cause."""
         if not root_cause_service:
             return False, 0
-        count = sum(1 for h in self._incident_history if h['root_cause'] == root_cause_service)
-        return count >= RECURRING_INCIDENT_THRESHOLD, count
-    
-    def get_history(self) -> List[dict]:
-        """Get a copy of the incident history.
-        
-        Returns:
-            List of incident records.
-        """
-        return self._incident_history.copy()
-    
-    def get_recurring_patterns(self) -> Dict[str, int]:
-        """Get recurring root cause patterns.
-        
-        Returns:
-            Dictionary mapping service names to their occurrence counts.
+        count = sum(
+            1 for entry in self._incident_history
+            if entry.get('root_cause') == root_cause_service
+        )
+        return count > 3, count
+
+
+
+    def get_recurring_patterns(self) -> dict:
+        """Return dict of {service_name: occurrence_count} for services seen >= 2 times.
+        Used by orchestrator and test suite (expects dict, not list).
         """
         from collections import Counter
-        counts = Counter(h['root_cause'] for h in self._incident_history)
-        return {svc: cnt for svc, cnt in counts.items() if cnt >= RECURRING_INCIDENT_THRESHOLD}
+        counts = Counter(entry["root_cause"] for entry in self._incident_history)
+        return {svc: cnt for svc, cnt in counts.items() if cnt >= 2}
 
-# Module-level singleton
+# Module-level singleton — used by orchestrator and other modules
 severity_classifier = SeverityClassifier()
+
+
