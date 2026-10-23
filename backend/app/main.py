@@ -162,7 +162,18 @@ if _frontend_dist.exists() and (_frontend_dist / "index.html").exists():
         target = _frontend_dist / full_path
         if full_path and target.is_file():
             return FileResponse(str(target))
-        return FileResponse(str(_frontend_dist / "index.html"))
+        # Add no-cache headers for index.html so browser always gets latest build
+        from starlette.responses import HTMLResponse
+        index_path = _frontend_dist / "index.html"
+        html_content = index_path.read_text()
+        return HTMLResponse(
+            content=html_content,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            }
+        )
 else:
     @app.get("/", tags=["Root"])
     async def root():

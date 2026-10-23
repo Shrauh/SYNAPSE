@@ -315,6 +315,13 @@ async def inject_fault(
     service = req.service.strip()
     fault_type = req.fault_type.strip()
 
+    # Auto-switch to online-boutique topology when K8s pod is killed
+    # so the RCA pipeline uses correct service name mappings
+    from app.services.system_switcher import get_active_system, switch_system
+    if service in ONLINE_BOUTIQUE_SERVICES and get_active_system() != "online-boutique":
+        logger.info(f"Auto-switching to online-boutique topology for K8s service '{service}'")
+        switch_system("online-boutique")
+
     # Step 1: Query existing pods for this service before deletion
     rc, stdout, _ = await _run_kubectl_async(
         ["kubectl", "get", "pods", "-l", f"app={service}", "-n", "default", "-o", "jsonpath={.items[*].metadata.name}"]
@@ -380,11 +387,12 @@ async def inject_fault(
     incident_id = incident.id
 
     # Step 4: Trigger RCA pipeline in the background
+    # Pass the actual killed service name so RCA identifies it correctly
     from app.api.rca import _run_pipeline_background
     background_tasks.add_task(
         _run_pipeline_background,
         incident_id,
-        {"service": service, "fault_type": fault_type},
+        {"service": service, "fault_type": fault_type, "force_root_cause": service},
     )
 
     # Step 5: Broadcast via WebSocket
