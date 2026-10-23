@@ -221,7 +221,7 @@ export default function ModelStatusPage() {
                   <XAxis dataKey="epoch" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
                   <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} domain={[0, 1]} />
                   <Tooltip
-                    contentStyle={{ background: "rgba(15,20,25,0.95)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ background: "rgba(255,255,255,0.85)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
                     labelStyle={{ color: "var(--text-secondary)", fontWeight: 700 }}
                   />
                   <Area type="monotone" dataKey="loss" name="Training Loss" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#trainLossGrad)" />
@@ -243,7 +243,7 @@ export default function ModelStatusPage() {
                   <YAxis dataKey="feature" type="category" stroke="var(--text-muted)" tick={{ fontSize: 11 }} width={95} />
                   <Tooltip
                     formatter={(val: any) => [`${(Number(val) * 100).toFixed(0)}%`, "Weight"]}
-                    contentStyle={{ background: "rgba(15,20,25,0.95)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ background: "rgba(255,255,255,0.85)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
                   />
                   <Bar dataKey="weight" fill="#6366f1" radius={[0, 4, 4, 0]} />
                 </BarChart>
