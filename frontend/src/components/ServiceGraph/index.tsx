@@ -264,7 +264,7 @@ export function ServiceGraph({ graph, onNodeClick }: Props) {
         <Controls style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }} />
         <Panel position="top-left" style={{ margin: 12 }}>
           <div style={{
-            background: "rgba(13, 17, 23, 0.85)",
+            background: "rgba(255, 255, 255, 0.95)",
             backdropFilter: "blur(8px)",
             border: "1px solid var(--border)",
             borderRadius: 8,
@@ -272,7 +272,7 @@ export function ServiceGraph({ graph, onNodeClick }: Props) {
             display: "flex",
             gap: 12,
             alignItems: "center",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            boxShadow: "0 2px 10px rgba(0, 0, 0, 0.05)",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.68rem" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 6px #ef4444" }} />

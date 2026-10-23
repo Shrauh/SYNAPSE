@@ -46,7 +46,7 @@ export function Navbar() {
       padding: "0 1.5rem", height: "56px",
       background: "rgba(255, 255, 255, 0.72)", backdropFilter: "blur(16px)",
       WebkitBackdropFilter: "blur(16px)",
-      borderBottom: "1px solid rgba(148, 163, 184, 0.2)", boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
+      borderBottom: "1px solid rgba(148, 163, 184, 0.2)", boxShadow: "0 2px 16px rgba(99,102,241,0.03)",
     }}>
       {/* Logo */}
       <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
@@ -97,7 +97,7 @@ export function Navbar() {
           fontSize: "0.75rem", color: "var(--text-primary)",
           background: "rgba(255, 255, 255, 0.6)", padding: "5px 12px",
           borderRadius: "20px", border: "1px solid var(--border-bright)",
-          boxShadow: "0 4px 30px rgba(0,0,0,0.04), 0 1px 0 rgba(255,255,255,0.8) inset"
+          boxShadow: "0 4px 30px rgba(99,102,241,0.03), 0 1px 0 rgba(255,255,255,0.8) inset"
         }}>
           <div className={`status-dot ${sysStatus === "running" ? "green" : "yellow"}`} />
           <span style={{ color: "var(--text-muted)", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>System</span>
@@ -110,7 +110,7 @@ export function Navbar() {
           fontSize: "0.75rem", color: "var(--text-primary)",
           background: "rgba(255, 255, 255, 0.6)", padding: "5px 12px",
           borderRadius: "20px", border: "1px solid var(--border-bright)",
-          boxShadow: "0 4px 30px rgba(0,0,0,0.04), 0 1px 0 rgba(255,255,255,0.8) inset"
+          boxShadow: "0 4px 30px rgba(99,102,241,0.03), 0 1px 0 rgba(255,255,255,0.8) inset"
         }}>
           <div className={`status-dot ${wsConnected ? "blue" : "red"}`} />
           <span style={{ fontWeight: 600 }}>{wsConnected ? "Live" : "Offline"}</span>

@@ -78,7 +78,7 @@ export default function LogsPage() {
               placeholder="Service name (e.g., payment-service)" 
               value={analyzingService}
               onChange={e => setAnalyzingService(e.target.value)}
-              style={{ flex: 1, padding: "8px 12px", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}
+              style={{ flex: 1, padding: "8px 12px", background: "rgba(255,255,255,0.45)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}
             />
             <button type="submit" disabled={analyzing} className="btn" style={{ background: "var(--accent-blue)", color: "#fff", padding: "8px 16px", borderRadius: 6, fontWeight: 600 }}>
               {analyzing ? <Spinner /> : "Analyze"}
@@ -86,7 +86,7 @@ export default function LogsPage() {
           </form>
 
           {analysisResult && (
-            <div style={{ background: "rgba(0,0,0,0.3)", padding: 16, borderRadius: 8, border: "1px solid var(--border)", fontSize: "0.85rem" }}>
+            <div style={{ background: "rgba(255,255,255,0.5)", padding: 16, borderRadius: 8, border: "1px solid var(--border)", fontSize: "0.85rem" }}>
               {analysisResult.error ? (
                 <div style={{ color: "var(--status-critical)" }}>{analysisResult.error}</div>
               ) : (
@@ -117,7 +117,7 @@ export default function LogsPage() {
               <input 
                 value={pushService}
                 onChange={e => setPushService(e.target.value)}
-                style={{ width: "100%", padding: "8px", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}
+                style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.45)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}
               />
             </div>
             <div>
@@ -126,7 +126,7 @@ export default function LogsPage() {
                 rows={4}
                 value={logLines}
                 onChange={e => setLogLines(e.target.value)}
-                style={{ width: "100%", padding: "8px", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", resize: "vertical" }}
+                style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.45)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", resize: "vertical" }}
                 placeholder="[ERROR] Database connection failed..."
               />
             </div>

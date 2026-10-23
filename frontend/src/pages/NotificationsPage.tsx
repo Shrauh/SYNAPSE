@@ -72,7 +72,7 @@ export default function NotificationsPage() {
             </p>
             
             {!status?.slack?.configured && (
-              <div style={{ background: "rgba(0,0,0,0.2)", padding: 12, borderRadius: 6, border: "1px dashed var(--border)", marginBottom: 16, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+              <div style={{ background: "rgba(255,255,255,0.45)", padding: 12, borderRadius: 6, border: "1px dashed var(--border)", marginBottom: 16, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                 <strong>Setup Instructions:</strong><br/>
                 1. Create an Incoming Webhook in your Slack workspace.<br/>
                 2. Set the <code>SLACK_WEBHOOK_URL</code> environment variable in your backend environment.<br/>
@@ -113,7 +113,7 @@ export default function NotificationsPage() {
             </p>
             
             {!status?.teams?.configured && (
-              <div style={{ background: "rgba(0,0,0,0.2)", padding: 12, borderRadius: 6, border: "1px dashed var(--border)", marginBottom: 16, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+              <div style={{ background: "rgba(255,255,255,0.45)", padding: 12, borderRadius: 6, border: "1px dashed var(--border)", marginBottom: 16, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                 <strong>Setup Instructions:</strong><br/>
                 1. Configure an Incoming Webhook connector in your Teams channel.<br/>
                 2. Set the <code>TEAMS_WEBHOOK_URL</code> environment variable in your backend environment.<br/>

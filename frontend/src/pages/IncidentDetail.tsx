@@ -383,8 +383,8 @@ export default function IncidentDetailPage() {
           style={{
             marginBottom: 20,
             borderColor: "rgba(99, 102, 241, 0.35)",
-            background: "linear-gradient(135deg, rgba(15, 20, 35, 0.9) 0%, rgba(20, 25, 45, 0.7) 100%)",
-            boxShadow: "0 4px 24px rgba(0, 0, 0, 0.05), 0 0 16px rgba(99, 102, 241, 0.12)",
+            background: "rgba(255, 255, 255, 0.85)",
+            boxShadow: "0 4px 24px rgba(99,102,241,0.04), 0 0 16px rgba(99, 102, 241, 0.12)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -419,7 +419,7 @@ export default function IncidentDetailPage() {
               style={{
                 marginBottom: recommendedActions.length > 0 ? 16 : 0,
                 padding: "14px 16px",
-                background: "rgba(0, 0, 0, 0.04)",
+                background: "rgba(99,102,241,0.03)",
                 borderRadius: 10,
                 border: "1px solid rgba(99, 102, 241, 0.2)",
               }}
@@ -498,8 +498,8 @@ export default function IncidentDetailPage() {
                   </div>
                   <div
                     style={{
-                      background: "rgba(0, 0, 0, 0.45)",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      background: "rgba(241, 245, 249, 0.95)",
+                      border: "1px solid rgba(99, 102, 241, 0.2)",
                       borderRadius: 6,
                       padding: "10px 14px",
                       fontFamily: "var(--font-mono, JetBrains Mono, monospace)",
@@ -524,7 +524,7 @@ export default function IncidentDetailPage() {
             <div
               style={{
                 padding: "14px 16px",
-                background: "rgba(0, 0, 0, 0.04)",
+                background: "rgba(99,102,241,0.03)",
                 borderRadius: 10,
                 border: "1px solid var(--border)",
               }}

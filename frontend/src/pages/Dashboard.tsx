@@ -982,13 +982,13 @@ export default function Dashboard() {
       {connectModalOpen && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)',
+          background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(8px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }} onClick={() => setConnectModalOpen(false)}>
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(10, 15, 30, 0.98))',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(241, 245, 249, 0.95))',
               border: '1px solid rgba(99, 102, 241, 0.25)',
               borderRadius: '16px',
               padding: '2rem',
@@ -1029,7 +1029,7 @@ export default function Dashboard() {
                   <input
                     value={connName} onChange={e => setConnName(e.target.value)}
                     placeholder="my-prometheus"
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(99,102,241,0.04)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -1042,7 +1042,7 @@ export default function Dashboard() {
                       else if (e.target.value === 'kubernetes') setConnUrl('https://kubernetes.default.svc');
                       else setConnUrl('http://');
                     }}
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(99,102,241,0.04)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   >
                     <option value="prometheus">Prometheus</option>
                     <option value="alertmanager">Alertmanager</option>
@@ -1058,7 +1058,7 @@ export default function Dashboard() {
                 <input
                   value={connUrl} onChange={e => setConnUrl(e.target.value)}
                   placeholder="http://localhost:9090"
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: '#6366f1', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(99,102,241,0.04)', border: '1px solid var(--border)', borderRadius: '8px', color: '#6366f1', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -1070,7 +1070,7 @@ export default function Dashboard() {
                     type="password"
                     value={connApiKey} onChange={e => setConnApiKey(e.target.value)}
                     placeholder="Bearer token..."
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(99,102,241,0.04)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -1078,7 +1078,7 @@ export default function Dashboard() {
                   <input
                     value={connNamespace} onChange={e => setConnNamespace(e.target.value)}
                     placeholder="default"
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(99,102,241,0.04)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
@@ -1156,7 +1156,7 @@ export default function Dashboard() {
                     <div key={c.name} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.5rem 0.75rem', borderRadius: '8px',
-                      background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)',
+                      background: 'rgba(255,255,255,0.5)', border: '1px solid var(--border)',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <div className={`status-dot ${c.status === 'connected' ? 'green' : 'red'}`} />
@@ -1210,7 +1210,7 @@ export default function Dashboard() {
               <span>{health ? (health.status === 'healthy' ? 'ONLINE' : health.status.toUpperCase()) : 'OFFLINE'}</span>
             </span>
             {apiLatency !== null && (
-              <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontWeight: 500, background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontWeight: 500, background: 'rgba(255,255,255,0.5)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                 {apiLatency}ms API
               </span>
             )}
@@ -1392,7 +1392,7 @@ export default function Dashboard() {
                     <select 
                       value={simService} 
                       onChange={e => setSimService(e.target.value)}
-                      style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none' }}
+                      style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.5)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none' }}
                       disabled={simulationActive}
                     >
                       {currentServices.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1403,7 +1403,7 @@ export default function Dashboard() {
                     <select 
                       value={simFault} 
                       onChange={e => setSimFault(e.target.value)}
-                      style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none' }}
+                      style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.5)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none' }}
                       disabled={simulationActive}
                     >
                       {FAULT_TYPES.map(f => <option key={f} value={f}>{f.replace('_', ' ')}</option>)}
@@ -1433,7 +1433,7 @@ export default function Dashboard() {
                     <div className={`neon-card rca-severity-card ${sevInfo.cardClass}`} style={{
                       marginTop: '1.25rem',
                       padding: '1.25rem',
-                      boxShadow: '0 0 25px rgba(0,0,0,0.05)'
+                      boxShadow: '0 0 25px rgba(99,102,241,0.04)'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: sevInfo.badgeColor }}>
@@ -1547,7 +1547,7 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                      <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(255, 255, 255, 0.75)', boxShadow: '0 1px 4px rgba(99,102,241,0.06)', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '0.7rem', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.35rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Zap size={12} /> AI Diagnosis
                         </div>
@@ -1595,8 +1595,8 @@ export default function Dashboard() {
                           )}
                           {simResult.recoveryCommand && (
                             <div style={{
-                              background: 'rgba(0, 0, 0, 0.45)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              background: 'rgba(241, 245, 249, 0.9)',
+                              border: '1px solid rgba(99, 102, 241, 0.2)',
                               borderRadius: 6,
                               padding: '8px 12px',
                               fontFamily: 'var(--font-mono)',
@@ -1667,7 +1667,7 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     incidents.map(inc => (
-                      <div key={inc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                      <div key={inc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.45)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                         <div>
                           <div style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>{inc.title}</div>
                           <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
@@ -1745,7 +1745,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : k8sPods.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.45)', borderRadius: '8px' }}>
                 No Kubernetes pods found in cluster. Connect a cluster or select an active system.
               </div>
             ) : (
@@ -1760,13 +1760,13 @@ export default function Dashboard() {
                       key={pod.name}
                       style={{
                         padding: '0.85rem 1rem',
-                        background: 'rgba(15, 23, 42, 0.7)',
-                        border: meta.dotClass === 'red' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border)',
+                        background: 'rgba(255, 255, 255, 0.85)',
+                        border: meta.dotClass === 'red' ? '1.5px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(148, 163, 184, 0.25)',
                         borderRadius: '10px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.6rem',
-                        boxShadow: meta.dotClass === 'red' ? '0 0 12px rgba(239, 68, 68, 0.2)' : 'none',
+                        boxShadow: meta.dotClass === 'red' ? '0 2px 12px rgba(239, 68, 68, 0.15)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
                         transition: 'all 0.25s ease',
                       }}
                     >

@@ -76,7 +76,7 @@ export default function AlertsPage() {
             <input 
               readOnly 
               value={`${window.location.origin}/api/v1/alerts/webhook`}
-              style={{ flex: 1, padding: "8px 12px", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}
+              style={{ flex: 1, padding: "8px 12px", background: "rgba(255,255,255,0.45)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}
             />
             <button onClick={handleCopy} className="btn btn-ghost" style={{ padding: "8px 12px" }}>
               {copied ? <CheckCircle size={16} color="var(--status-healthy)" /> : <Copy size={16} />}
@@ -94,7 +94,7 @@ export default function AlertsPage() {
             <div style={{ display: "flex", gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>Service</label>
-                <select value={service} onChange={e => setService(e.target.value)} style={{ width: "100%", padding: "8px", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}>
+                <select value={service} onChange={e => setService(e.target.value)} style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.45)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}>
                   <option value="payment-service">payment-service</option>
                   <option value="order-service">order-service</option>
                   <option value="auth-service">auth-service</option>
@@ -104,7 +104,7 @@ export default function AlertsPage() {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>Fault Type</label>
-                <select value={faultType} onChange={e => setFaultType(e.target.value)} style={{ width: "100%", padding: "8px", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}>
+                <select value={faultType} onChange={e => setFaultType(e.target.value)} style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.45)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)" }}>
                   <option value="latency_spike">latency_spike</option>
                   <option value="error_spike">error_spike</option>
                   <option value="cpu_overload">cpu_overload</option>
