@@ -15,7 +15,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 function AppInner() {
   useLiveAnomalies(); // Start WebSocket globally
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #e0e7ff 0%, #f0f4f8 25%, #faf5ff 50%, #f0f4f8 75%, #dbeafe 100%)", color: "var(--text-primary)" }}>
       <Navbar />
       <main>
         <Routes>

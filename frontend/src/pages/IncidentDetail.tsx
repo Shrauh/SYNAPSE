@@ -130,7 +130,7 @@ export default function IncidentDetailPage() {
             marginBottom: 24,
             background: "linear-gradient(135deg, rgba(12, 18, 34, 0.95) 0%, rgba(17, 29, 48, 0.92) 100%)",
             border: "1px solid rgba(99, 102, 241, 0.35)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.15)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.06), 0 0 20px rgba(99, 102, 241, 0.15)",
             overflow: "hidden",
             position: "relative",
           }}
@@ -384,7 +384,7 @@ export default function IncidentDetailPage() {
             marginBottom: 20,
             borderColor: "rgba(99, 102, 241, 0.35)",
             background: "linear-gradient(135deg, rgba(15, 20, 35, 0.9) 0%, rgba(20, 25, 45, 0.7) 100%)",
-            boxShadow: "0 4px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(99, 102, 241, 0.12)",
+            boxShadow: "0 4px 24px rgba(0, 0, 0, 0.05), 0 0 16px rgba(99, 102, 241, 0.12)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -419,7 +419,7 @@ export default function IncidentDetailPage() {
               style={{
                 marginBottom: recommendedActions.length > 0 ? 16 : 0,
                 padding: "14px 16px",
-                background: "rgba(0, 0, 0, 0.25)",
+                background: "rgba(0, 0, 0, 0.04)",
                 borderRadius: 10,
                 border: "1px solid rgba(99, 102, 241, 0.2)",
               }}
@@ -524,7 +524,7 @@ export default function IncidentDetailPage() {
             <div
               style={{
                 padding: "14px 16px",
-                background: "rgba(0, 0, 0, 0.25)",
+                background: "rgba(0, 0, 0, 0.04)",
                 borderRadius: 10,
                 border: "1px solid var(--border)",
               }}

@@ -44,9 +44,9 @@ export function Navbar() {
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "0 1.5rem", height: "56px",
-      background: "rgba(15, 20, 25, 0.9)", backdropFilter: "blur(16px)",
+      background: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(16px)",
       WebkitBackdropFilter: "blur(16px)",
-      borderBottom: "1px solid var(--border)",
+      borderBottom: "1px solid rgba(148, 163, 184, 0.2)", boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
     }}>
       {/* Logo */}
       <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
@@ -71,7 +71,7 @@ export function Navbar() {
               fontWeight: active ? 600 : 500,
               transition: "all 0.2s ease",
               background: active ? "rgba(99, 102, 241, 0.12)" : "transparent",
-              color: active ? "#ffffff" : "var(--text-secondary)",
+              color: active ? "#1e293b" : "var(--text-secondary)",
               border: active ? "1px solid var(--border-bright)" : "1px solid transparent",
               boxShadow: active ? "0 0 8px rgba(99, 102, 241, 0.15)" : "none",
             }}>
@@ -95,9 +95,9 @@ export function Navbar() {
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           fontSize: "0.75rem", color: "var(--text-primary)",
-          background: "var(--bg-elevated)", padding: "5px 12px",
+          background: "rgba(255, 255, 255, 0.7)", padding: "5px 12px",
           borderRadius: "20px", border: "1px solid var(--border-bright)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
         }}>
           <div className={`status-dot ${sysStatus === "running" ? "green" : "yellow"}`} />
           <span style={{ color: "var(--text-muted)", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>System</span>
@@ -108,9 +108,9 @@ export function Navbar() {
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           fontSize: "0.75rem", color: "var(--text-primary)",
-          background: "var(--bg-elevated)", padding: "5px 12px",
+          background: "rgba(255, 255, 255, 0.7)", padding: "5px 12px",
           borderRadius: "20px", border: "1px solid var(--border-bright)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
         }}>
           <div className={`status-dot ${wsConnected ? "blue" : "red"}`} />
           <span style={{ fontWeight: 600 }}>{wsConnected ? "Live" : "Offline"}</span>

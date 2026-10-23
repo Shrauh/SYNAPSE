@@ -995,7 +995,7 @@ export default function Dashboard() {
               width: '600px',
               maxHeight: '85vh',
               overflowY: 'auto',
-              boxShadow: '0 0 60px rgba(99, 102, 241, 0.1), 0 25px 50px rgba(0, 0, 0, 0.5)',
+              boxShadow: '0 0 60px rgba(99, 102, 241, 0.1), 0 25px 50px rgba(0, 0, 0, 0.06)',
             }}
           >
             {/* Header */}
@@ -1029,7 +1029,7 @@ export default function Dashboard() {
                   <input
                     value={connName} onChange={e => setConnName(e.target.value)}
                     placeholder="my-prometheus"
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -1042,7 +1042,7 @@ export default function Dashboard() {
                       else if (e.target.value === 'kubernetes') setConnUrl('https://kubernetes.default.svc');
                       else setConnUrl('http://');
                     }}
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   >
                     <option value="prometheus">Prometheus</option>
                     <option value="alertmanager">Alertmanager</option>
@@ -1058,7 +1058,7 @@ export default function Dashboard() {
                 <input
                   value={connUrl} onChange={e => setConnUrl(e.target.value)}
                   placeholder="http://localhost:9090"
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: '#6366f1', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: '#6366f1', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -1070,7 +1070,7 @@ export default function Dashboard() {
                     type="password"
                     value={connApiKey} onChange={e => setConnApiKey(e.target.value)}
                     placeholder="Bearer token..."
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -1078,7 +1078,7 @@ export default function Dashboard() {
                   <input
                     value={connNamespace} onChange={e => setConnNamespace(e.target.value)}
                     placeholder="default"
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
@@ -1433,7 +1433,7 @@ export default function Dashboard() {
                     <div className={`neon-card rca-severity-card ${sevInfo.cardClass}`} style={{
                       marginTop: '1.25rem',
                       padding: '1.25rem',
-                      boxShadow: '0 0 25px rgba(0,0,0,0.4)'
+                      boxShadow: '0 0 25px rgba(0,0,0,0.05)'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: sevInfo.badgeColor }}>
