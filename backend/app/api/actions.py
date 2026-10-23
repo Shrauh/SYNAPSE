@@ -586,8 +586,12 @@ async def get_platform_health(db: AsyncSession = Depends(get_db)):
     try:
         await db.execute(select(Incident).limit(1))
         components["database"] = {"status": "healthy", "detail": "Query successful"}
-    except Exception as e:
-        components["database"] = {"status": "unhealthy", "detail": str(e)}
+    except Exception:
+        logger.exception("Platform health database check failed")
+        components["database"] = {
+            "status": "unhealthy",
+            "detail": "Database health check failed",
+        }
 
     # Prometheus
     try:
@@ -610,8 +614,12 @@ async def get_platform_health(db: AsyncSession = Depends(get_db)):
             "gnn_trained": status.get("model_trained"),
             "gnn_type": status.get("gnn_type"),
         }
-    except Exception as e:
-        components["ai_pipeline"] = {"status": "unhealthy", "detail": str(e)}
+    except Exception:
+        logger.exception("Platform health AI pipeline check failed")
+        components["ai_pipeline"] = {
+            "status": "unhealthy",
+            "detail": "AI pipeline health check failed",
+        }
 
     # LLM
     try:
