@@ -10,6 +10,10 @@ pydantic-settings>=2.0
 python-dotenv>=1.0
 python-multipart>=0.0.9
 
+# --- Authentication & Security ---
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0
+
 # --- Database ---
 sqlalchemy[asyncio]>=2.0
 aiosqlite>=0.20.0
