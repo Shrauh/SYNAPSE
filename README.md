@@ -104,6 +104,6 @@ Full docs: http://localhost:8000/docs
 - **Frontend**: React 18 + TypeScript + Vite
 - **Infrastructure**: Kubernetes, Prometheus, Docker
 
-## Team
+## License
 
-K.K. Wagh IEER, Nashik — Department of AI & Data Science  
+This project is released for educational and research purposes.
